@@ -333,16 +333,25 @@ function normalizarElemento(feature, indice) {
             Contenido del panel derecho de la ficha (ver
             "#ficha-panel-marco" en galeria.css /
             "#panel-derecho-specs" en galeria.html):
-            coordenadas + ubicación desglosada. MISMA
-            forma {label, value} que "ficha" (mismo
-            estilo visual, ver ".spec"/".label"/".value"
+            coordenadas + dirección. MISMA forma
+            {label, value} que "ficha" (mismo estilo
+            visual, ver ".spec"/".label"/".value"
             compartidas en galeria.css) — a propósito no
             se reusa "ficha" para esto: son dos columnas
             de texto separadas en pantalla, con su propio
             layout.
 
+            Estado/Municipio/Código postal se sacaron de
+            acá (queda solo coordenadas + dirección,
+            pedido explícito) — sus valores de origen
+            (ubicacion.estado, ubicacion.municipio,
+            ubicacion.CodigoPostal) siguen disponibles en
+            "ubicacion" más arriba por si hace falta
+            reincorporarlos más adelante; no se tocó nada
+            más de normalizarElemento.
+
             "referencia" (ubicacion.referencia en el
-            GeoJSON) queda afuera a propósito — es una
+            GeoJSON) sigue afuera a propósito — es una
             nota de acceso ("cómo llegar"), no un dato de
             ubicación en sí.
         */
@@ -352,23 +361,8 @@ function normalizarElemento(feature, indice) {
                 value: textoCoordenadas(feature.geometry)
             },
             {
-                label: "Estado",
-                value: ubicacion.estado || "—"
-            },
-            {
-                label: "Municipio",
-                value: ubicacion.municipio || "—"
-            },
-            {
                 label: "Dirección",
                 value: ubicacion.direccion || "—"
-            },
-            {
-                label: "Código postal",
-                value:
-                    ubicacion.CodigoPostal != null
-                        ? String(ubicacion.CodigoPostal)
-                        : "—"
             }
         ],
 
@@ -1038,19 +1032,58 @@ export const CONFIG = {
 
 
     /*
-        Presupuesto de scroll de cada fase, en
-        "alturas de ventana" (vh). "perElementoFichas"
-        se multiplica por la cantidad de elementos
-        para la fase "fichas". El orden de este objeto
-        es también el orden real en el que ocurren las
-        fases (ver galeria-fases.js).
+        Presupuesto de scroll de cada "parada", en
+        "alturas de ventana" (vh). YA NO son 5 números
+        sueltos calibrados en momentos distintos (hero/
+        proyecto/revelado/orden por un lado, fichas por
+        otro, multiplicado recién al final por la
+        cantidad de elementos) — eso hacía que el scroll
+        se sintiera repartido de forma dispareja: con el
+        GeoJSON real (5 elementos), las 4 fases fijas se
+        llevaban ~47% del total y las 5 fichas el ~53%
+        restante, y ADENTRO de las fijas tampoco era
+        parejo (proyecto duraba el doble que orden) — para
+        alguien scrolleando sin ver estos números, no hay
+        forma de anticipar cuánto falta para la próxima
+        parada.
+
+        Ahora TODAS las paradas —las 4 fases fijas y
+        CADA ficha individual, no el bloque de fichas
+        entero— duran lo mismo por defecto:
+        "vhPorParada" vh cada una (ver getBudgetPorParada
+        en galeria-fases.js, que multiplica esto por
+        "pesos" antes de convertir a píxeles). 1.2 replica
+        aproximadamente la escala total que ya tenía la
+        galería con el GeoJSON real (10.8vh con 9 paradas —
+        4 fijas + 5 fichas— contra los ~10.95vh que daban
+        los 5 valores viejos), así que el largo total del
+        scroll no pega un salto grande de golpe; es sólo
+        el reparto ADENTRO de ese total el que pasa a ser
+        parejo.
+
+        "pesos": multiplicador opcional por parada, todos
+        en 1 = perfectamente equidistante (comportamiento
+        por defecto, lo que se pidió). Se deja como
+        escape hatch, no como valor a tocar de entrada: si
+        más adelante hace falta que alguna fase puntual
+        dure más/menos (por ejemplo, "proyecto" necesita
+        tiempo extra para leer cifras, o "orden" es sólo
+        una pausa corta), se ajusta ACÁ con el resto del
+        recorrido intacto, en vez de volver a números
+        sueltos sin relación entre sí. "ficha" aplica a
+        CADA ficha individual (mismo peso para las n,
+        salvo que en el futuro se quiera un array por
+        índice — no hace falta hoy).
     */
     phases: {
-        hero: 1.2,
-        proyecto: 1.8,
-        revelado: 1.3,
-        orden: 0.9,
-        perElementoFichas: 1.15
+        vhPorParada: 1.2,
+        pesos: {
+            hero: 1,
+            proyecto: 1,
+            revelado: 1,
+            orden: 1,
+            ficha: 1
+        }
     }
 
 };

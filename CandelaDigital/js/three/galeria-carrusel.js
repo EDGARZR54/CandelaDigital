@@ -263,14 +263,46 @@ const EPS = 0.00001;
     forEach, más abajo en update()):
 
         diff = (2π·sFrac + phi) mod 2π,
-        sFrac = sFracBasePorSlot[slot] + seamOffset
-        (seamAnimado = seamOffset durante "rotar", ver
-        más abajo)
+        sFrac = sFracBasePorSlot[slot] (SIN seam acá)
 
-    diff=0 ⟺ phi = -2π·(sFracBasePorSlot[k] + seamOffset)
+    diff=0 ⟺ phi = -2π·sFracBasePorSlot[k]
     y como phi = -rangoPhi·u:
 
-        u = 2π·(sFracBasePorSlot[k]+seamOffset) / rangoPhi
+        u = 2π·sFracBasePorSlot[k] / rangoPhi
+
+    FIX (bug de auto-cancelación del seam): la versión
+    anterior de esta función sumaba "+ seamPorSlot[k]"
+    adentro del cálculo de "u" —replicando la MISMA
+    cantidad que el forEach ya suma a "sFrac" para
+    posicionar/orientar el elemento (ver "seamAnimadoPorSlot"
+    en update())—. Eso hacía que, en el punto de reposo,
+    el seam se cancelara solo: el phi objetivo quedaba
+    calculado en función del sFrac YA desplazado por el
+    seam, así que diff volvía a dar exactamente 0 sin
+    importar cuánto valiera seamOffset (confirmado con
+    __galeriaCarrusel.debug(): duplicar seamOffset en los
+    slots intermedios no cambiaba nada en pantalla, sólo
+    en el ancla/último —los únicos dos casos de abajo que
+    NO pasan por esta cuenta— el seam sobrevivía intacto).
+
+    Ahora "u" se calcula SOLO con sFracBasePorSlot (el
+    centrado geométrico puro, que sigue siendo necesario
+    para corregir el espaciado angular irregular real —
+    ver el comentario grande más arriba sobre por qué no
+    alcanza con asumir "slot/pasos"). El seam ya NO entra
+    acá: como el forEach sigue sumándolo a "sFrac" al
+    margen de este cálculo, en el punto de reposo queda un
+    diff residual de exactamente 2π·seamPorSlot[k] —el
+    mismo tipo de desplazamiento angular que ya funciona
+    en el ancla y en el último elemento (ahí es 2π·seamOffset
+    porque su target está fijo en 0/1 y nunca "ve" el seam).
+    Ese residuo es A PROPÓSITO para la posición renderizada,
+    pero el cálculo de "diff" que sí usan mejorSlot/
+    displayIndex/emphasis (ver el forEach, más abajo en
+    update()) lo resta de nuevo antes de medir distancia al
+    foco — si no, "emphasis"/opacidad/scaleBump pegaban su
+    pico "rangoPhi" de scroll antes o después del punto real
+    de reposo, en vez de coincidir con él.
 
     Salvo en los dos extremos: k=0 y k=pasos quedan
     FIJOS en 0 y 1 respectivamente, pase lo que pase
@@ -293,7 +325,7 @@ const EPS = 0.00001;
     sostiene un rato y se nota más).
 */
 function targetU(
-    k, pasos, seamOffset, rangoPhi, sFracBasePorSlot
+    k, pasos, rangoPhi, sFracBasePorSlot
 ) {
 
     if (k <= 0) return 0;
@@ -302,8 +334,7 @@ function targetU(
     if (rangoPhi === 0) return k / pasos;
 
     const u =
-        (Math.PI * 2 *
-            (sFracBasePorSlot[k] + seamOffset)) /
+        (Math.PI * 2 * sFracBasePorSlot[k]) /
         rangoPhi;
 
     return Math.min(1, Math.max(0, u));
@@ -326,11 +357,14 @@ function targetU(
     y también quieto); el resto, en el medio, es una
     transición ease() normal entre ambos.
 
-    "seamOffset", "rangoPhi" y "sFracBasePorSlot" se
-    pasan tal cual a targetU() (ver ahí la deducción
-    completa) para que cada meseta caiga en el punto
-    REAL donde ese slot centra, medido del layout real,
-    no en un punto asumido.
+    "rangoPhi" y "sFracBasePorSlot" se pasan tal cual a
+    targetU() (ver ahí la deducción completa) para que
+    cada meseta caiga en el punto REAL donde ese slot
+    centra geométricamente, medido del layout real, no
+    en un punto asumido. YA NO se le pasa "seamPorSlot"
+    (ver el FIX en targetU()): el seam sigue vivo, sólo
+    que ahora entra únicamente por el lado del "sFrac"
+    real que arma el forEach en update(), no acá.
 
     Devuelve un valor 0..1, mismo rango y mismo rol que
     ya tenía "ease(rotateT)" en el lugar donde se llama
@@ -343,7 +377,7 @@ function targetU(
 */
 function pasoConDescanso(
     rotateT, pasos, descanso,
-    seamOffset, rangoPhi, sFracBasePorSlot
+    rangoPhi, sFracBasePorSlot
 ) {
 
     if (pasos <= 0) return rotateT;
@@ -368,23 +402,22 @@ function pasoConDescanso(
 
     /*
         Los dos targets de ESTE tramo puntual — los
-        puntos reales de centrado (medidos, con seam) de
-        los elementos que arrancan y terminan este
-        tramo. Al ser la MISMA llamada a targetU() la
-        que arma el final de un tramo y el principio
-        del siguiente, quedan pegados sin salto entre
-        tramos consecutivos — igual que antes.
+        puntos reales de centrado GEOMÉTRICO (medidos,
+        sin seam — ver FIX en targetU()) de los
+        elementos que arrancan y terminan este tramo. Al
+        ser la MISMA llamada a targetU() la que arma el
+        final de un tramo y el principio del siguiente,
+        quedan pegados sin salto entre tramos
+        consecutivos — igual que antes.
     */
     const targetInicio =
         targetU(
-            paso, pasos, seamOffset,
-            rangoPhi, sFracBasePorSlot
+            paso, pasos, rangoPhi, sFracBasePorSlot
         );
 
     const targetFin =
         targetU(
-            paso + 1, pasos, seamOffset,
-            rangoPhi, sFracBasePorSlot
+            paso + 1, pasos, rangoPhi, sFracBasePorSlot
         );
 
     const mitadDescanso = descansoClamp / 2;
@@ -486,7 +519,11 @@ export function createCarouselController(
 
         if (n === 0) {
 
-            return { changed: false, rotationWeights: {} };
+            return {
+                changed: false,
+                rotationWeights: {},
+                panelOpacity: 0
+            };
 
         }
 
@@ -663,6 +700,27 @@ export function createCarouselController(
         */
         const seamOffset = cfg.seamOffset ?? 0;
 
+        /*
+            "seamOffset" ya no necesita ningún factor
+            extra para los slots intermedios: eso era un
+            parche para compensar que, antes del FIX en
+            targetU()/pasoConDescanso() (ver ahí), el
+            seam se autocancelaba en el punto de reposo
+            de esos slots y no tenía efecto visual
+            ninguno — duplicarlo era la única forma de
+            notar "algo". Ahora que el seam sobrevive
+            intacto en TODOS los slots (ancla, último e
+            intermedios por igual), se vuelve a un único
+            valor parejo — mismo criterio simple con el
+            que ya funcionaban ancla/último. Se arma
+            igual (un array por slot, no un escalar
+            suelto) sólo para no tocar el resto del
+            archivo, que ya espera "seamPorSlot[slot]" en
+            el forEach de más abajo.
+        */
+        const seamPorSlot =
+            sFracBasePorSlot.map(() => seamOffset);
+
         if (t < cfg.formSpan) {
 
             theta =
@@ -702,7 +760,6 @@ export function createCarouselController(
                     rotateT,
                     huecosReales,
                     cfg.dwellFraction ?? 0.5,
-                    seamOffset,
                     rangoPhi,
                     sFracBasePorSlot
                 );
@@ -735,16 +792,17 @@ export function createCarouselController(
 
         /*
             SEAM ANIMADO: corre el parámetro de la curva
-            (sFrac, ver más abajo) una fracción fija hacia
-            el extremo libre — mismo desplazamiento para
-            TODOS los elementos, así que en la práctica
-            rota el círculo entero un ángulo extra
-            (theta · seamOffset) respecto de dónde caería
-            el ancla sin este offset. Sirve para recentrar
-            un poco la geometría destacada respecto del
-            punto de foco fijo (-π/2), sin tener que tocar
-            ese punto de foco ni la lógica de "quién está
-            en foco" (diff, más abajo) por separado — como
+            (sFrac, ver más abajo) "seamOffset" hacia el
+            extremo libre, la MISMA fracción para todos
+            los elementos por igual (ver "seamPorSlot"
+            más arriba, junto a theta/phi — se sigue
+            armando como array por slot para no tocar el
+            resto del archivo, pero todos sus valores son
+            iguales a "seamOffset"). Sirve para recentrar
+            la geometría destacada respecto del punto de
+            foco fijo (-π/2), sin tener que tocar ese
+            punto de foco ni la lógica de "quién está en
+            foco" (diff, más abajo) por separado — como
             "diff" también se calcula a partir de este
             mismo "sFrac" ya desplazado (reusa la misma
             variable), la detección de foco queda
@@ -758,13 +816,14 @@ export function createCarouselController(
             "orden") y llega a su valor completo recién al
             cerrarse el círculo, nunca de golpe.
 
-            cfg.seamOffset ya se leyó más arriba (antes
-            del bloque de theta/phi, ver esa
-            declaración) — acá solo falta "seamAnimado",
-            que sí depende de "blend" y por eso no podía
+            "seamPorSlot" ya se armó más arriba (antes del
+            bloque de theta/phi, junto a "seamOffset") —
+            acá solo falta blendearlo por slot, que sí
+            depende de "blend" y por eso no podía
             adelantarse con el resto.
         */
-        const seamAnimado = seamOffset * blend;
+        const seamAnimadoPorSlot =
+            seamPorSlot.map(s => s * blend);
 
 
         /*
@@ -850,6 +909,25 @@ export function createCarouselController(
         */
         const diffPorSlot = {};
 
+        /*
+            FIX (panel de texto desincronizado de la
+            geometría, bug reportado): se guarda también
+            "opacityFinal" de CADA slot — el mismo número
+            que ya gobierna "cone.material.opacity" más
+            abajo, y que por construcción llega a 1
+            exactamente cuando ese elemento está centrado
+            con su seam (diffAbs=0, ver "emphasis" más
+            abajo). Después del forEach se toma el valor
+            del slot que termina en foco (displayIndex) y
+            se lo expone en el resultado de update() como
+            "panelOpacity" — así galeria.js puede fijar la
+            opacidad del panel de texto con ESTE mismo
+            número, en vez de una transición CSS de
+            duración fija e independiente del scroll (ver
+            ese fix en galeria.js).
+        */
+        const opacityPorSlot = {};
+
         let mejorSlot = 0;
         let mejorDiffAbs = Infinity;
 
@@ -859,10 +937,144 @@ export function createCarouselController(
             const sFrac =
                 (positions[slot].x - anclaPos.x) /
                 sFracDenom +
-                seamAnimado;
+                seamAnimadoPorSlot[slot];
 
             const { x, z, outward } =
                 puntoYOutward(sFrac);
+
+
+            /*
+                FIX (adelantado desde donde vivía antes,
+                justo después del forEach de
+                posición/orientación): "diff"/"emphasis"/
+                "scaleObjetivo"/"opacityObjetivo" sólo
+                necesitan "sFrac" y "phi" (ya definidos
+                arriba) más "blend" y "anguloVecino" (ya
+                definidos ANTES del forEach) — no dependen
+                de "outward", del quaternion ni del pivot,
+                así que no hacía falta calcularlos después
+                de esos. Se adelantan acá porque el fix de
+                "offsetWorld" (más abajo) necesita conocer
+                el factor de escala REAL del frame ANTES
+                de rotar "pivotLocal" — ver ese comentario
+                para el motivo completo.
+
+                Distancia angular al foco (-π/2), envuelta
+                a [-π, π] — el foco es siempre el MISMO
+                ángulo fijo, sea cual sea "phi": por
+                construcción, sFrac=0 (el ancla) cae justo
+                ahí cuando phi=0, así que no hace falta
+                ninguna vuelta previa antes de que el ancla
+                sea la primera ficha en foco.
+
+                OJO: se usa 2π·sFrac (el ángulo que cada
+                elemento va a ocupar una vez el círculo YA
+                esté formado), no "theta·sFrac" (el ángulo
+                instantáneo de la curva, todavía a medio
+                doblar) — ver el comentario original de
+                este cálculo (más abajo, donde vivía antes)
+                para la explicación completa de por qué.
+
+                FIX (seam vs. foco real): "sFrac" ya trae
+                sumado "seamAnimadoPorSlot[slot]" (ver
+                arriba) — el corrimiento angular fijo que
+                recentra la geometría respecto de su ancla
+                (ver seamOffset en CONFIG). Ese corrimiento
+                es deliberado para la POSICIÓN/orientación
+                renderizada (por eso "sFrac" se usa tal
+                cual en puntoYOutward(), arriba), pero acá
+                mediríamos distancia al ángulo crudo -π/2
+                — que YA NO es el punto de reposo real
+                desde el fix de targetU()/pasoConDescanso()
+                (ver esas funciones): ahora "phi" en reposo
+                sólo cancela la parte de "sFrac" SIN seam,
+                dejando a propósito un resto de exactamente
+                2π·seamAnimadoPorSlot[slot] en el ángulo
+                final. Sin restar ese mismo resto acá,
+                "diffAbs" nunca llegaba a 0 en el punto en
+                el que el elemento realmente está quieto y
+                centrado en pantalla —el pico de
+                "emphasis"/opacidad/scaleBump (más abajo)
+                y el cambio de "mejorSlot"/displayIndex
+                quedaban corridos "rangoPhi" de scroll
+                respecto de la meseta real, en vez de
+                coincidir con ella (reportado: "la opacidad
+                al 100% no está sincronizada con el
+                descanso"). Al restar el mismo
+                "seamAnimadoPorSlot[slot]" que ya sumó
+                "sFrac", queda una cuenta relativa al punto
+                de reposo real —0 exactamente ahí—, sin
+                afectar en nada la posición/orientación
+                renderizada (esa sigue usando "sFrac" tal
+                cual, sin este ajuste).
+            */
+            let diff =
+                (
+                    Math.PI * 2 *
+                        (sFrac - seamAnimadoPorSlot[slot]) +
+                    phi
+                ) % (Math.PI * 2);
+
+            if (diff > Math.PI) diff -= Math.PI * 2;
+            if (diff < -Math.PI) diff += Math.PI * 2;
+
+            const diffAbs = Math.abs(diff);
+
+            diffPorSlot[slot] = diffAbs;
+
+            if (diffAbs < mejorDiffAbs) {
+
+                mejorDiffAbs = diffAbs;
+                mejorSlot = slot;
+
+            }
+
+            /*
+                "emphasis" describe el estado YA CURVADO
+                (círculo completo) — cuánto bump de
+                escala/opacidad/rotación le toca a este
+                elemento si el círculo estuviera totalmente
+                formado. Igual que la posición, no se
+                aplica de golpe: crece de 0 a 1 recién con
+                el círculo ya cerrado (blend), así el ajuste
+                queda disimulado dentro del propio tramo
+                "formar" en vez de saltar de una vez.
+            */
+            const emphasis =
+                smoothstep(
+                    Math.max(
+                        0,
+                        1 - diffAbs / anguloVecino
+                    )
+                );
+
+            const scaleObjetivo =
+                1 + emphasis * cfg.scaleBump;
+
+            const opacityObjetivo =
+                cfg.minOpacity +
+                emphasis * (1 - cfg.minOpacity);
+
+            /*
+                FIX ("geometría anclada en el extremo
+                izquierdo" en elementos intermedios, bug
+                reportado): factor de escala REAL que
+                "cone.scale.setScalar" va a aplicar este
+                frame — se calcula ACÁ (no más abajo, junto
+                a esa línea) porque "offsetWorld" lo
+                necesita ANTES de rotar "pivotLocal" — ver
+                ese comentario para el porqué completo. Se
+                reusa tal cual más abajo, en vez de
+                recalcularlo, para que no puedan
+                desincronizarse.
+            */
+            const scaleFinal =
+                1 + (scaleObjetivo - 1) * blend;
+
+            const opacityFinal =
+                1 + (opacityObjetivo - 1) * blend;
+
+            opacityPorSlot[slot] = opacityFinal;
 
 
             /*
@@ -958,8 +1170,54 @@ export function createCarouselController(
                 falta decirlo explícitamente, la altura
                 correcta del origen del mesh todo este
                 tiempo.
+
+                FIX ("geometría anclada en el extremo
+                izquierdo" en elementos intermedios, bug
+                reportado): antes, este vector se rotaba
+                SIN escalar — pero Three.js compone el
+                centroide en mundo como "position +
+                quaternion·(scale ⊙ pivotLocal)", no
+                "position + quaternion·pivotLocal". Como
+                "cone.position" se fija asumiendo scale=1
+                (más abajo, vía "curvaX/Y/Z"), y
+                "cone.scale" después pasa a valer
+                "scaleFinal" (≠1 en cualquier elemento con
+                algo de "emphasis"), el centroide real
+                terminaba en:
+
+                  centroReal = centroObjetivo +
+                               offsetWorld·(scaleFinal-1)
+
+                — un corrimiento hacia el origen del mesh
+                (el ancla frontal/base) proporcional a
+                cuánto creciera el objeto. Como "emphasis"
+                (y por lo tanto "scaleFinal") llega a su
+                pico exactamente en diffAbs≈0 —el foco
+                perfecto—, el corrimiento era MÁS visible
+                justo en el elemento mejor centrado
+                angularmente, no menos: por eso se veía en
+                los intermedios (que sí llegan a
+                diffAbs≈0 con el seamOffset actual) y no
+                en ancla/último real (que se quedan con un
+                diffAbs residual — ver targetU() más
+                arriba— y por lo tanto con "emphasis" algo
+                por debajo del máximo).
+
+                Escalar "pivotLocal" acá por "scaleFinal"
+                ANTES de rotarlo hace que "offsetWorld"
+                describa el vector centro->origen del mesh
+                YA CONSIDERANDO cuánto va a crecer el
+                objeto este frame, así "curvaX/Y/Z" (más
+                abajo) calculan la posición de origen que
+                realmente deja al centroide YA ESCALADO
+                exactamente sobre el punto de la curva —
+                sea cual sea "scaleFinal". Con
+                scaleFinal=1 (elemento sin ningún
+                "emphasis") da exactamente lo mismo que
+                antes: no rompe el caso ya andaba bien.
             */
             pivotLocal.set(pivotX, pivotY, pivotZ);
+            pivotLocal.multiplyScalar(scaleFinal);
             offsetWorld
                 .copy(pivotLocal)
                 .applyQuaternion(qTotal);
@@ -1053,112 +1311,20 @@ export function createCarouselController(
 
 
             /*
-                Distancia angular al foco (-π/2),
-                envuelta a [-π, π] — el foco es siempre
-                el MISMO ángulo fijo, sea cual sea "phi":
-                por construcción, sFrac=0 (el ancla) cae
-                justo ahí cuando phi=0, así que no hace
-                falta ninguna vuelta previa antes de que
-                el ancla sea la primera ficha en foco.
-
-                OJO: se usa 2π·sFrac (el ángulo que cada
-                elemento va a ocupar una vez el círculo
-                YA esté formado), no "theta·sFrac" (el
-                ángulo instantáneo de la curva, todavía a
-                medio doblar). Si se usara "theta" acá,
-                en el primer frame de la fase (theta≈0)
-                "theta·sFrac" da ≈0 para CUALQUIER sFrac
-                — todos los elementos, no sólo el ancla,
-                quedarían con diff≈0 y saltarían a
-                emphasis=1 (escala/opacidad máximas) a la
-                vez, apenas se mueve un pixel de scroll
-                (bug reportado: "todas las geometrías
-                cambian de centro inmediatamente" — en
-                realidad todas saltaban a escala máxima
-                de golpe, alrededor de su punto de
-                anclaje frontal, lo que se ve como un
-                salto de centro). "Quién está en foco" es
-                una pregunta sobre el layout FINAL del
-                círculo, no sobre cuánto lleva doblado
-                la curva en este frame — así que usa
-                siempre el ángulo final, modulado sólo
-                por "phi" (que de todos modos se mantiene
-                en 0 durante todo el tramo "formar").
+                "diff"/"diffAbs"/"emphasis"/"scaleFinal"/
+                "opacityFinal" y el update de
+                "mejorSlot"/"mejorDiffAbs"/"diffPorSlot"
+                ya se calcularon arriba (antes del bloque
+                de pivot/offsetWorld) — ver ese comentario
+                para el porqué del reordenamiento. Acá
+                sólo queda APLICARLOS al objeto:
             */
-            let diff =
-                (Math.PI * 2 * sFrac + phi) %
-                (Math.PI * 2);
+            cone.scale.setScalar(scaleFinal);
 
-            if (diff > Math.PI) diff -= Math.PI * 2;
-            if (diff < -Math.PI) diff += Math.PI * 2;
-
-            const diffAbs = Math.abs(diff);
-
-            diffPorSlot[slot] = diffAbs;
-
-            /*
-                "emphasis" describe el estado YA
-                CURVADO (círculo completo) — cuánto
-                bump de escala/opacidad/rotación le
-                toca a este elemento si el círculo
-                estuviera totalmente formado. Igual
-                que la posición (arriba), no se aplica
-                de golpe: "orden" deja a TODOS los
-                elementos en su estado de reposo plano
-                (scale=1, opacity=1, ver
-                revealOrder.forEach en
-                galeria-revelado.js) — si acá se
-                escribiera 1+emphasis*scaleBump y
-                minOpacity+emphasis*(1-minOpacity)
-                directo desde theta≈0, el ancla (única
-                con emphasis=1 en ese instante) saltaría
-                de scale=1/opacity=1 a
-                scale=1+scaleBump/opacity=1 de golpe —
-                el salto de escala en particular corre
-                el centro visual del objeto hacia
-                afuera de su punto de anclaje frontal,
-                que es exactamente el síntoma
-                reportado ("cambia el centro") aunque
-                la posición en sí ya esté bien
-                interpolada. Mismo "blend" que ya usa la
-                posición: en theta=0 da el estado plano
-                exacto (sin bump para nadie, ni
-                siquiera el ancla), y recién con el
-                círculo ya cerrado (blend=1) se ve el
-                "emphasis" completo.
-            */
-            const emphasis =
-                smoothstep(
-                    Math.max(
-                        0,
-                        1 - diffAbs / anguloVecino
-                    )
-                );
-
-            const scaleObjetivo =
-                1 + emphasis * cfg.scaleBump;
-
-            const opacityObjetivo =
-                cfg.minOpacity +
-                emphasis * (1 - cfg.minOpacity);
-
-            cone.scale.setScalar(
-                1 + (scaleObjetivo - 1) * blend
-            );
-
-            cone.material.opacity =
-                1 + (opacityObjetivo - 1) * blend;
+            cone.material.opacity = opacityFinal;
 
             rotationWeights[cupID] =
                 emphasis * cfg.rotationScale * blend;
-
-
-            if (diffAbs < mejorDiffAbs) {
-
-                mejorDiffAbs = diffAbs;
-                mejorSlot = slot;
-
-            }
 
         });
 
@@ -1240,6 +1406,23 @@ export function createCarouselController(
         const elementoId = order[displayIndex];
 
         /*
+            "panelOpacity": el mismo "opacityFinal" que ya
+            tiene, este mismo frame, el elemento que quedó
+            en foco (displayIndex) — no "mejorSlot", que es
+            el candidato puro sin histéresis y puede no
+            coincidir con lo que el panel de texto está
+            mostrando ahora mismo. Con esto el fade del
+            panel queda matemáticamente atado al mismo
+            número que ya anima la opacidad de la
+            geometría: llega a 1 exactamente cuando la
+            geometría está centrada con su seam, y a
+            cfg.minOpacity en el punto medio entre dos
+            elementos — sin duración propia, sin
+            desincronización posible.
+        */
+        const panelOpacity = opacityPorSlot[displayIndex];
+
+        /*
             DEBUG: snapshot de este frame — ver debug()
             más abajo (fuera de update()) para cómo se
             imprime. "targets" es un array de {slot,
@@ -1255,19 +1438,21 @@ export function createCarouselController(
             mejorSlot, mejorDiffAbs,
             mejorDiffAbsDeg: mejorDiffAbs * 180 / Math.PI,
             panelDisplayIndex, displayIndex,
+            panelOpacity,
             targets: Array.from(
                 { length: huecosReales + 1 },
                 (_, k) => {
 
                     const u =
                         targetU(
-                            k, huecosReales, seamOffset,
+                            k, huecosReales,
                             rangoPhi, sFracBasePorSlot
                         );
 
                     return {
                         slot: k,
                         sFracBase: sFracBasePorSlot[k],
+                        seamAplicado: seamPorSlot[k],
                         u,
                         phiDeg: (-rangoPhi * u) * 180 / Math.PI,
                         diffAbsAhoraDeg:
@@ -1288,7 +1473,8 @@ export function createCarouselController(
                 changed: true,
                 displayIndex,
                 elementoId,
-                rotationWeights
+                rotationWeights,
+                panelOpacity
             };
 
         }
@@ -1297,7 +1483,8 @@ export function createCarouselController(
             changed: false,
             displayIndex,
             elementoId,
-            rotationWeights
+            rotationWeights,
+            panelOpacity
         };
 
     }

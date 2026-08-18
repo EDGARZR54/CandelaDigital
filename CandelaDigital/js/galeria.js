@@ -172,6 +172,39 @@ async function initGaleria() {
     const carouselPanel =
         document.getElementById("carousel-panel");
 
+    /*
+        FIX ("la primer ficha se ve a opacidad plena
+        mucho antes de que la geometría termine de
+        centrarse", bug reportado): la clase "visible"
+        en galeria.css dispara una transición CSS de
+        opacidad de duración fija, en tiempo real, sin
+        relación ninguna con cuánto tarda la geometría en
+        cerrar el círculo y asentarse en su meseta (ver
+        galeria-carrusel.js, "opacityFinal"). Se
+        reemplaza ese fade por tiempo por un fade por
+        SCROLL: cada frame de la fase "fichas" fija
+        "carouselPanel.style.opacity" directamente, al
+        mismo "panelOpacity" que devuelve
+        carousel.update() — el mismo número que ya rige
+        "cone.material.opacity" del elemento en foco, así
+        que ambos llegan a 1 en el EXACTO mismo instante,
+        sin posibilidad de desincronizarse.
+
+        Para que esa asignación cuadro a cuadro no quede
+        ella misma amortiguada por la transición CSS
+        existente (que seguiría aplicando incluso a
+        cambios de "style.opacity" hechos por JS, sólo
+        que ahora produciría un lag en vez de un salto —
+        mismo problema, disfrazado), se anula acá esa
+        transición para este elemento en particular, sin
+        tocar transition en el resto del CSS de
+        "#carousel-panel.visible" (por si esa regla sigue
+        gobernando algo más que opacidad, p.ej. transform
+        o visibility).
+    */
+    carouselPanel.style.transitionProperty = "opacity";
+    carouselPanel.style.transitionDuration = "0s";
+
     const panelIndex =
         document.getElementById("panel-index");
 
@@ -1084,6 +1117,13 @@ async function initGaleria() {
                 "visible"
             );
 
+            /*
+                Ver el fix junto a la definición de
+                "carouselPanel": limpia el override inline
+                de opacidad que deja "fichas".
+            */
+            carouselPanel.style.opacity = "";
+
             carousel.reset();
             interaccionFicha.reset();
 
@@ -1139,6 +1179,17 @@ async function initGaleria() {
                 "visible"
             );
 
+            /*
+                Limpia el override inline que "fichas" deja
+                en style.opacity (ver el fix junto a la
+                definición de "carouselPanel") — si no, ese
+                inline pisa para siempre cualquier opacidad
+                que el CSS de esta fase quiera aplicar,
+                porque un estilo inline gana por
+                especificidad sobre una regla de clase.
+            */
+            carouselPanel.style.opacity = "";
+
             carousel.reset();
             interaccionFicha.reset();
 
@@ -1189,6 +1240,13 @@ async function initGaleria() {
                 "visible"
             );
 
+            /*
+                Ver el fix junto a la definición de
+                "carouselPanel": limpia el override inline
+                de opacidad que deja "fichas".
+            */
+            carouselPanel.style.opacity = "";
+
             carousel.reset();
             interaccionFicha.reset();
 
@@ -1233,6 +1291,13 @@ async function initGaleria() {
             carouselPanel.classList.remove(
                 "visible"
             );
+
+            /*
+                Ver el fix junto a la definición de
+                "carouselPanel": limpia el override inline
+                de opacidad que deja "fichas".
+            */
+            carouselPanel.style.opacity = "";
 
             carousel.reset();
             interaccionFicha.reset();
@@ -1281,6 +1346,16 @@ async function initGaleria() {
 
             gui.classList.remove("visible");
 
+            /*
+                "visible" queda como marca de estado para
+                el resto del CSS de este panel (si "visible"
+                gobierna algo más que opacidad, p.ej.
+                pointer-events o layout) — pero la OPACIDAD
+                en sí ya no sale de esta clase: se fija más
+                abajo, cuadro a cuadro, con "panelOpacity"
+                (ver el fix junto a la definición de
+                "carouselPanel" más arriba).
+            */
             carouselPanel.classList.add(
                 "visible"
             );
@@ -1304,6 +1379,23 @@ async function initGaleria() {
 
             const result =
                 carousel.update(t);
+
+            /*
+                FIX: opacidad del panel atada al mismo
+                número que ya anima la geometría del
+                elemento en foco (ver "panelOpacity" en
+                galeria-carrusel.js) — no un fade por
+                tiempo fijo vía CSS. Se fija ACÁ, recién
+                después de tener "result" (así "t=0" de
+                esta fase ya entra con el "panelOpacity"
+                real de ese instante, típicamente
+                cfg.minOpacity, no 1 de entrada como pasaba
+                con la transición de la clase "visible" —
+                ver el fix junto a la definición de
+                "carouselPanel").
+            */
+            carouselPanel.style.opacity =
+                result.panelOpacity;
 
             /*
                 Va DESPUÉS de carousel.update(): recién
