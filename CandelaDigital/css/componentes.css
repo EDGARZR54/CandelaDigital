@@ -1,0 +1,208 @@
+/* ==========================================================================
+   COMPONENTES.CSS
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------- *
+ * HÉROE
+ * ---------------------------------------------------------------------- */
+.hero {
+  position: relative;
+  min-height: 100svh;
+  display: grid;
+  align-items: center;
+  overflow: hidden;
+  padding-top: 5rem;
+}
+
+/* Lienzo de Three.js a pantalla completa, detrás del texto */
+.hero__lienzo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none; /* el fondo no debe capturar clics/scroll */
+}
+.hero__lienzo canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hero__contenido {
+  position: relative;
+  z-index: 1;
+}
+
+.hero__texto {
+  max-width: 640px;
+}
+.hero__texto h1 {
+  margin-bottom: 0.55em;
+}
+
+.hero__texto .subrayado {
+  color: var(--color-primario);
+  font-style: italic;
+}
+
+.hero__parrafo {
+  max-width: 46ch;
+  color: var(--color-texto-suave);
+  font-size: clamp(1rem, 0.4vw + 0.92rem, 1.2rem);
+  margin-bottom: 2.1rem;
+}
+
+.hero__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+}
+
+.hero__desplazar {
+  position: absolute;
+  z-index: 1;
+  bottom: 2.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-texto-suave);
+  font-family: var(--fuente-datos);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.hero__desplazar::after {
+  content: "";
+  width: 1px;
+  height: 34px;
+  background: linear-gradient(var(--color-texto-suave), transparent);
+}
+
+/* ---------------------------------------------------------------------- *
+ * FRANJA DE DATOS (cifras reales del corpus documentado)
+ * ---------------------------------------------------------------------- */
+.cifras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 2rem;
+  border-top: 1px solid var(--color-borde);
+  border-bottom: 1px solid var(--color-borde);
+  padding-block: 2.2rem;
+}
+
+.cifra__numero {
+  font-family: var(--fuente-display);
+  font-size: clamp(2rem, 3vw, 2.8rem);
+  color: var(--color-primario);
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+
+.cifra__etiqueta {
+  font-family: var(--fuente-datos);
+  font-weight: var(--peso-datos);
+  font-size: 0.8rem;
+  color: var(--color-texto-suave);
+  letter-spacing: 0.02em;
+}
+
+/* ---------------------------------------------------------------------- *
+ * ENCABEZADO DE SECCIÓN
+ * ---------------------------------------------------------------------- */
+.encabezado-seccion {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-bottom: 2.5rem;
+}
+.encabezado-seccion h2 { margin-bottom: 0; }
+.encabezado-seccion .eyebrow { margin-bottom: 0.6rem; }
+
+/* ---------------------------------------------------------------------- *
+ * CUADRÍCULA DE EDIFICIOS
+ * ---------------------------------------------------------------------- */
+.grid-edificios {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.tarjeta-edificio {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: var(--color-texto);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  overflow: hidden;
+  background: var(--color-fondo-alt);
+  transition: transform var(--transicion), box-shadow var(--transicion), border-color var(--transicion);
+}
+.tarjeta-edificio:hover {
+  transform: translateY(-4px);
+  border-color: var(--color-primario);
+  box-shadow: 0 18px 34px -18px var(--color-sombra);
+}
+
+.tarjeta-edificio__imagen {
+  aspect-ratio: 4 / 3;
+  background: linear-gradient(135deg, rgba(var(--color-primario-rgb), 0.35), rgba(var(--color-secundario-rgb), 0.25));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tarjeta-edificio__cuerpo { padding: 1.4rem 1.5rem 1.6rem; }
+
+.tarjeta-edificio__meta {
+  display: flex;
+  gap: 0.6rem;
+  font-family: var(--fuente-datos);
+  font-weight: var(--peso-datos);
+  font-size: 0.78rem;
+  color: var(--color-texto-suave);
+  margin-bottom: 0.5rem;
+}
+
+.tarjeta-edificio h3 { margin-bottom: 0.4rem; }
+
+.tarjeta-edificio__extracto {
+  color: var(--color-texto-suave);
+  font-size: 0.92rem;
+}
+
+/* ---------------------------------------------------------------------- *
+ * SECCIÓN CON FONDO ALTERNO (p. ej. mapa / metodología)
+ * ---------------------------------------------------------------------- */
+.seccion--alterna {
+  background: var(--color-fondo-alt);
+}
+
+.dos-columnas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: center;
+}
+@media (max-width: 860px) {
+  .dos-columnas { grid-template-columns: 1fr; }
+}
+
+.marco-visor {
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-fondo-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-texto-suave);
+  font-family: var(--fuente-datos);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 2rem;
+}

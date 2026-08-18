@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StreetData Insight – Recorrido continuo</title>
+
+  <link href="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: #111;
+      color: #fff;
+    }
+
+    #map {
+      position: sticky;
+      top: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.5s ease-out;
+    }
+    #map.ready {
+      opacity: 1;
+    }
+
+    .map-loading {
+      position: fixed;
+      inset: 0;
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #111;
+      color: #888;
+      font-size: 0.95rem;
+      letter-spacing: 0.05em;
+      pointer-events: none;
+      transition: opacity 0.4s ease-out;
+    }
+    .map-loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Oculto por defecto: las secciones ya se llenan con el contenido de
+       cada edificio (texto de nombre, autores, dirección, etc.) apenas se
+       lee el GeoJSON, ANTES de que el mapa termine de cargar su estilo.
+       Como .map-loading no cubre con opacidad total el contenido detrás
+       hasta que se le agrega background, y por las dudas de cualquier otro
+       desfase de timing, mantenemos el contenedor invisible hasta que el
+       mapa esté listo (ver 'sections-container.ready' más abajo). */
+    #sections-container {
+      position: relative;
+      z-index: 5;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s ease-out;
+    }
+    #sections-container.ready {
+      opacity: 1;
+    }
+    .section {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      /* Sin pointer-events propio: hereda 'none' de #sections-container.
+         Antes tenía 'auto' y, al cubrir el 100% del viewport igual que el
+         mapa, capturaba el arrastre/click ANTES de que llegara a MapLibre
+         — por eso el mapa no se dejaba arrastrar. No hay ningún elemento
+         interactivo dentro de .section (solo texto), así que no se pierde
+         funcionalidad al quitarlo. */
+      padding: 20px;
+      text-align: center;
+      background: rgba(0,0,0,0.3);
+      transition: background 0.3s;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .section.active {
+      background: rgba(255,255,255,0.08);
+    }
+
+    .section h2 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 0 20px rgba(0,0,0,0.8);
+    }
+    .section .autores {
+      font-size: 1.2rem;
+      color: #aaa;
+      margin-bottom: 0.5rem;
+    }
+    .section .detalles {
+      font-size: 1rem;
+      color: #ccc;
+      max-width: 500px;
+      line-height: 1.5;
+    }
+    .section .estado {
+      display: inline-block;
+      margin-top: 0.8rem;
+      padding: 4px 16px;
+      border-radius: 20px;
+      font-weight: 500;
+      font-size: 0.9rem;
+      text-transform: capitalize;
+      background: #555;
+    }
+    .estado-bueno   { background: #4caf50; color: white; }
+    .estado-regular { background: #ff9800; color: white; }
+    .estado-riesgo  { background: #f44336; color: white; }
+    .estado-perdido { background: #9e9e9e; color: white; }
+    .estado-sin-info { background: #555; color: #ddd; }
+
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+  <div class="map-loading" id="mapLoading">Cargando mapa…</div>
+  <div id="sections-container"></div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+  <script>
+    (function() {
+      // El mapa se crea recién más abajo, DESPUÉS de leer el GeoJSON,
+      // para poder inicializarlo ya centrado en el primer punto real
+      // (ver loadDataAndCreateMap). Así nunca se renderiza en otro lugar.
+      let map = null;
+
+      let features = [];
+      let coordinates = [];
+      let currentIndex = -1;
+      let isInitialized = false;
+
+      // --- Límite del CENTRO de cámara (no del viewport completo) ---
+      // Guarda el bbox (con offset) recién calculado por addBoundingBoxLayer.
+      // Se usa para que map.getCenter() nunca caiga fuera de esta caja, sin
+      // importar si el movimiento vino del recorrido automático, de un drag
+      // del usuario o de un zoom. El viewport SÍ puede mostrar área fuera de
+      // la caja (por ejemplo al alejar el zoom); lo único restringido es el
+      // punto central.
+      let cameraBounds = null; // [minLng, minLat, maxLng, maxLat]
+      let clampingCenter = false; // evita reentradas al llamar setCenter() dentro del propio handler de 'move'
+
+      function clampCenterToBounds() {
+        if (!cameraBounds || !map || clampingCenter) return;
+
+        const center = map.getCenter();
+        const [minLng, minLat, maxLng, maxLat] = cameraBounds;
+
+        const clampedLng = Math.min(Math.max(center.lng, minLng), maxLng);
+        const clampedLat = Math.min(Math.max(center.lat, minLat), maxLat);
+
+        if (clampedLng !== center.lng || clampedLat !== center.lat) {
+          clampingCenter = true;
+          map.setCenter([clampedLng, clampedLat]);
+          clampingCenter = false;
+        }
+      }
+
+      // --- Parámetros de zoom y fases del vuelo ---
+      const ZOOM_NEAR = 16;   // zoom al llegar/estar en un punto
+      const ZOOM_FAR  = 11;   // zoom al que se aleja entre puntos
+
+      // --- Color del pin ---
+      // Resultado aproximado de aplicar hue #ff4400 + saturation -32 + gamma .85
+      // (ajustá este hex directamente si el tono no es el que buscabas).
+      const PIN_COLOR = '#db6a40';
+
+      // Genera el SVG de un pin clásico (forma de gota) con el "hole"
+      // (círculo blanco) característico de los pines de mapa.
+      function buildPinSVG(color) {
+        return `
+          <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24">
+            <path fill="${color}" stroke="#ffffff" stroke-width="0.6"
+              d="M12 1.5C7.86 1.5 4.5 4.86 4.5 9c0 5.63 7.5 13.5 7.5 13.5S19.5 14.63 19.5 9c0-4.14-3.36-7.5-7.5-7.5z"/>
+            <circle cx="12" cy="9" r="2.6" fill="#ffffff"/>
+          </svg>`;
+      }
+
+      // Carga el ícono del pin como imagen del mapa y crea la capa symbol.
+      // Devuelve una Promise para poder esperarla antes de seguir con init().
+      function addPinLayer() {
+        return new Promise((resolve, reject) => {
+          const svg = buildPinSVG(PIN_COLOR);
+          const img = new Image(96, 96);
+          img.onload = () => {
+            if (!map.hasImage('pin-marker')) {
+              map.addImage('pin-marker', img);
+            }
+            map.addLayer({
+              id: 'edificios-pines',
+              type: 'symbol',
+              source: 'edificios',
+              layout: {
+                'icon-image': 'pin-marker',
+                // El punto (coordenada real) queda en la punta inferior del pin
+                'icon-anchor': 'bottom',
+                'icon-size': [
+                  'interpolate', ['linear'], ['zoom'],
+                  10, 0.35,
+                  15, 0.6,
+                  18, 0.9
+                ],
+                'icon-allow-overlap': true,
+                'icon-ignore-placement': true
+              }
+            });
+            resolve();
+          };
+          img.onerror = reject;
+          img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+        });
+      }
+
+      // --- Bounding box de todos los puntos ---
+      // Calcula el rectángulo mínimo que contiene todas las coordenadas del
+      // GeoJSON (con turf.bbox), le agrega un margen (BBOX_OFFSET_KM) hacia
+      // afuera en las cuatro direcciones y lo dibuja como polígono: un
+      // relleno muy tenue + un borde punteado.
+      const BBOX_OFFSET_KM = 1;
+
+      function addBoundingBoxLayer(geojsonData) {
+        const rawBbox = turf.bbox(geojsonData); // [minLng, minLat, maxLng, maxLat]
+
+        // turf.buffer() sobre un rectángulo da un polígono con las esquinas
+        // redondeadas (no un rectángulo más grande). Para conservar la forma
+        // de "caja", volvemos a tomar el bbox del resultado: como el borde
+        // redondeado sigue estando a BBOX_OFFSET_KM de distancia del
+        // rectángulo original en cualquier dirección, su bbox coincide
+        // exactamente con el rectángulo original expandido BBOX_OFFSET_KM
+        // en cada lado.
+        const rawBboxPolygon = turf.bboxPolygon(rawBbox);
+        const buffered = turf.buffer(rawBboxPolygon, BBOX_OFFSET_KM, { units: 'kilometers' });
+        const paddedBbox = turf.bbox(buffered);
+        const bboxPolygon = turf.bboxPolygon(paddedBbox);
+
+        // Nota: el bbox solo se usa para limitar el centro de la cámara
+        // (cameraBounds). No se agrega como fuente/capa al mapa porque no
+        // debe ser visible: no necesita relleno ni borde punteado.
+        return paddedBbox;
+      }
+
+      // Fracción del recorrido entre dos puntos (0 a 1) en la que ocurre cada fase.
+      // Fase 1 [0    -> PHASE_ZOOM_OUT_END]: ZOOM OUT, cámara ~fija en el punto A
+      // Fase 2 [PHASE_ZOOM_OUT_END -> PHASE_PAN_END]: PAN, zoom ~fijo en ZOOM_FAR
+      // Fase 3 [PHASE_PAN_END -> 1]: ZOOM IN, cámara ~fija en el punto B
+      const PHASE_ZOOM_OUT_END = 0.3;
+      const PHASE_PAN_END      = 0.7;
+
+      // Cuánto se "adelantan"/solapan el zoom y el pan en los bordes de cada
+      // fase (en fracción del recorrido, 0-1). Un valor chico evita el corte
+      // seco entre fases sin volver a mezclarlo todo. Ajustable.
+      const OVERLAP = 0.06;
+
+      // --- Objetivo narrativo: el índice flotante define EN QUÉ PUNTO del ---
+      // recorrido debería estar la cámara según el scroll. Es la única fuente
+      // de verdad del progreso; no se suaviza aquí (el suavizado ahora ocurre
+      // en el espacio de la cámara, ver CAMERA_SMOOTHING más abajo).
+      let targetFloatIndex = 0;
+      let animationFrameId = null;
+
+      // --- Interpolación en espacio de cámara (lng/lat/zoom) ---
+      // En cada frame, la cámara se desplaza una fracción CAMERA_SMOOTHING de la
+      // distancia que la separa del estado ideal (computeCameraState(targetFloatIndex)).
+      // Como el punto de partida es siempre la posición REAL y VIGENTE del mapa
+      // (map.getCenter()/getZoom()), el origen de la animación es indiferente:
+      // da igual si la cámara llegó ahí por el propio recorrido automático o
+      // porque el usuario la desplazó manualmente. No existe, por diseño, un
+      // "punto anterior" al cual pueda producirse un salto.
+      const CAMERA_SMOOTHING = 0.06; // 0-1, menor = más inercia, mayor = más inmediato
+
+      // --- Estado de interacción manual del usuario ---
+      // MapLibre no emite 'originalEvent' en transiciones programáticas (jumpTo),
+      // solo en gestos reales (drag, pellizco, doble clic, Ctrl+wheel). Esto
+      // permite distinguir con precisión cuándo el usuario tomó el control
+      // de la cámara.
+      //
+      // Criterio de reanudación: el recorrido automático NO se retoma por el
+      // simple transcurso de un temporizador (eso era lo que provocaba que la
+      // cámara "regresara" al punto anterior apenas el usuario soltaba el
+      // gesto), ni por la sola ocurrencia de un evento 'scroll' (que puede
+      // dispararse por causas espurias, p. ej. recálculos de layout). Se
+      // retoma únicamente cuando el scrollY de la página cambia de forma
+      // apreciable respecto de dónde estaba al comenzar la interacción — es
+      // decir, cuando el usuario manifiesta, de forma inequívoca, intención
+      // de continuar el recorrido. Mientras tanto el mapa permanece
+      // exactamente donde el usuario lo dejó, sin límite de tiempo.
+      let userInteracting = false;
+      let scrollYAtInteractionStart = 0;
+      const RESUME_SCROLL_THRESHOLD = 4; // px de scroll real para reanudar el recorrido
+
+      function onUserInteractionStart(e) {
+        if (e && !e.originalEvent) return; // ignorar transiciones programáticas propias
+        if (!userInteracting) scrollYAtInteractionStart = window.scrollY;
+        userInteracting = true;
+      }
+
+      // Para eventos CRUDOS del navegador (mousedown/touchstart/wheel sobre
+      // el contenedor del mapa): a diferencia de los eventos de MapLibre,
+      // estos no tienen '.originalEvent' — son ellos mismos el evento real.
+      // No hace falta filtrar nada: por construcción, todo evento que llega
+      // aquí es una interacción genuina del usuario.
+      function markInteractionStartRaw() {
+        if (!userInteracting) scrollYAtInteractionStart = window.scrollY;
+        userInteracting = true;
+      }
+
+      // --- Origen dinámico del tramo (la corrección de fondo) ---
+      // computeCameraState ya NO ancla el inicio de cada tramo A→B a la
+      // coordenada FIJA de A guardada en la base de datos. La ancla a
+      // `legOrigin`: la posición REAL de la cámara en el instante en que
+      // el tramo actual comienza a recorrerse. Bajo scroll continuo sin
+      // interacción, `legOrigin` coincide en la práctica con el punto A
+      // (porque el tramo anterior termina exactamente ahí) y el recorrido
+      // se ve idéntico al original. Pero si el usuario desplazó el mapa a
+      // mitad de tramo — por ejemplo, acercándolo manualmente al punto B —
+      // `legOrigin` se actualiza a ESA posición al reanudar: el zoom-out,
+      // el paneo y el zoom-in de ese tramo parten de ahí, no de A. Por eso
+      // nunca hay un salto "de regreso" a un punto anterior.
+      let legOrigin = null;
+      let legOriginIndex0 = -1;
+      let legOriginDirty = true; // fuerza una primera captura
+
+      function easeInOutQuad(t) {
+        return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      }
+
+      // Calcula lng/lat/zoom a partir de UN solo número (el índice flotante suavizado).
+      // El zoom (out/in) y el pan siguen dos curvas independientes que se solapan
+      // levemente en los bordes: el zoom empieza a cambiar un poco antes de que
+      // termine el movimiento, y viceversa, para que no se sienta tan mecánico.
+      function computeCameraState(floatIndex) {
+        const clamped = Math.max(0, Math.min(features.length - 1, floatIndex));
+        const index0 = Math.min(Math.floor(clamped), features.length - 1);
+        const index1 = Math.min(index0 + 1, features.length - 1);
+        const frac = index0 === index1 ? 0 : clamped - index0;
+
+        // Captura (una sola vez por tramo, o al reanudar tras una
+        // interacción manual) la posición REAL desde la que arranca este
+        // tramo. Si el mapa todavía no existe (primerísima llamada, antes
+        // de crear el objeto `map`), se usa la coordenada fija de A como
+        // única alternativa razonable de arranque.
+        if (legOriginDirty || legOriginIndex0 !== index0) {
+          if (legOriginDirty && map) {
+            // Reanudación tras interacción manual: SÍ anclamos a la posición
+            // real de la cámara (el usuario pudo haberla dejado en cualquier
+            // lugar dentro del tramo).
+            const c = map.getCenter();
+            legOrigin = { lng: c.lng, lat: c.lat, zoom: map.getZoom() };
+          } else {
+            // Transición NORMAL de tramo (scroll continuo, sin interacción
+            // manual de por medio) — incluye tanto avanzar como retroceder.
+            // Acá NO hay que leer la posición actual del mapa: al retroceder,
+            // en el instante en que cambia index0 la cámara todavía está
+            // cerca del punto B del tramo anterior (no del punto A del
+            // nuevo), así que usar map.getCenter() la ancla mal y, al seguir
+            // retrocediendo, la cámara nunca llega al punto A real (por eso
+            // no se veía el primer punto al volver al inicio del scroll).
+            // El ancla correcta es siempre la coordenada real y fija del
+            // punto A de este tramo.
+            const c0 = coordinates[index0];
+            legOrigin = { lng: c0[0], lat: c0[1], zoom: ZOOM_NEAR };
+          }
+          legOriginIndex0 = index0;
+          legOriginDirty = false;
+        }
+
+        const coord1 = coordinates[index1];
+
+        // --- Zoom: dos rampas independientes, cada una puede extenderse
+        // un poco más allá del borde de su fase (OVERLAP) ---
+        let zoom;
+        const zoomOutEnd = PHASE_ZOOM_OUT_END + OVERLAP;   // el zoom-out se estira un poco hacia el pan
+        const zoomInStart = PHASE_PAN_END - OVERLAP;       // el zoom-in arranca un poco antes de que termine el pan
+
+        if (frac <= zoomOutEnd) {
+          const t = easeInOutQuad(Math.min(1, frac / zoomOutEnd));
+          zoom = legOrigin.zoom + (ZOOM_FAR - legOrigin.zoom) * t;
+        } else if (frac >= zoomInStart) {
+          const t = easeInOutQuad(Math.min(1, (frac - zoomInStart) / (1 - zoomInStart)));
+          zoom = ZOOM_FAR + (ZOOM_NEAR - ZOOM_FAR) * t;
+        } else {
+          zoom = ZOOM_FAR;
+        }
+
+        // --- Pan: también se estira un poco hacia ambos lados (OVERLAP) ---
+        const panStart = PHASE_ZOOM_OUT_END - OVERLAP; // el pan arranca un poco antes de que termine el zoom-out
+        const panEnd = PHASE_PAN_END + OVERLAP;         // el pan sigue un poco después de empezar el zoom-in
+
+        let lng, lat;
+        if (frac <= panStart) {
+          lng = legOrigin.lng;
+          lat = legOrigin.lat;
+        } else if (frac >= panEnd) {
+          lng = coord1[0];
+          lat = coord1[1];
+        } else {
+          const t = easeInOutQuad((frac - panStart) / (panEnd - panStart));
+          lng = legOrigin.lng + (coord1[0] - legOrigin.lng) * t;
+          lat = legOrigin.lat + (coord1[1] - legOrigin.lat) * t;
+        }
+
+        return { lng, lat, zoom };
+      }
+
+      // --- Cargar datos, luego crear el mapa ya centrado en el primer punto ---
+      async function init() {
+        try {
+          const response = await fetch('data/edificios.geojson');
+          if (!response.ok) throw new Error('No se pudo cargar el archivo GeoJSON');
+          let geojsonData = await response.json();
+
+          // Aplanar propiedades
+          features = geojsonData.features.map(feature => {
+            const props = feature.properties;
+            let categoria = 'Sin información';
+            if (props.estado_actual && props.estado_actual.categoria) {
+              categoria = props.estado_actual.categoria;
+            }
+            props.categoria = categoria;
+
+            if (props.identificacion) {
+              const id = props.identificacion;
+              props.nombre = id.nombre || 'Sin nombre';
+              props.autores = id.autores ? id.autores.map(a => a.nombre).join(', ') : 'Autor desconocido';
+              props.año = id.año_construccion || 's/f';
+              props.tipologia = id.tipologia || 'No especificada';
+            } else {
+              props.nombre = 'Sin nombre';
+              props.autores = 'Autor desconocido';
+              props.año = 's/f';
+              props.tipologia = 'No especificada';
+            }
+            props.direccion = props.ubicacion ? props.ubicacion.direccion || '' : '';
+            return feature;
+          });
+
+          coordinates = features.map(f => f.geometry.coordinates);
+
+          // --- Crear secciones en el DOM ---
+          const container = document.getElementById('sections-container');
+          features.forEach((feature, index) => {
+            const props = feature.properties;
+            const div = document.createElement('div');
+            div.className = 'section';
+            div.dataset.index = index;
+
+            let estadoClass = 'estado-sin-info';
+            const catLower = props.categoria.toLowerCase();
+            if (['bueno', 'regular', 'riesgo', 'perdido'].includes(catLower)) {
+              estadoClass = 'estado-' + catLower;
+            }
+
+            div.innerHTML = `
+              <h2>${props.nombre}</h2>
+              <div class="autores">${props.autores}</div>
+              <div class="detalles">
+                <span><strong>Año:</strong> ${props.año}</span> &middot;
+                <span><strong>Tipo:</strong> ${props.tipologia}</span>
+                ${props.direccion ? `<br><span style="font-size:0.85rem;color:#aaa;">${props.direccion}</span>` : ''}
+              </div>
+              <div class="estado ${estadoClass}">${props.categoria}</div>
+            `;
+            container.appendChild(div);
+          });
+
+          // --- Recién ahora sabemos dónde está el primer punto: creamos ---
+          // --- el mapa ya centrado ahí, en vez de en un lugar por defecto ---
+          targetFloatIndex = 0;
+          const initialState = coordinates.length > 0
+            ? computeCameraState(0)
+            : { lng: -99.13, lat: 19.43, zoom: ZOOM_NEAR };
+
+          map = new maplibregl.Map({
+            container: 'map',
+            style: 'data/MapStyle.json?v=' + Date.now(), // cache-busting: fuerza traer el archivo de cero en cada carga, sin depender de refrescos manuales del navegador
+            center: [initialState.lng, initialState.lat],
+            zoom: initialState.zoom,
+            bearing: 0,
+            antialias: true,
+            maplibreLogo: false
+          });
+
+          // --- Ayuda de depuración ---
+          // El script corre dentro de un IIFE, así que 'map' es local a
+          // este cierre y NO es visible desde la consola del navegador.
+          // Si escribís 'map' ahí, el navegador resuelve el nombre contra
+          // window.map — que por "named access on the Window object" del
+          // DOM apunta al <div id="map">, no a esta instancia. Se expone
+          // aparte, con otro nombre, específicamente para poder inspeccionar
+          // el mapa real desde la consola (window.__map).
+          window.__map = map;
+
+          // --- Log de depuración: zoom actual + estado del hatch ---
+          // getPaintProperty() devuelve la función de estilo declarada (los
+          // stops en bruto), no el valor YA INTERPOLADO para el zoom actual
+          // — por eso la consulta anterior devolvía siempre lo mismo sin
+          // importar el momento. Esta función sí interpola manualmente,
+          // replicando el mismo algoritmo que usa la especificación Mapbox/
+          // MapLibre GL Style para funciones de zoom clásicas ({stops, base}):
+          // interpolación exponencial si `base` ≠ 1, lineal si no.
+          function evalZoomStops(styleFn, zoom) {
+            if (typeof styleFn === 'number') return styleFn; // valor constante, sin stops
+            const stops = styleFn.stops;
+            const base = styleFn.base ?? 1;
+            if (zoom <= stops[0][0]) return stops[0][1];
+            if (zoom >= stops[stops.length - 1][0]) return stops[stops.length - 1][1];
+            for (let i = 0; i < stops.length - 1; i++) {
+              const [z0, v0] = stops[i];
+              const [z1, v1] = stops[i + 1];
+              if (zoom >= z0 && zoom <= z1) {
+                const t = (zoom - z0) / (z1 - z0);
+                if (base === 1) return v0 + (v1 - v0) * t;
+                const factor = (Math.pow(base, t * (z1 - z0)) - 1) / (Math.pow(base, z1 - z0) - 1);
+                return v0 + (v1 - v0) * factor;
+              }
+            }
+            return stops[stops.length - 1][1];
+          }
+
+          function logBuildingHatchDebug() {
+            const zoom = map.getZoom();
+            const patternOpacityFn = map.getPaintProperty('building_pattern', 'fill-opacity');
+            const fillOpacityFn = map.getPaintProperty('building_fill', 'fill-opacity');
+            const patternOpacity = evalZoomStops(patternOpacityFn, zoom);
+            const fillOpacity = evalZoomStops(fillOpacityFn, zoom);
+
+            let hatchState;
+            if (patternOpacity <= 0.02) hatchState = 'invisible (solo queda el fill sólido de building_fill)';
+            else if (patternOpacity >= 0.98) hatchState = 'totalmente visible';
+            else hatchState = 'desvaneciendo (' + (patternOpacity * 100).toFixed(0) + '%)';
+
+            console.log(
+              `[hatch] zoom=${zoom.toFixed(2)} | building_pattern.fill-opacity=${patternOpacity.toFixed(2)} (${hatchState}) | building_fill.fill-opacity=${fillOpacity.toFixed(2)}`
+            );
+          }
+
+          // Se loguea en cada cambio de zoom (drag/wheel/animación), con un
+          // umbral mínimo para no inundar la consola con valores casi
+          // idénticos en cada frame.
+          let lastLoggedZoom = null;
+          map.on('zoom', () => {
+            const z = map.getZoom();
+            if (lastLoggedZoom === null || Math.abs(z - lastLoggedZoom) >= 0.05) {
+              lastLoggedZoom = z;
+              logBuildingHatchDebug();
+            }
+          });
+
+          // También disponible a demanda desde la consola, para un chequeo
+          // puntual sin depender de que el zoom esté cambiando en ese momento.
+          window.__logBuildingHatch = logBuildingHatchDebug;
+
+          // --- Libertad de interacción del usuario ---
+          //
+          // Por instrucción explícita: el wheel pertenece al MAPA (zoom
+          // directo, sin modificador), y la página deja de depender del
+          // wheel para avanzar. Como el mapa ocupa el 100% del viewport,
+          // esto implica que el avance de la narrativa por scroll debe
+          // producirse por otra vía mientras el cursor está sobre el mapa
+          // (que es siempre): la barra de desplazamiento nativa del
+          // navegador, o el teclado (Av Pág/Re Pág/Espacio/Inicio/Fin),
+          // que operan a nivel de documento y no pasan por MapLibre.
+          map.scrollZoom.enable();
+          map.dragPan.enable();
+          map.doubleClickZoom.enable();
+          map.touchZoomRotate.enable();
+          map.boxZoom.disable();    // fuera de alcance: selección por recuadro
+          map.keyboard.disable();   // fuera de alcance: paneo del MAPA con flechas (no afecta el scroll nativo de la página)
+          map.dragRotate.disable(); // se conserva bearing=0 para no romper la lectura del recorrido
+
+          // Botones +/- en pantalla: vía de zoom adicional, útil en táctil.
+          map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+
+          // Cualquier gesto real del usuario (drag, wheel, pellizco, doble
+          // clic) llega con 'originalEvent'; las transiciones que el propio
+          // script dispara vía jumpTo() no lo tienen, por lo que no se confunden.
+          map.on('dragstart', onUserInteractionStart);
+          map.on('zoomstart', onUserInteractionStart);
+
+          // --- Cierre de la ventana de carrera con el bucle de animación ---
+          // MapLibre dispara 'dragstart' recién en el PRIMER movimiento
+          // después del mousedown/touchstart, no en el instante de presionar.
+          // Entre que el usuario presiona y ese primer movimiento, el bucle
+          // de animación (animateFrame, a 60fps) todavía puede ejecutar un
+          // jumpTo() de la interpolación en curso — pisando justo el
+          // instante en que el arrastre intenta arrancar y dando la
+          // sensación de que el mapa "se resiste" a moverse. Se cierra
+          // marcando la interacción en el evento crudo del navegador
+          // (mousedown/touchstart/wheel), antes de que MapLibre procese nada.
+          const mapContainerEl = map.getContainer();
+          mapContainerEl.addEventListener('mousedown', markInteractionStartRaw, { passive: true });
+          mapContainerEl.addEventListener('touchstart', markInteractionStartRaw, { passive: true });
+          mapContainerEl.addEventListener('wheel', markInteractionStartRaw, { passive: true });
+
+          // Esperamos a que el estilo (data/MapStyle.json) termine de cargar
+          // antes de agregar la fuente/capa de puntos y revelar el mapa.
+          map.on('load', async () => {
+            try {
+              // --- Añadir capa de puntos al mapa (pines con forma clásica + hole) ---
+              map.addSource('edificios', {
+                type: 'geojson',
+                data: geojsonData
+              });
+
+              // --- Bounding box de todos los puntos (debajo de los pines) ---
+              cameraBounds = addBoundingBoxLayer(geojsonData);
+
+              // Restringe el CENTRO de la cámara a cameraBounds ante
+              // cualquier movimiento (recorrido automático, drag, zoom,
+              // etc.). Se suscribe recién acá porque antes cameraBounds
+              // todavía es null.
+              map.on('move', clampCenterToBounds);
+
+              await addPinLayer();
+
+              // --- Popup opcional al hacer clic ---
+              const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true });
+              map.on('click', 'edificios-pines', function (e) {
+                const feature = e.features[0];
+                if (!feature) return;
+                const props = feature.properties;
+                const html = `
+                  <div style="font-weight:700;">${props.nombre}</div>
+                  <div style="font-size:0.85rem;color:#555;">${props.autores}</div>
+                  <div>${props.año} · ${props.tipologia}</div>
+                  <div style="display:inline-block;padding:2px 10px;border-radius:12px;margin-top:4px;background:#555;color:#fff;">${props.categoria}</div>
+                `;
+                popup.setLngLat(feature.geometry.coordinates)
+                  .setHTML(html)
+                  .addTo(map);
+              });
+              map.on('mouseenter', 'edificios-pines', () => { map.getCanvas().style.cursor = 'pointer'; });
+              map.on('mouseleave', 'edificios-pines', () => { map.getCanvas().style.cursor = ''; });
+
+              // El mapa ya nació centrado en el punto correcto (ver arriba),
+              // así que ya podemos revelarlo. Ojo: el fundido de #map/
+              // #sections-container (0.5s) y el de #mapLoading (0.4s) NO
+              // pueden dispararse al mismo tiempo — si se solapan, hay una
+              // ventana en la que ambos están semitransparentes a la vez y
+              // se alcanza a ver el texto "crudo" del JSON por detrás del
+              // loader todavía visible. Por eso el mapa y las secciones
+              // empiezan a aparecer primero, PERO el loader se mantiene
+              // 100% opaco tapando todo hasta que ese fundido termina; solo
+              // entonces (con el contenido ya totalmente visible detrás)
+              // el loader empieza su propio fundido de salida.
+              const MAP_FADE_IN_MS = 500; // debe coincidir con la transition de #map / #sections-container en el CSS
+              document.getElementById('map').classList.add('ready');
+              document.getElementById('sections-container').classList.add('ready');
+              setTimeout(() => {
+                document.getElementById('mapLoading').classList.add('hidden');
+              }, MAP_FADE_IN_MS);
+
+              // --- Inicializar control por scroll ---
+              isInitialized = true;
+              updateScrollTarget();
+
+              // El recorrido automático se retoma solo cuando el scrollY
+              // cambió de forma apreciable desde que comenzó la interacción
+              // manual (ver comentario junto a la declaración de
+              // `userInteracting`); un evento 'scroll' aislado sin
+              // desplazamiento real no alcanza para reactivarlo.
+              window.addEventListener('scroll', () => {
+                if (userInteracting) {
+                  const delta = Math.abs(window.scrollY - scrollYAtInteractionStart);
+                  if (delta > RESUME_SCROLL_THRESHOLD) {
+                    userInteracting = false;
+                    // Al reanudar, el tramo debe recalcular su origen desde
+                    // la posición REAL donde el usuario dejó la cámara, no
+                    // desde la coordenada fija del punto A (ver computeCameraState).
+                    legOriginDirty = true;
+                  }
+                }
+                updateScrollTarget();
+              }, { passive: true });
+              window.addEventListener('resize', updateScrollTarget);
+
+              // Arranca el loop de animación (independiente del scroll)
+              animationFrameId = requestAnimationFrame(animateFrame);
+            } catch (error) {
+              console.error('Error:', error);
+              document.getElementById('map').classList.add('ready');
+              document.getElementById('mapLoading').textContent = 'Error al preparar el mapa';
+            }
+          });
+
+        } catch (error) {
+          console.error('Error:', error);
+          document.getElementById('mapLoading').textContent = 'Error al cargar los datos del mapa';
+          alert('No se pudo cargar "data/edificios.geojson". Verifica la ruta.');
+        }
+      }
+
+      // --- Función que se ejecuta en cada scroll: SOLO actualiza el objetivo ---
+      // No mueve el mapa directamente. Esto es clave para que el scroll pueda
+      // "saltar" (scroll rápido) sin que el mapa lo haga de golpe.
+      function updateScrollTarget() {
+        if (!isInitialized || features.length === 0) return;
+
+        const scrollY = window.scrollY;
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        const progress = maxScroll > 0 ? scrollY / maxScroll : 0;
+
+        // Índice flotante entre 0 y N-1 (única fuente de verdad del progreso del vuelo)
+        targetFloatIndex = progress * (features.length - 1);
+
+        // Sección activa (la más cercana). Se basa en el scroll real, no en el
+        // valor suavizado, para que el texto responda de inmediato.
+        const nearestIndex = Math.round(targetFloatIndex);
+        if (nearestIndex !== currentIndex) {
+          currentIndex = nearestIndex;
+          document.querySelectorAll('.section').forEach((el, i) => {
+            el.classList.toggle('active', i === currentIndex);
+          });
+        }
+      }
+
+      // --- Loop de animación: corre en cada frame (60fps), independiente del scroll ---
+      // Mientras el usuario interactúa manualmente (drag/zoom/pinch), el loop
+      // NO escribe sobre la cámara: se limita a dejar que MapLibre gestione el
+      // gesto de forma nativa. Cuando no hay interacción, calcula el estado
+      // IDEAL para el progreso de scroll vigente (computeCameraState) y acerca
+      // la cámara REAL (su posición actual, sea cual sea su origen) una
+      // fracción CAMERA_SMOOTHING de la distancia que la separa de ese ideal.
+      // Al no depender de ningún estado interno "recordado", no hay punto
+      // anterior al cual la cámara pueda saltar de golpe.
+      function animateFrame() {
+        if (!userInteracting) {
+          const ideal = computeCameraState(targetFloatIndex);
+          const current = map.getCenter();
+          const currentZoom = map.getZoom();
+
+          const lng = current.lng + (ideal.lng - current.lng) * CAMERA_SMOOTHING;
+          const lat = current.lat + (ideal.lat - current.lat) * CAMERA_SMOOTHING;
+          const zoom = currentZoom + (ideal.zoom - currentZoom) * CAMERA_SMOOTHING;
+
+          map.jumpTo({ center: [lng, lat], zoom });
+        }
+
+        animationFrameId = requestAnimationFrame(animateFrame);
+      }
+
+      init();
+    })();
+  </script>
+
+</body>
+</html>

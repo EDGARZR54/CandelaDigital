@@ -1,0 +1,143 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Créditos · Cascarones</title>
+<meta name="description" content="Créditos, equipo y apoyos institucionales del proyecto de documentación digital y análisis geométrico de cascarones de concreto del modernismo mexicano.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&display=swap" rel="stylesheet">
+
+<!-- Aplica el tema guardado (o la preferencia del sistema) ANTES de que se
+     pinte el primer frame, para evitar el parpadeo de "claro" al recargar
+     en modo oscuro. Debe ir antes de los <link rel="stylesheet"> y usar la
+     misma clave de localStorage que js/navbar.js ('cascarones:tema'). -->
+<script>
+  (function () {
+    var CLAVE_TEMA = 'cascarones:tema';
+    var guardado = localStorage.getItem(CLAVE_TEMA);
+    var tema = (guardado === 'oscuro' || guardado === 'claro')
+      ? guardado
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+    document.documentElement.setAttribute('data-tema', tema);
+  })();
+</script>
+
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/footer.css">
+<link rel="stylesheet" href="css/componentes.css">
+<link rel="stylesheet" href="css/footer-logos.css">
+<style>
+  /* ===== ESTILOS DEL CONTENEDOR (sin cambios) ===== */
+  .apoyo-institucional__logos {
+    width: 100%;
+    min-height: 110px;
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  /* ===== TAMAÑO DE LOS LOGOS (AHORA MÁS GRANDES QUE EL FOOTER) ===== */
+  .apoyo-institucional__logos img.logo-apoyo {
+    height: 80px !important;          /* Sube de 54px a 80px para que se note */
+    width: auto !important;
+    max-width: 100% !important;       /* Evita que se salga en móviles */
+    max-height: none !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+    opacity: 1 !important;
+    mix-blend-mode: normal !important;
+  }
+
+  /* ===== REGLAS PARA OCULTAR/MOSTRAR SEGÚN EL TEMA ===== */
+  .apoyo-institucional__logos .logo-apoyo--oscuro {
+    display: none !important;
+  }
+  [data-tema="oscuro"] .apoyo-institucional__logos .logo-apoyo--claro {
+    display: none !important;
+  }
+  [data-tema="oscuro"] .apoyo-institucional__logos .logo-apoyo--oscuro {
+    display: inline-block !important;
+  }
+</style>
+</head>
+<body>
+
+<div id="navbar-placeholder"></div>
+
+<main>
+
+  <section class="seccion" style="padding-top: 8rem;">
+    <div class="contenedor">
+      <p class="eyebrow">Créditos</p>
+      <h1 style="max-width: 22ch;">Equipo, colaboración y apoyos</h1>
+    </div>
+  </section>
+
+  <!-- ============================== EQUIPO ============================== -->
+  <section class="seccion" style="padding-top: 0;">
+    <div class="contenedor">
+      <div class="dos-columnas" style="align-items: start;">
+        <div>
+          <p class="eyebrow">Equipo</p>
+          <h2>Equipo de trabajo</h2>
+        </div>
+        <div class="intro">
+          <p>
+            <strong>José Enrique Hernández Díaz</strong><br>
+            <strong>José Alfonso Rosas Flores</strong><br>
+            <strong>Isaac Medina Zarco</strong><br>
+            <strong>Edgar Zambrano Rodríguez</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== FUENTES ============================== -->
+  <section class="seccion seccion--alterna">
+    <div class="contenedor">
+      <div class="dos-columnas" style="align-items: start;">
+        <div>
+          <p class="eyebrow">Fuentes</p>
+          <h2>Archivos y bibliografía</h2>
+        </div>
+        <div class="intro">
+          <p>
+            El sustento documental de cada caso de estudio —planos, archivo fotográfico
+            histórico y bibliografía especializada— se detalla en la ficha correspondiente de
+            cada edificio y en el <a href="docs/fuentes.html">listado general de fuentes</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== APOYO INSTITUCIONAL ============================== -->
+  <section class="seccion">
+    <div class="contenedor">
+      <p class="eyebrow">Apoyo institucional</p>
+      <h2 style="margin-bottom: 1.5rem;">Este sitio es apoyado por el Sistema de Apoyos a la Creación y Proyectos Culturales</h2>
+      <div class="pie__logos apoyo-institucional__logos">
+        <img src="assets/SCSC_color.svg" alt="Sistema de Apoyos a la Creación y Proyectos Culturales" class="logo-apoyo logo-apoyo--claro">
+        <img src="assets/SCSC_Blanco.svg" alt="Sistema de Apoyos a la Creación y Proyectos Culturales" class="logo-apoyo logo-apoyo--oscuro">
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div id="footer-placeholder"></div>
+
+<script src="js/navbar.js"></script>
+</body>
+</html>

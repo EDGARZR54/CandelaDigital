@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acerca del proyecto · Cascarones</title>
+<meta name="description" content="Descripción, justificación y objetivos del proyecto de documentación digital y análisis geométrico de cascarones de concreto del modernismo mexicano.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&display=swap" rel="stylesheet">
+
+<!-- Aplica el tema guardado (o la preferencia del sistema) ANTES de que se
+     pinte el primer frame, para evitar el parpadeo de "claro" al recargar
+     en modo oscuro. Debe ir antes de los <link rel="stylesheet"> y usar la
+     misma clave de localStorage que js/navbar.js ('cascarones:tema'). -->
+<script>
+  (function () {
+    var CLAVE_TEMA = 'cascarones:tema';
+    var guardado = localStorage.getItem(CLAVE_TEMA);
+    var tema = (guardado === 'oscuro' || guardado === 'claro')
+      ? guardado
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+    document.documentElement.setAttribute('data-tema', tema);
+  })();
+</script>
+
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/footer.css">
+<link rel="stylesheet" href="css/componentes.css">
+<link rel="stylesheet" href="css/footer-logos.css">
+</head>
+<body>
+
+<div id="navbar-placeholder"></div>
+
+<main>
+
+  <section class="seccion" style="padding-top: 8rem;">
+    <div class="contenedor">
+      <p class="eyebrow">Acerca del proyecto</p>
+      <h1 style="max-width: 20ch;">Documentación digital y análisis geométrico de cascarones de concreto del modernismo mexicano</h1>
+    </div>
+  </section>
+
+  <!-- ============================== DESCRIPCIÓN ============================== -->
+  <section class="seccion" style="padding-top: 0;">
+    <div class="contenedor">
+      <div class="dos-columnas" style="align-items: start;">
+        <div>
+          <p class="eyebrow">Descripción</p>
+          <h2>El proyecto</h2>
+        </div>
+        <div class="intro">
+          <p>
+            El proyecto consiste en la documentación digital y análisis geométrico de seis
+            cascarones de concreto pertenecientes al movimiento moderno en México, ubicados en
+            la zona centro del país (Ciudad de México, Estado de México y Morelos). A través del
+            uso combinado de tecnologías de captura tridimensional, como fotogrametría aérea y
+            terrestre, así como escaneo LiDAR, se generarán nubes de puntos y modelos digitales
+            de alta precisión que permitan estudiar su configuración formal y estructural.
+          </p>
+          <p>
+            El proceso contempla una fase inicial de selección y análisis documental de los
+            casos de estudio, seguida de trabajo de campo para el levantamiento digital de cada
+            uno de los cascarones. Posteriormente, se realizará el procesamiento de la
+            información obtenida mediante software especializado para la generación de modelos
+            tridimensionales, los cuales serán depurados y optimizados para su análisis.
+          </p>
+          <p>
+            A partir de estos modelos se llevará a cabo un análisis geométrico y morfológico
+            comparativo, enfocado en comprender las lógicas formales y estructurales que
+            caracterizan a este tipo de sistemas constructivos. Los resultados permitirán
+            establecer relaciones entre los distintos casos, así como aportar información
+            relevante para su estudio, conservación y valoración como patrimonio arquitectónico
+            moderno.
+          </p>
+          <p>
+            Como resultado del proyecto, se desarrollará una exposición pública que presentará
+            los modelos digitales, análisis y material gráfico derivado del estudio, así como
+            una conferencia dirigida a la difusión de los hallazgos. Estas actividades buscan
+            acercar el conocimiento generado tanto a la comunidad académica como al público en
+            general, contribuyendo a la valoración del patrimonio arquitectónico moderno en México.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== JUSTIFICACIÓN ============================== -->
+  <section class="seccion seccion--alterna">
+    <div class="contenedor">
+      <div class="dos-columnas" style="align-items: start;">
+        <div>
+          <p class="eyebrow">Justificación</p>
+          <h2>Por qué documentar ahora</h2>
+        </div>
+        <div class="intro">
+          <p>
+            Los cascarones de concreto del movimiento moderno en México representan una de las
+            expresiones más significativas de innovación estructural y formal en la arquitectura
+            del siglo XX. Estos sistemas constructivos, caracterizados por su eficiencia material
+            y complejidad geométrica, constituyen un patrimonio arquitectónico de alto valor
+            desde una perspectiva técnica y cultural. Sin embargo, en la actualidad su
+            construcción es prácticamente inexistente debido a los altos costos, la
+            especialización requerida y la pérdida progresiva del conocimiento técnico asociado
+            a su diseño y ejecución.
+          </p>
+          <p>
+            A esta condición se suma una problemática crítica: muchas de estas estructuras
+            presentan procesos de deterioro derivados de la falta de mantenimiento,
+            intervenciones inadecuadas o limitaciones institucionales para su conservación,
+            particularmente cuando no forman parte de bienes patrimoniales oficialmente
+            protegidos. En algunos casos, esto ha derivado en riesgos estructurales que
+            comprometen su integridad y permanencia.
+          </p>
+          <p>
+            Ante este panorama, existe una necesidad urgente de generar registros precisos que
+            permitan documentar su estado actual y comprender sus lógicas geométricas y
+            constructivas. La documentación digital mediante tecnologías de captura
+            tridimensional no solo posibilita un registro fiel de estas estructuras, sino que
+            también contribuye a su estudio, análisis y eventual conservación.
+          </p>
+          <p>
+            El proyecto propone abordar esta problemática desde una perspectiva técnica y
+            cultural, mediante la generación de modelos digitales y análisis geométricos que
+            aporten conocimiento sobre estos sistemas, al tiempo que se difunden sus valores a
+            través de una exposición y actividades públicas. De este modo, se busca contribuir a
+            la preservación y valoración de un legado arquitectónico fundamental en la historia
+            de la arquitectura mexicana.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== OBJETIVOS ============================== -->
+  <section class="seccion">
+    <div class="contenedor">
+      <p class="eyebrow">Objetivos</p>
+      <h2 style="margin-bottom: 2.5rem;">Objetivo general y objetivos específicos</h2>
+
+      <div class="dos-columnas" style="align-items: start; margin-bottom: 3rem;">
+        <div class="marco-visor" style="aspect-ratio: auto; padding: 2.2rem; text-align: left;">
+          <p class="eyebrow" style="margin-bottom: 0.8rem;">Objetivo general</p>
+          <p style="font-family: var(--fuente-cuerpo); color: var(--color-texto); font-size: 1.05rem;">
+            Documentar y analizar geométricamente seis cascarones de concreto del movimiento
+            moderno en México mediante tecnologías de captura tridimensional, con el fin de
+            contribuir a su estudio, valoración y preservación desde una perspectiva técnica y
+            cultural.
+          </p>
+        </div>
+        <div></div>
+      </div>
+
+      <p class="eyebrow" style="margin-bottom: 1.2rem;">Objetivos específicos</p>
+      <ol style="list-style: none; margin: 0; padding: 0; display: grid; gap: 1.1rem; max-width: 62ch;">
+        <li style="display: flex; gap: 1rem; border-top: 1px solid var(--color-borde); padding-top: 1.1rem;">
+          <span class="dato" style="color: var(--color-primario); font-weight: 700;">01</span>
+          <span>Realizar el levantamiento digital de seis cascarones mediante fotogrametría y escaneo LiDAR.</span>
+        </li>
+        <li style="display: flex; gap: 1rem; border-top: 1px solid var(--color-borde); padding-top: 1.1rem;">
+          <span class="dato" style="color: var(--color-primario); font-weight: 700;">02</span>
+          <span>Generar modelos tridimensionales (nubes de puntos y mallas) de cada caso de estudio.</span>
+        </li>
+        <li style="display: flex; gap: 1rem; border-top: 1px solid var(--color-borde); padding-top: 1.1rem;">
+          <span class="dato" style="color: var(--color-primario); font-weight: 700;">03</span>
+          <span>Analizar la configuración geométrica y lógica estructural de los cascarones documentados.</span>
+        </li>
+        <li style="display: flex; gap: 1rem; border-top: 1px solid var(--color-borde); padding-top: 1.1rem;">
+          <span class="dato" style="color: var(--color-primario); font-weight: 700;">04</span>
+          <span>Comparar los resultados obtenidos para identificar relaciones formales y constructivas.</span>
+        </li>
+        <li style="display: flex; gap: 1rem; border-top: 1px solid var(--color-borde); padding-top: 1.1rem; border-bottom: 1px solid var(--color-borde); padding-bottom: 1.1rem;">
+          <span class="dato" style="color: var(--color-primario); font-weight: 700;">05</span>
+          <span>Difundir los resultados a través de una exposición y una conferencia pública.</span>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+</main>
+
+<div id="footer-placeholder"></div>
+
+<script src="js/navbar.js"></script>
+</body>
+</html>

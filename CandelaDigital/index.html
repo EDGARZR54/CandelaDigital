@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cascarones · Documentación digital y análisis geométrico del modernismo mexicano</title>
+<meta name="description" content="Documentación digital y análisis geométrico de cascarones de concreto del modernismo mexicano: historia, análisis estructural, fotografía y nubes de puntos.">
+
+<!-- Google Fonts: Spectral (display) + Lato (cuerpo / datos) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&display=swap" rel="stylesheet">
+
+<!-- Aplica el tema guardado (o la preferencia del sistema) ANTES de que se
+     pinte el primer frame, para evitar el parpadeo de "claro" al recargar
+     en modo oscuro. Debe ir antes de los <link rel="stylesheet"> y usar la
+     misma clave de localStorage que js/navbar.js ('cascarones:tema'). -->
+<script>
+  (function () {
+    var CLAVE_TEMA = 'cascarones:tema';
+    var guardado = localStorage.getItem(CLAVE_TEMA);
+    var tema = (guardado === 'oscuro' || guardado === 'claro')
+      ? guardado
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+    document.documentElement.setAttribute('data-tema', tema);
+  })();
+</script>
+
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/footer.css">
+<link rel="stylesheet" href="css/componentes.css">
+<link rel="stylesheet" href="css/footer-logos.css">
+<link rel="stylesheet" href="css/pages/index.css">
+
+<!-- Import map: resuelve los specifiers "pelones" ('three', 'three/addons/...')
+     que usan internamente los addons oficiales de Three.js (ParametricGeometry,
+     OrbitControls, GLTFLoader, etc.). Debe declararse ANTES de cualquier
+     <script type="module"> que importe Three o alguno de sus addons — así
+     que si agregas un módulo de Three en otra página, copia este bloque
+     también ahí, antes de tu script de módulo. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<!-- ============================== NAV ============================== -->
+<div id="navbar-placeholder"></div>
+
+<main>
+
+  <!-- ============================== HERO ============================== -->
+  <section class="hero">
+    <div class="hero__lienzo">
+      <canvas id="lienzo-hero" aria-hidden="true"></canvas>
+    </div>
+
+    <div class="contenedor hero__contenido">
+      <div class="hero__texto">
+        <p class="eyebrow">Seis cascarones · Centro de México</p>
+        <h1>Cascarones de <span class="subrayado">concreto</span>, geometría hecha estructura</h1>
+        <p class="hero__parrafo">
+          Documentación digital y análisis geométrico de seis cascarones de concreto del
+          movimiento moderno en México, ubicados en Ciudad de México, Estado de México y Morelos.
+          Mediante fotogrametría y escaneo LiDAR se generan nubes de puntos y modelos
+          tridimensionales de alta precisión para estudiar su configuración formal, estructural
+          y su estado actual de conservación.
+        </p>
+        <div class="hero__acciones">
+          <a href="galeria.html" class="boton boton--primario">Explorar edificios</a>
+          <a href="acerca.html" class="boton boton--fantasma">Sobre el proyecto</a>
+        </div>
+      </div>
+    </div>
+
+    <span class="hero__desplazar">Desplázate</span>
+  </section>
+
+  <!-- ============================== INTRO + CIFRAS ============================== -->
+  <section class="seccion">
+    <div class="contenedor">
+      <div class="intro">
+        <p class="eyebrow">El proyecto</p>
+        <p>
+          Los cascarones de concreto del movimiento moderno mexicano representan una de las
+          expresiones más significativas de innovación estructural y formal de la arquitectura
+          del siglo XX: sistemas eficientes en material y complejos en geometría, hoy en riesgo
+          por la pérdida del conocimiento técnico para construirlos y, en muchos casos, por
+          falta de mantenimiento o protección patrimonial. Este proyecto documenta seis de estos
+          cascarones mediante levantamiento digital —fotogrametría y escaneo LiDAR— para generar
+          un registro preciso de su estado actual y un análisis geométrico comparativo entre casos.
+        </p>
+      </div>
+
+      <div class="cifras" style="margin-top: 3rem;">
+        <div>
+          <p class="cifra__numero">6</p>
+          <p class="cifra__etiqueta">Cascarones documentados</p>
+        </div>
+        <div>
+          <p class="cifra__numero">3</p>
+          <p class="cifra__etiqueta">Estados — CDMX, Edo. Méx., Morelos</p>
+        </div>
+        <div>
+          <p class="cifra__numero">2</p>
+          <p class="cifra__etiqueta">Técnicas de captura — fotogrametría y LiDAR</p>
+        </div>
+        <div>
+          <p class="cifra__numero">1</p>
+          <p class="cifra__etiqueta">Exposición pública de resultados</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== EDIFICIOS DESTACADOS ============================== -->
+  <section class="seccion">
+    <div class="contenedor">
+      <div class="encabezado-seccion">
+        <div>
+          <p class="eyebrow">Archivo</p>
+          <h2>Los seis casos de estudio</h2>
+        </div>
+        <a href="galeria.html" class="boton boton--fantasma">Ver todos</a>
+      </div>
+
+      <!-- NOTA: tarjetas de ejemplo con edificios reales de Candela en la zona
+           centro del país, ilustrativas del formato. Sustituir por los seis
+           casos de estudio definitivos del proyecto cuando estén confirmados.
+           OJO: los href de abajo siguen apuntando a edificios/los-manantiales.html
+           y edificios/capilla-lomas-cuernavaca.html — no confirmamos todavía
+           si las páginas de detalle de cada edificio también se mueven a la
+           raíz junto con galeria.html, o si viven dentro de una carpeta.
+           Ajustar cuando se defina. -->
+      <div class="grid-edificios">
+        <a class="tarjeta-edificio" href="edificios/los-manantiales.html">
+          <div class="tarjeta-edificio__imagen"></div>
+          <div class="tarjeta-edificio__cuerpo">
+            <p class="tarjeta-edificio__meta"><span>Ejemplo ilustrativo</span>·<span>Xochimilco, CDMX</span></p>
+            <h3>Los Manantiales</h3>
+            <p class="tarjeta-edificio__extracto">Paraboloides hiperbólicos agrupados en planta de flor — pendiente confirmar como caso de estudio.</p>
+          </div>
+        </a>
+
+        <a class="tarjeta-edificio" href="edificios/capilla-lomas-cuernavaca.html">
+          <div class="tarjeta-edificio__imagen"></div>
+          <div class="tarjeta-edificio__cuerpo">
+            <p class="tarjeta-edificio__meta"><span>Ejemplo ilustrativo</span>·<span>Cuernavaca, Morelos</span></p>
+            <h3>Capilla de Lomas de Cuernavaca</h3>
+            <p class="tarjeta-edificio__extracto">Paraboloide hiperbólico único como envolvente estructural y espacial — pendiente confirmar como caso de estudio.</p>
+          </div>
+        </a>
+
+        <div class="tarjeta-edificio" style="cursor:default;">
+          <div class="tarjeta-edificio__imagen"></div>
+          <div class="tarjeta-edificio__cuerpo">
+            <p class="tarjeta-edificio__meta"><span>Pendiente</span></p>
+            <h3>Caso de estudio 3–6</h3>
+            <p class="tarjeta-edificio__extracto">Añade aquí los cascarones restantes conforme se confirmen los seis casos del proyecto.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== MAPA / VISOR (teaser) ============================== -->
+  <section class="seccion seccion--alterna">
+    <div class="contenedor">
+      <div class="dos-columnas">
+        <div>
+          <p class="eyebrow">Ubicación</p>
+          <h2>Un mapa del cascarón mexicano</h2>
+          <p class="hero__parrafo" style="margin-top:1rem;">
+            Localiza cada edificio documentado, filtra por ingeniero, sistema estructural o década,
+            y accede directamente a su ficha, su nube de puntos y su modelo 3D.
+          </p>
+          <a href="mapa.html" class="boton boton--primario" style="margin-top:0.5rem;">Ir al mapa</a>
+        </div>
+        <div class="marco-visor">Vista previa del mapa (MapLibre)</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============================== FOOTER ============================== -->
+<div id="footer-placeholder"></div>
+
+<script src="js/navbar.js"></script>
+<script type="module">
+  import { crearFondo3D } from './js/three/fondo-3d.js';
+
+  crearFondo3D({
+    canvas: document.getElementById('lienzo-hero'),
+    contenedor: document.querySelector('.hero'),
+    anclaje: {
+      // Fracción de viewport (u, v): 0,0 = esquina superior izquierda.
+      // Escritorio: donde vivía el SVG, a la derecha, centrado en vertical.
+      escritorio: { u: 0.74, v: 0.5 },
+      // Móvil: arriba del texto, centrado horizontalmente.
+      movil: { u: 0.5, v: 0.24 },
+    },
+    breakpoint: 860,
+  });
+</script>
+</body>
+</html>

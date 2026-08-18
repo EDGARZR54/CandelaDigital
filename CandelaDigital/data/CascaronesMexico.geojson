@@ -1,0 +1,2953 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.868646,
+          16.874697
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2261126,
+          19.4817293
+        ]
+      },
+      "properties": {
+        "name": "C. Negra Modelo 4A",
+        "google_maps_url": "https://www.google.com/maps/place/C.+Negra+Modelo+4A,+Alce+Blanco,+53330+Naucalpan+de+Ju%C3%A1rez,+M%C3%A9x./@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d202fbd50af965:0x92d6e806cffb64a8!8m2!3d19.4817293!4d-99.2261126!16s%2Fg%2F11c4pzyvrq?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.229923,
+          19.4813
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.8829449,
+          16.8636701
+        ]
+      },
+      "properties": {
+        "name": "Terminal Estrella De Oro Acapulco Costera",
+        "google_maps_url": "https://www.google.com/maps/place/Terminal+Estrella+De+Oro+Acapulco+Costera/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85ca578b231aaa17:0xcc22f92a56042fd8!8m2!3d16.8636701!4d-99.8829449!16s%2Fg%2F11c5wmtljj?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.0523052,
+          28.6214957
+        ]
+      },
+      "properties": {
+        "name": "Chihuahua",
+        "google_maps_url": "https://www.google.com/maps/place/Desarrollo+Urbano,+31063+Chihuahua,+Chih./@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x86ea5b5acd46b3db:0x9145b2f979ec2798!8m2!3d28.6214957!4d-106.0523052!16s%2Fg%2F11y431ktkg?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -98.5818972,
+          19.7705286
+        ]
+      },
+      "properties": {
+        "name": "Cine media naranja",
+        "google_maps_url": "https://www.google.com/maps/place/Cine+media+naranja/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1b733009acf0b:0xc8392c61138b41df!8m2!3d19.7705286!4d-98.5818972?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2067048,
+          19.3169714
+        ]
+      },
+      "properties": {
+        "name": "Lluvia 244",
+        "google_maps_url": "https://www.google.com/maps/place/Lluvia+244,+Jardines+del+Pedregal,+%C3%81lvaro+Obreg%C3%B3n,+01900+Ciudad+de+M%C3%A9xico,+CDMX/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85cdffec6d89ab9b:0xda6f58e42612b8f5!8m2!3d19.3169714!4d-99.2067048!16s%2Fg%2F11c1xgt5mn?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -101.0209326,
+          22.1574567
+        ]
+      },
+      "properties": {
+        "name": "Parroquia Nuestra Señora de los Dolores",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+Nuestra+Se%C3%B1ora+de+los+Dolores/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x842a9f29374fb825:0xbd7f86027acf098e!8m2!3d22.1574567!4d-101.0209326!16s%2Fg%2F1td4dwjx?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.19473,
+          19.423038
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -100.959302,
+          22.149867
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -100.9934648,
+          22.1504513
+        ]
+      },
+      "properties": {
+        "name": "Av. Venustiano Carranza 1300",
+        "google_maps_url": "https://www.google.com/maps/place/Av.+Venustiano+Carranza+1300,+De+Tequisquiapan,+78250+San+Luis+Potos%C3%AD,+S.L.P./@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x842a98b2c767e023:0xe8287db58d5abbff!8m2!3d22.1504513!4d-100.9934648!16s%2Fg%2F11cs31kpn7?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -100.6307902,
+          17.2223837
+        ]
+      },
+      "properties": {
+        "name": "Iglesia San Bartolomé Apóstol",
+        "google_maps_url": "https://www.google.com/maps/place/Iglesia+San+Bartolom%C3%A9+Ap%C3%B3stol/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x8434cd378a319a19:0xd05ffffbfae48!8m2!3d17.2223837!4d-100.6307902?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -101.0058003,
+          22.1493973
+        ]
+      },
+      "properties": {
+        "name": "Av. Venustiano Carranza 2000",
+        "google_maps_url": "https://www.google.com/maps/place/Av.+Venustiano+Carranza+2000,+Col+del+Valle,+78220+San+Luis+Potos%C3%AD,+S.L.P./@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x842a98cade9c209b:0x33e20e5403edb634!8m2!3d22.1493973!4d-101.0058003!16s%2Fg%2F11rp37sznn?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -100.3716573,
+          25.649707
+        ]
+      },
+      "properties": {
+        "name": "Parroquia y Santuario de Nuestra Señora de Fátima",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+y+Santuario+de+Nuestra+Se%C3%B1ora+de+F%C3%A1tima/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x866297c2a9555555:0x1926888214c98f1d!8m2!3d25.649707!4d-100.3716573!16s%2Fg%2F1tn066nj?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.334273,
+          20.687985
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.0912137,
+          19.0176563
+        ]
+      },
+      "properties": {
+        "name": "Parroquia de San Juan Tlacotenco",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+de+San+Juan+Tlacotenco/@28.6214957,-124.5093365,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85ce0da68fa08243:0xfe903998759286e!8m2!3d19.0176563!4d-99.0912137!16s%2Fg%2F11ghp05yv1?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -97.939202,
+          20.0956713
+        ]
+      },
+      "properties": {
+        "name": "Iglesia de San Pedro Chiconcuautla, Puebla.",
+        "google_maps_url": "https://www.google.com/maps/place/Iglesia+de+San+Pedro+Chiconcuautla,+Puebla./@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d07d741bb1ca07:0xf1f44a4a477f5829!8m2!3d20.0956713!4d-97.939202!16s%2Fg%2F11fppkdh5q?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -98.370278,
+          18.641887
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -96.8756904,
+          18.0535694
+        ]
+      },
+      "properties": {
+        "name": "AGUA MOSQUITO MAZATLAN",
+        "google_maps_url": "https://www.google.com/maps/place/AGUA+MOSQUITO+MAZATLAN/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85c425d65f9030a9:0x3780f48b62708129!8m2!3d18.0535694!4d-96.8756904!16s%2Fg%2F11hjkbgl5f?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.0846409,
+          19.3902633
+        ]
+      },
+      "properties": {
+        "name": "Parroquia de Nuestra Señora de Guadalupe",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+de+Nuestra+Se%C3%B1ora+de+Guadalupe/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1fdb5979797ab:0xdad9cf01b2902162!8m2!3d19.3902633!4d-99.0846409!16s%2Fg%2F1vwlpgxc?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -97.6147113,
+          18.8690413
+        ]
+      },
+      "properties": {
+        "name": "Capilla Barrio Juquilita",
+        "google_maps_url": "https://www.google.com/maps/place/Capilla+Barrio+Juquilita/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85c56561049e46ab:0xe6dc3daec055d982!8m2!3d18.8690413!4d-97.6147113!16s%2Fg%2F11g8w9lfmd?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -98.9427403,
+          19.6106775
+        ]
+      },
+      "properties": {
+        "name": "19°36'38.4\"N 98°56'33.9\"W",
+        "google_maps_url": "https://www.google.com/maps/place/19.610677499999998,-98.9427403/@23.5959631,-112.0846487,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.6106775!4d-98.9427403?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1456589,
+          19.6142595
+        ]
+      },
+      "properties": {
+        "name": "Capilla Nuestra Señora De Guadalupe",
+        "google_maps_url": "https://www.google.com/maps/place/Capilla+Nuestra+Se%C3%B1ora+De+Guadalupe/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f6875f89c249:0xe88965ec3a5ec0c5!8m2!3d19.6142595!4d-99.1456589?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.8997943,
+          16.8620759
+        ]
+      },
+      "properties": {
+        "name": "Parroquia San Cristobal",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+San+Cristobal/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85ca57ff919ef5e9:0x661e4e2de070e368!8m2!3d16.8620759!4d-99.8997943?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2327778,
+          19.4591667
+        ]
+      },
+      "properties": {
+        "name": "Parroquia de San Esteban Protomártir",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+de+San+Esteban+Protom%C3%A1rtir/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d2024c9550b325:0x732e0eb8c1e4209c!8m2!3d19.4591667!4d-99.2327778?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -98.4648572,
+          18.6005407
+        ]
+      },
+      "properties": {
+        "name": "Mercado Miguel Castulo de Alatriste (Mercado de Picos)",
+        "google_maps_url": "https://www.google.com/maps/place/Mercado+Miguel+Castulo+de+Alatriste+(Mercado+de+Picos)/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85cf001374559a1b:0x44aa118f25552e54!8m2!3d18.6005407!4d-98.4648572!16s%2Fg%2F11c1n9ssmm?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -97.4006471,
+          18.4790379
+        ]
+      },
+      "properties": {
+        "name": "Parroquia de San Nicolas de Tolentino",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+de+San+Nicolas+de+Tolentino/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85c5a30af01ec809:0x584d408337658fbe!8m2!3d18.4790379!4d-97.4006471!16s%2Fg%2F11h6njj8fs?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -97.6621417,
+          18.7946366
+        ]
+      },
+      "properties": {
+        "name": "Parroquia de San Simón y San Judas Tadeo",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+de+San+Sim%C3%B3n+y+San+Judas+Tadeo/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85c57baa35ecfb9d:0x944ab531f49e6c26!8m2!3d18.7946366!4d-97.6621417!16s%2Fg%2F1vk6zkcs?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -98.4645275,
+          18.5990875
+        ]
+      },
+      "properties": {
+        "name": "Ex-Convento De Santo Domingo De Guzman",
+        "google_maps_url": "https://www.google.com/maps/place/Ex-Convento+De+Santo+Domingo+De+Guzman/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85cf00137c2ad49f:0xca6d8a057cae94c2!8m2!3d18.5990875!4d-98.4645275!16s%2Fg%2F1wz5311k?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1434751,
+          19.4876698
+        ]
+      },
+      "properties": {
+        "name": "Eje Central Lázaro Cárdenas 538",
+        "google_maps_url": "https://www.google.com/maps/place/Eje+Central+L%C3%A1zaro+C%C3%A1rdenas+538,+Valle+del+Tepeyac,+Gustavo+A.+Madero,+07740+Ciudad+de+M%C3%A9xico,+CDMX/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f9acf26ef01b:0xb6b82dcd37dfc92d!8m2!3d19.4876698!4d-99.1434751!16s%2Fg%2F11c4qy6g22?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1973633,
+          19.4755892
+        ]
+      },
+      "properties": {
+        "name": "Parroquia de Santa Lucia Mártir de Tomátla",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+de+Santa+Lucia+M%C3%A1rtir+de+Tom%C3%A1tla/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d2027dbc0a2253:0x509ef112cdb91897!8m2!3d19.4755892!4d-99.1973633?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1931174,
+          19.4782532
+        ]
+      },
+      "properties": {
+        "name": "Mega Fix Ferreterías Eje 3 Tochtli",
+        "google_maps_url": "https://www.google.com/maps/place/Mega+Fix+Ferreter%C3%ADas+Eje+3+Tochtli/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d203f6366c8c6b:0xe8b8e41c07d01219!8m2!3d19.4782532!4d-99.1931174?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.175136,
+          19.483486
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.17544,
+          19.483923
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1453433,
+          19.7096595
+        ]
+      },
+      "properties": {
+        "name": "Parroquia Del Señor de Los Milagros",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+Del+Se%C3%B1or+de+Los+Milagros/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f4d601116175:0x97092bf527b0eb08!8m2!3d19.7096595!4d-99.1453433?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1912068,
+          19.5409344
+        ]
+      },
+      "properties": {
+        "name": "Mercado de Tlalnepantla",
+        "google_maps_url": "https://www.google.com/maps/place/Mercado+de+Tlalnepantla/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d21d58ec9ad959:0xd7fa7380b5614586!8m2!3d19.5409344!4d-99.1912068!16s%2Fg%2F11bt_jtgq5?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1744433,
+          19.4179784
+        ]
+      },
+      "properties": {
+        "name": "GASOLINA PEMEX",
+        "google_maps_url": "https://www.google.com/maps/place/GASOLINA+PEMEX/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1ffbc959da1db:0x19b2631d263f6ee0!8m2!3d19.4179784!4d-99.1744433!16s%2Fg%2F11h23krkn1?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.157498,
+          19.4645067
+        ]
+      },
+      "properties": {
+        "name": "7 Eleven Grafel",
+        "google_maps_url": "https://www.google.com/maps/place/7+Eleven+Grafel/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f9005db809d3:0xacf85c44f13d1b0!8m2!3d19.4645067!4d-99.157498?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1835006,
+          19.3918907
+        ]
+      },
+      "properties": {
+        "name": "Tortas Nanis",
+        "google_maps_url": "https://www.google.com/maps/place/Tortas+Nanis/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1ff1c548b903b:0xca97d680d4be5a99!8m2!3d19.3918907!4d-99.1835006!16s%2Fg%2F11nmhvbs82?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1834947,
+          19.3919477
+        ]
+      },
+      "properties": {
+        "name": "Mercado San Pedro de Los Pinos",
+        "google_maps_url": "https://www.google.com/maps/place/Mercado+San+Pedro+de+Los+Pinos/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1ff7b9addcc99:0xdd77539e84710cba!8m2!3d19.3919477!4d-99.1834947?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.160921,
+          19.455169
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": null,
+      "properties": {
+        "name": "Pemex",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.4554376,
+          31.7471153
+        ]
+      },
+      "properties": {
+        "name": "Gasolinera Pemex Molina",
+        "google_maps_url": "https://www.google.com/maps/place/Gasolinera+Pemex+Molina/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x86e7594258f05555:0xc7a37ba5d8684638!8m2!3d31.7471153!4d-106.4554376!16s%2Fg%2F11hd6ph8sm?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.07084,
+          19.349411
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -102.8702226,
+          23.1864558
+        ]
+      },
+      "properties": {
+        "name": "Parroquia Del Señor De Los Rayos",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+Del+Se%C3%B1or+De+Los+Rayos/@31.7471153,-124.9124688,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x86830b0bd39e21d5:0xb422b5541bacdde2!8m2!3d23.1864558!4d-102.8702226!16s%2Fg%2F11b6t1jq93?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.206175,
+          18.948494
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2036573,
+          18.944903
+        ]
+      },
+      "properties": {
+        "name": "Orquídea 305",
+        "google_maps_url": "https://www.google.com/maps/place/Orqu%C3%ADdea+305/@31.7471153,-124.9124688,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85cddfefa7a226c9:0xc1616aed4b94d15d!8m2!3d18.944903!4d-99.2036573?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.195365,
+          18.943819
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.169884,
+          19.503895
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.157121,
+          19.484636
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.157504,
+          19.486171
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -100.295054,
+          25.728925
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -100.2949069,
+          25.7288648
+        ]
+      },
+      "properties": {
+        "name": "C. Flamingo 121",
+        "google_maps_url": "https://www.google.com/maps/place/C.+Flamingo+121,+Cuauht%C3%A9moc,+66450+San+Nicol%C3%A1s+de+los+Garza,+N.L./@31.7471153,-124.9124688,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x866294fca1ab8703:0xc33ef6a41f901f08!8m2!3d25.7288648!4d-100.2949069!16s%2Fg%2F11c1j4qbdq?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -100.2658984,
+          25.6844026
+        ]
+      },
+      "properties": {
+        "name": "\"Capilla Santa Teresita Del Niño Jesús\"",
+        "google_maps_url": "https://www.google.com/maps/place/%22Capilla+Santa+Teresita+Del+Ni%C3%B1o+Jes%C3%BAs%22/@31.7471153,-124.9124688,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x8662955153420a45:0xe2ca70c508f97ba!8m2!3d25.6844026!4d-100.2658984!16s%2Fg%2F11cnwpqx7j?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.3467271,
+          20.6602535
+        ]
+      },
+      "properties": {
+        "name": "Puente de Zohn",
+        "google_maps_url": "https://www.google.com/maps/place/Puente+de+Zohn/@31.7471153,-124.9124688,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x8428b3000de241ef:0x193e04202211a788!8m2!3d20.6602535!4d-103.3467271?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.368518,
+          20.647866
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.368713,
+          20.647063
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -107.3934616,
+          24.7893014
+        ]
+      },
+      "properties": {
+        "name": "Nuestra Señora de Guadalupe",
+        "google_maps_url": "https://www.google.com/maps/place/Nuestra+Se%C3%B1ora+de+Guadalupe/@31.7471153,-124.9124688,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x86bcd0c856415b6d:0x4fac05d114e12b7c!8m2!3d24.7893014!4d-107.3934616?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -107.3920444,
+          24.8041054
+        ]
+      },
+      "properties": {
+        "name": "Parroquia de Nuestra Señora del Carmen",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+de+Nuestra+Se%C3%B1ora+del+Carmen/@31.7471153,-124.9124688,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x86bcd0ae1e712ad3:0xe1e3a42c6fbbdad8!8m2!3d24.8041054!4d-107.3920444?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.3935691,
+          20.6862138
+        ]
+      },
+      "properties": {
+        "name": "Comunidad de Guadalajara",
+        "google_maps_url": "https://www.google.com/maps/place/Comunidad+de+Guadalajara/@31.7471153,-124.9124688,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x8428ae5d4ac9bfff:0x78458d7eb01b74d4!8m2!3d20.6862138!4d-103.3935691?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.387371,
+          20.719634
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.3089261,
+          20.7025516
+        ]
+      },
+      "properties": {
+        "name": "Chivas Estadio “ Unidad Deportiva Plan De San Luis \"",
+        "google_maps_url": "https://www.google.com/maps/place/Chivas+Estadio+%E2%80%9C+Unidad+Deportiva+Plan+De+San+Luis+%22/@31.7471153,-124.9124688,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x8428b1088f2ecf55:0x3954a72e3a8b89d3!8m2!3d20.7025516!4d-103.3089261?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.3342444,
+          20.6880411
+        ]
+      },
+      "properties": {
+        "name": "IDN Primera de Guadalajara",
+        "google_maps_url": "https://www.google.com/maps/place/IDN+Primera+de+Guadalajara/@31.7471153,-124.9124688,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x8428b1953ca25011:0xd7dfbffc5a1be61c!8m2!3d20.6880411!4d-103.3342444!16s%2Fg%2F1v4pt9p4?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1392324,
+          19.4070227
+        ]
+      },
+      "properties": {
+        "name": "Imprexpress",
+        "google_maps_url": "https://www.google.com/maps/place/Imprexpress/@31.7471153,-124.9124688,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1fee6db761bbf:0x256c25216300169f!8m2!3d19.4070227!4d-99.1392324!16s%2Fg%2F11f1nwqdrq?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.136879,
+          19.40435
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": ""
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.8495439,
+          16.843075
+        ]
+      },
+      "properties": {
+        "name": "Dreams Acapulco Resort & Spa",
+        "google_maps_url": "https://www.google.com/maps/place/Dreams+Acapulco+Resort+%26+Spa/@31.7471153,-124.9124688,5z/data=!4m13!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m8!1s0x85ca590e04994eff:0x26b043473b87f2a8!5m2!4m1!1i2!8m2!3d16.843075!4d-99.8495439!16s%2Fg%2F11h07ldqxb?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1592657,
+          19.3498344
+        ]
+      },
+      "properties": {
+        "name": "Servicio Motta Avilés Autolavado y Servicio Automotriz",
+        "google_maps_url": "https://www.google.com/maps/place/Servicio+Motta+Avil%C3%A9s+Autolavado+y+Servicio+Automotriz/@31.7471153,-124.9124688,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1ffc52a30eb99:0x540909da9c4017ed!8m2!3d19.3498344!4d-99.1592657!16s%2Fg%2F1tg5vcwb?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1655109,
+          19.4755613
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.4755613,-99.1655109/@31.7471153,-124.9124688,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4755613!4d-99.1655109?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1455428,
+          19.3525485
+        ]
+      },
+      "properties": {
+        "name": "Calz. de Tlalpan 1779",
+        "google_maps_url": "https://www.google.com/maps/place/Calz.+de+Tlalpan+1779/@31.7471153,-124.9124688,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1fe32d30b2c2f:0x226596486670c67b!8m2!3d19.3525485!4d-99.1455428?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.183455,
+          19.391824
+        ]
+      },
+      "properties": {
+        "name": "Clean Works Mexico",
+        "google_maps_url": "https://www.google.com/maps/place/Clean+Works+Mexico/@31.7471153,-124.9124688,5z/data=!3m1!5s0x85d1ff7b88ed9d47:0xf487a6accaa6a87c!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1ff40999c5e85:0xfe6cd3904a8b1ca8!8m2!3d19.391824!4d-99.183455!16s%2Fg%2F11h7zbnhr3?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -98.9640723,
+          18.7994147
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/18.7994147,-98.9640723/@23.5959631,-112.0846487,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d18.7994147!4d-98.9640723?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1368749,
+          19.3216697
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.321669699999998,-99.1368749/@31.7471153,-124.9124688,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.3216697!4d-99.1368749?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1152251,
+          19.3541593
+        ]
+      },
+      "properties": {
+        "name": "Maíz 84",
+        "google_maps_url": "https://www.google.com/maps/place/Ma%C3%ADz+84,+Granjas+Esmeralda,+Iztapalapa,+09810+Ciudad+de+M%C3%A9xico,+CDMX/@31.7471153,-124.9124688,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1fe11aa043f07:0x1ae416529530633f!8m2!3d19.3541593!4d-99.1152251!16s%2Fg%2F11c1dfcqpg?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.6591652,
+          19.29217
+        ]
+      },
+      "properties": {
+        "name": "Teatro Morelos",
+        "google_maps_url": "https://www.google.com/maps/place/Teatro+Morelos/@31.7471153,-124.9124688,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85cd89c1a7f625ff:0xf0581245a533096b!8m2!3d19.29217!4d-99.6591652?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.6553117,
+          19.2899863
+        ]
+      },
+      "properties": {
+        "name": "Centro",
+        "google_maps_url": "https://www.google.com/maps/place/Centro/@31.7471153,-124.9124688,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85cd89ea9f7cd297:0xa29b8785b09a6143!8m2!3d19.2899863!4d-99.6553117?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1660242,
+          19.4422616
+        ]
+      },
+      "properties": {
+        "name": "Teatro Juan Ruíz de Alarcón",
+        "google_maps_url": "https://www.google.com/maps/place/Teatro+Juan+Ru%C3%ADz+de+Alarc%C3%B3n/@31.7471153,-124.9124688,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f8c86f349edb:0x699c0c9a5aa68617!8m2!3d19.4422616!4d-99.1660242!16s%2Fg%2F11bzq3cjnn?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.0415351,
+          19.5278444
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.5278444,-99.04153509999999/@31.7471153,-124.9124688,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.5278444!4d-99.0415351?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -98.9640196,
+          18.7994147
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/18.7994147,-98.9640196/@23.5959631,-112.0846487,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d18.7994147!4d-98.9640196?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.196945,
+          18.9731975
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/18.973197499999998,-99.196945/@31.7471153,-124.9124688,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d18.9731975!4d-99.196945?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2311462,
+          18.933672
+        ]
+      },
+      "properties": {
+        "name": "Mega Comercial Mexicana",
+        "google_maps_url": "https://www.google.com/maps/place/Mega+Comercial+Mexicana/@31.7471153,-124.9124688,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85cddfb580cd7c33:0x1c7d1a355792975f!8m2!3d18.933672!4d-99.2311462?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.9021574,
+          16.8587635
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/16.8587635,-99.9021574/@31.7471153,-124.9124688,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d16.8587635!4d-99.9021574?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2119423,
+          19.5050782
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.5050782,-99.21194229999999/@31.7471153,-124.9124688,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.5050782!4d-99.2119423?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2180775,
+          19.5080274
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.5080274,-99.21807749999999/@31.7471153,-124.9124688,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.5080274!4d-99.2180775?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2223851,
+          19.477523
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.477522999999998,-99.2223851/@31.7471153,-124.9124688,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.477523!4d-99.2223851?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2210368,
+          19.4787927
+        ]
+      },
+      "properties": {
+        "name": "C. Nueva 106",
+        "google_maps_url": "https://www.google.com/maps/place/C.+Nueva+106/@31.7471153,-124.9124688,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d202f7e40422a5:0x843e7a5899f974c4!8m2!3d19.4787927!4d-99.2210368?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2149239,
+          19.5165738
+        ]
+      },
+      "properties": {
+        "name": "Av. Dr. Gustavo Baz 191",
+        "google_maps_url": "https://www.google.com/maps/place/Av.+Dr.+Gustavo+Baz+191,+El+Mirador,+54080+Tlalnepantla,+M%C3%A9x./@31.7471153,-124.9124688,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d202c9767491dd:0x54275441afad040a!8m2!3d19.5165738!4d-99.2149239!16s%2Fg%2F11ckqrq8lc?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2120696,
+          19.5210822
+        ]
+      },
+      "properties": {
+        "name": "Gasolinera Pemex SERVICIO FAS",
+        "google_maps_url": "https://www.google.com/maps/place/Gasolinera+Pemex+SERVICIO+FAS/@31.7471153,-124.9124688,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d202b57c64d741:0x4ec16318869f6452!8m2!3d19.5210822!4d-99.2120696!16s%2Fg%2F1q6j0j5y1?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -96.1372372,
+          19.1940166
+        ]
+      },
+      "properties": {
+        "name": "Mercado Hidalgo",
+        "google_maps_url": "https://www.google.com/maps/place/Mercado+Hidalgo/@31.7471153,-124.9124688,5z/data=!3m1!5s0x85c346ba1a4a9093:0x5d5dd14486069365!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85c346b9f16f5b21:0x6457be5e5e16e071!8m2!3d19.1940166!4d-96.1372372!16s%2Fg%2F1td7j1j7?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -98.030692,
+          19.8406596
+        ]
+      },
+      "properties": {
+        "name": "Basílica de la Inmaculada Concepción, Chignahuapan",
+        "google_maps_url": "https://www.google.com/maps/place/Bas%C3%ADlica+de+la+Inmaculada+Concepci%C3%B3n,+Chignahuapan/@19.1940166,-114.5942685,5z/data=!3m1!5s0x85c346ba1a4a9093:0x5d5dd14486069365!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d06c1351a212e9:0x69e38987a04b84fe!8m2!3d19.8406596!4d-98.030692?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -101.1987551,
+          19.7109517
+        ]
+      },
+      "properties": {
+        "name": "Parroquia de San Martín de Porres",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+de+San+Mart%C3%ADn+de+Porres/@19.1940166,-114.5942685,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x842d0f00143bc1b9:0x8e4e61bea5e1132a!8m2!3d19.7109517!4d-101.1987551?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.185545,
+          19.3655819
+        ]
+      },
+      "properties": {
+        "name": "Parroquia Emperatriz de América",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+Emperatriz+de+Am%C3%A9rica/@19.1940166,-114.5942685,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1ff8be6dfa793:0x5c1a0e0315ae62e6!8m2!3d19.3655819!4d-99.185545?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1735194,
+          19.3703048
+        ]
+      },
+      "properties": {
+        "name": "Parroquia de La Divina Providencia",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+de+La+Divina+Providencia/@19.1940166,-114.5942685,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1ff90d20b8e71:0xe522bc93a3a3fed4!8m2!3d19.3703048!4d-99.1735194!16s%2Fg%2F1td00v4q?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.3469404,
+          20.7042023
+        ]
+      },
+      "properties": {
+        "name": "PEMEX",
+        "google_maps_url": "https://www.google.com/maps/place/PEMEX/@19.1940166,-114.5942685,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x8428b1ce2889886f:0xdfd13ff0edadf542!8m2!3d20.7042023!4d-103.3469404!16s%2Fg%2F1ptxz820b?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.3733,
+          20.6852768
+        ]
+      },
+      "properties": {
+        "name": "Gasolinera Pemex",
+        "google_maps_url": "https://www.google.com/maps/place/Gasolinera+Pemex/@19.1940166,-114.5942685,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x8428ae16d1a55e71:0x64f1ea6a01d8a492!8m2!3d20.6852768!4d-103.3733!16s%2Fg%2F1xcbpyqy?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.3771343,
+          20.6668444
+        ]
+      },
+      "properties": {
+        "name": "Pemex",
+        "google_maps_url": "https://www.google.com/maps/place/Pemex/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x8428af05ad0342a9:0x2d5c6affe0b239d0!8m2!3d20.6668444!4d-103.3771343?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.3500741,
+          20.6518336
+        ]
+      },
+      "properties": {
+        "name": "PEMEX",
+        "google_maps_url": "https://www.google.com/maps/place/PEMEX/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x8428b20f08cfd9a1:0x448fdfe0a386f124!8m2!3d20.6518336!4d-103.3500741?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.3059894,
+          20.6476293
+        ]
+      },
+      "properties": {
+        "name": "PEMEX",
+        "google_maps_url": "https://www.google.com/maps/place/PEMEX/@20.6668444,-121.8341655,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x8428b3c99aa83aaf:0xefde921772892f2d!8m2!3d20.6476293!4d-103.3059894?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -98.1924111,
+          19.0307579
+        ]
+      },
+      "properties": {
+        "name": "Parroquia Nuestra Señora de la Medalla Milagrosa",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+Nuestra+Se%C3%B1ora+de+la+Medalla+Milagrosa/@20.6518336,-121.8071054,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85cfc059e0b1f7cf:0x7db37bde6776321e!8m2!3d19.0307579!4d-98.1924111?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -112.0846487,
+          23.5959631
+        ]
+      },
+      "properties": {
+        "name": "Parroquia de San Pedro de Verona Mártir",
+        "google_maps_url": "https://www.google.com/maps/@23.5959631,-112.0846487,5z/data=!4m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.3398522,
+          20.6755148
+        ]
+      },
+      "properties": {
+        "name": "Mercado Libertad - San Juan de Dios",
+        "google_maps_url": "https://www.google.com/maps/place/Mercado+Libertad+-+San+Juan+de+Dios/@20.6518336,-121.8071054,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x8428b180f8195c15:0xb3e9373ea5463503!8m2!3d20.6755148!4d-103.3398522?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -98.2060855,
+          19.0501132
+        ]
+      },
+      "properties": {
+        "name": "Mercado Venustiano Carranza",
+        "google_maps_url": "https://www.google.com/maps/place/Mercado+Venustiano+Carranza/@20.6518336,-121.8071054,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85cfc0d9206a05a5:0x7d4c4c216950aba3!8m2!3d19.0501132!4d-98.2060855?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -92.1324383,
+          16.2513607
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/16%C2%B015'04.9%22N+92%C2%B007'56.8%22W/@20.6668444,-121.8341655,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d16.2513607!4d-92.1324383?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -92.2627725,
+          14.9057199
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/14.9057199,-92.2627725/@20.6518336,-121.8071054,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d14.9057199!4d-92.2627725?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -100.9936908,
+          22.1739175
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/22.173917499999998,-100.9936908/@14.9057199,-110.7198037,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d22.1739175!4d-100.9936908?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -100.9934543,
+          22.1504512
+        ]
+      },
+      "properties": {
+        "name": "Parroquia Nuestra Señora de los Remedios",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+Nuestra+Se%C3%B1ora+de+los+Remedios/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x842a98b2bf06708b:0x7a3ddc470e9f2c9b!8m2!3d22.1504512!4d-100.9934543!16s%2Fg%2F1v1slk1h?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -100.9733593,
+          22.1217962
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/22.1217962,-100.9733593/@22.1739175,-119.4507221,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d22.1217962!4d-100.9733593?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1707066,
+          19.4324819
+        ]
+      },
+      "properties": {
+        "name": "Ema Pulido Estudio de Artes Escénicas",
+        "google_maps_url": "https://www.google.com/maps/place/Ema+Pulido+Estudio+de+Artes+Esc%C3%A9nicas/@22.1739175,-119.4507221,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1ffbe54f98db7:0x1025810da2a95e7!8m2!3d19.4324819!4d-99.1707066?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1609187,
+          19.4194732
+        ]
+      },
+      "properties": {
+        "name": "Centro Gallego de México, A.C.",
+        "google_maps_url": "https://www.google.com/maps/place/Centro+Gallego+de+M%C3%A9xico,+A.C./@22.1739175,-119.4507221,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1ff3a9ceb8b51:0x8523848f64829ade!8m2!3d19.4194732!4d-99.1609187?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1612153,
+          19.4342595
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.4342595,-99.1612153/@16.2513607,-110.5894695,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4342595!4d-99.1612153?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1601931,
+          19.4941253
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.4941253,-99.1601931/@22.1739175,-119.4507221,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4941253!4d-99.1601931?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1587309,
+          19.493856
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.493855999999997,-99.1587309/@22.1739175,-119.4507221,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.493856!4d-99.1587309?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1461791,
+          19.4817771
+        ]
+      },
+      "properties": {
+        "name": "Almacen imss Vallejo",
+        "google_maps_url": "https://www.google.com/maps/place/Almacen+imss+Vallejo/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f900e8b8d441:0xfa8290038c7ff0ce!8m2!3d19.4817771!4d-99.1461791!16s%2Fg%2F11kybm3q_k?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1668056,
+          19.4907464
+        ]
+      },
+      "properties": {
+        "name": "PRODUCTOS DE CALIDAD STERILIZA PROMOSAN, S.A. DE C.V.",
+        "google_maps_url": "https://www.google.com/maps/place/PRODUCTOS+DE+CALIDAD+STERILIZA+PROMOSAN,+S.A.+DE+C.V./@22.1739175,-119.4507221,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f9e0ccb82407:0xdaf3f4b9a03ed91a!8m2!3d19.4907464!4d-99.1668056?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1813352,
+          19.3312565
+        ]
+      },
+      "properties": {
+        "name": "Facultad de Química UNAM",
+        "google_maps_url": "https://www.google.com/maps/place/Facultad+de+Qu%C3%ADmica+UNAM/@22.1739175,-119.4507221,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85ce00071fca0bad:0xffd8bf4dcfe57772!8m2!3d19.3312565!4d-99.1813352?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1292176,
+          19.4425942
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.4425942,-99.12921759999999/@23.5959631,-112.0846487,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4425942!4d-99.1292176?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1362014,
+          19.4430137
+        ]
+      },
+      "properties": {
+        "name": "Mercado Lagunilla Ropa y Telas",
+        "google_maps_url": "https://www.google.com/maps/place/Mercado+Lagunilla+Ropa+y+Telas/@22.1739175,-119.4507221,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f9e7990e67c7:0x29ee366271421a2f!8m2!3d19.4430137!4d-99.1362014?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2097076,
+          19.5700516
+        ]
+      },
+      "properties": {
+        "name": "Middleby Worldwide, S.A. de C.V.",
+        "google_maps_url": "https://www.google.com/maps/place/Middleby+Worldwide,+S.A.+de+C.V./@22.1739175,-119.4507221,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d203a57ac53c4d:0xb740a7a11290fec1!8m2!3d19.5700516!4d-99.2097076?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.6426673,
+          19.2776428
+        ]
+      },
+      "properties": {
+        "name": "Terminal de Toluca S.A. de C.V.",
+        "google_maps_url": "https://www.google.com/maps/place/Terminal+de+Toluca+S.A.+de+C.V./@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85cd89858f279cd1:0xacadd4821101d374!8m2!3d19.2776428!4d-99.6426673?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.6402407,
+          19.2787927
+        ]
+      },
+      "properties": {
+        "name": "Mercado Lic. Benito Juárez García",
+        "google_maps_url": "https://www.google.com/maps/place/Mercado+Lic.+Benito+Ju%C3%A1rez+Garc%C3%ADa/@22.1739175,-119.4507221,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85cd89860b3c9e3f:0xdcbf5ae2c3a5b7c0!8m2!3d19.2787927!4d-99.6402407?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -100.2962947,
+          25.7302761
+        ]
+      },
+      "properties": {
+        "name": "Parroquia de San José Obrero",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+de+San+Jos%C3%A9+Obrero/@22.1739175,-119.4507221,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x866294fb9efa91dd:0x5826efabe5d608e0!8m2!3d25.7302761!4d-100.2962947?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2285988,
+          18.8874438
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/18.8874438,-99.2285988/@23.5959631,-112.0846487,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d18.8874438!4d-99.2285988?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2027989,
+          18.876095
+        ]
+      },
+      "properties": {
+        "name": "Parroquia San Felipe de Jesús",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+San+Felipe+de+Jes%C3%BAs/@22.1739175,-119.4507221,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85cddf4f96bd0a75:0x4b460c1d24c64661!8m2!3d18.876095!4d-99.2027989?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2126105,
+          18.8733557
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/18.873355699999998,-99.2126105/@22.1739175,-119.4507221,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d18.8733557!4d-99.2126105?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2129461,
+          18.8735904
+        ]
+      },
+      "properties": {
+        "name": "Los Abanicos",
+        "google_maps_url": "https://www.google.com/maps/place/Los+Abanicos/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85cddf2bb9380fef:0xf25ca6c2bfceda70!8m2!3d18.8735904!4d-99.2129461?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.219035,
+          18.8734895
+        ]
+      },
+      "properties": {
+        "name": "Glorieta Paseo de la Reforma",
+        "google_maps_url": "https://www.google.com/maps/place/Glorieta+Paseo+de+la+Reforma/@22.1739175,-119.4507221,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85cddfc137992b87:0x9ce212cc7e9a327c!8m2!3d18.8734895!4d-99.219035?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2698609,
+          18.6426029
+        ]
+      },
+      "properties": {
+        "name": "Glorieta Las Alas",
+        "google_maps_url": "https://www.google.com/maps/place/Glorieta+Las+Alas/@22.1739175,-119.4507221,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85cdd47199457367:0x98cdca508fb4ed99!8m2!3d18.6426029!4d-99.2698609?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2028042,
+          19.4111683
+        ]
+      },
+      "properties": {
+        "name": "Av. de los Compositores 4",
+        "google_maps_url": "https://www.google.com/maps/place/Av.+de+los+Compositores+4/@22.1739175,-119.4507221,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d201e8c46d5e33:0x486e3dbec747e1d3!8m2!3d19.4111683!4d-99.2028042?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2015081,
+          19.4110013
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.4110013,-99.2015081/@23.5959631,-112.0846487,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4110013!4d-99.2015081?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2014142,
+          19.4101742
+        ]
+      },
+      "properties": {
+        "name": "Av. de los Compositores",
+        "google_maps_url": "https://www.google.com/maps/place/Av.+de+los+Compositores/@22.1739175,-119.4507221,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d201e89be33b37:0xa76a595e0ba3799!8m2!3d19.4101742!4d-99.2014142?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.3890072,
+          20.7052024
+        ]
+      },
+      "properties": {
+        "name": "La Araña de Fernando González Gortázar",
+        "google_maps_url": "https://www.google.com/maps/place/La+Ara%C3%B1a+de+Fernando+Gonz%C3%A1lez+Gort%C3%A1zar/@22.1739175,-119.4507221,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x8428af156d713aa3:0x9cfa788db3ecc483!8m2!3d20.7052024!4d-103.3890072?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.3675879,
+          20.6488052
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/20.648805199999998,-103.36758789999999/@16.2513607,-110.5894695,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d20.6488052!4d-103.3675879?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1984062,
+          19.3267788
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.3267788,-99.1984062/@22.1739175,-119.4507221,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.3267788!4d-99.1984062?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1995092,
+          19.3190782
+        ]
+      },
+      "properties": {
+        "name": "ABC",
+        "google_maps_url": "https://www.google.com/maps/place/ABC/@22.1739175,-119.4507221,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85cdff5f026d296d:0xf9b717f6a7113e4f!8m2!3d19.3190782!4d-99.1995092?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -107.4150807,
+          24.8154175
+        ]
+      },
+      "properties": {
+        "name": "La Estrella",
+        "google_maps_url": "https://www.google.com/maps/place/La+Estrella/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x86bcdb0274773355:0x33fdb0d30634f25!8m2!3d24.8154175!4d-107.4150807?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -110.936527,
+          31.2836856
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/31.2836856,-110.936527/@22.1739175,-119.4507221,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d31.2836856!4d-110.936527?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1620914,
+          19.4322845
+        ]
+      },
+      "properties": {
+        "name": "Parroquia de Nuestra Señora del Perpetuo Socorro y San José",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+de+Nuestra+Se%C3%B1ora+del+Perpetuo+Socorro+y+San+Jos%C3%A9/@31.2836856,-129.3935583,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f8ccaebc659d:0x6b3daf1c3f5848ba!8m2!3d19.4322845!4d-99.1620914?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.7882041,
+          19.6494616
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.6494616,-99.7882041/@24.8154175,-125.872112,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.6494616!4d-99.7882041?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1574505,
+          19.2984526
+        ]
+      },
+      "properties": {
+        "name": "Iglesia de los Santos Apóstoles",
+        "google_maps_url": "https://www.google.com/maps/place/Iglesia+de+los+Santos+Ap%C3%B3stoles/@19.4322845,-117.6191227,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85ce0146223b3951:0xc417f44b891bc1c1!8m2!3d19.2984526!4d-99.1574505?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -110.9430866,
+          31.3324142
+        ]
+      },
+      "properties": {
+        "name": "Aduana Mexicana",
+        "google_maps_url": "https://www.google.com/maps/place/Aduana+Mexicana/@19.4322845,-117.6191227,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x86d6ace9d21afc43:0xc32ad3a8f805ff5b!8m2!3d31.3324142!4d-110.9430866?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -102.6237752,
+          22.8618226
+        ]
+      },
+      "properties": {
+        "name": "GASOLINERA SERVICIO MORELOS",
+        "google_maps_url": "https://www.google.com/maps/place/GASOLINERA+SERVICIO+MORELOS/@20.6488052,-121.8246192,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x868252a7af80795b:0x1cc4e250a856cd5!8m2!3d22.8618226!4d-102.6237752?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -103.3489653,
+          20.6595867
+        ]
+      },
+      "properties": {
+        "name": "Concha Acústica",
+        "google_maps_url": "https://www.google.com/maps/place/Concha+Ac%C3%BAstica/@31.3324142,-129.4001179,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x8428b2049e63ed03:0xbadd3196a4d7f17d!8m2!3d20.6595867!4d-103.3489653?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.0936827,
+          19.2501555
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19%C2%B015'00.6%22N+99%C2%B005'37.3%22W/@23.5959631,-112.0846487,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.2501555!4d-99.0936827?entry=ttu&g_ep=EgoyMDI2MDgxNi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1853533,
+          19.3934949
+        ]
+      },
+      "properties": {
+        "name": "Valero 36 Revolución",
+        "google_maps_url": "https://www.google.com/maps/place/Valero+36+Revoluci%C3%B3n/@24.8154175,-125.872112,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1ff7c924fb7ff:0xc167fa3f138f0728!8m2!3d19.3934949!4d-99.1853533!16s%2Fg%2F1tnqhbg0?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1311344,
+          19.4797825
+        ]
+      },
+      "properties": {
+        "name": "VERIFICENTRO GM-05",
+        "google_maps_url": "https://www.google.com/maps/place/VERIFICENTRO+GM-05/@24.8154175,-125.872112,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f909ce4471ff:0x19f52d018ac43e94!8m2!3d19.4797825!4d-99.1311344!16s%2Fg%2F1pty3gdh6?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1492836,
+          19.4267594
+        ]
+      },
+      "properties": {
+        "name": "METRO BALDERAS",
+        "google_maps_url": "https://www.google.com/maps/place/METRO+BALDERAS/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1fed6a8bf87a1:0x45bacb11202d8614!8m2!3d19.4267594!4d-99.1492836?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1493368,
+          19.3931217
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.3931217,-99.1493368/@24.8154175,-125.872112,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.3931217!4d-99.1493368?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2249396,
+          19.5032638
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.5032638,-99.2249396/@23.5959631,-112.0846487,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.5032638!4d-99.2249396?entry=ttu&g_ep=EgoyMDI2MDgxNi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1697107,
+          19.4405287
+        ]
+      },
+      "properties": {
+        "name": "Mi Mercado ANAHUAC ZONA",
+        "google_maps_url": "https://www.google.com/maps/place/Mi+Mercado+ANAHUAC+ZONA/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f8b6527bde69:0xaa598de7f389d221!8m2!3d19.4405287!4d-99.1697107!16s%2Fg%2F1ptx8fvpw?entry=ttu&g_ep=EgoyMDI2MDgxNi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1704243,
+          19.4404879
+        ]
+      },
+      "properties": {
+        "name": "Mercado Anahuac Anexo",
+        "google_maps_url": "https://www.google.com/maps/place/Mercado+Anahuac+Anexo/@24.8154175,-125.872112,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f9528e1d10bb:0x6fb23c7f062a115d!8m2!3d19.4404879!4d-99.1704243?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1855725,
+          19.4828142
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.4828142,-99.18557249999999/@23.5959631,-112.0846487,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4828142!4d-99.1855725?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1684032,
+          19.4447641
+        ]
+      },
+      "properties": {
+        "name": "Parroquia de San Antonio de las Huertas",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+de+San+Antonio+de+las+Huertas/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f8b80d2e53a1:0x1b46b241b020b9d9!8m2!3d19.4447641!4d-99.1684032!16s%2Fg%2F1tptqyzg?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1795909,
+          19.3485662
+        ]
+      },
+      "properties": {
+        "name": "Capilla de San José del Altillo",
+        "google_maps_url": "https://www.google.com/maps/place/Capilla+de+San+Jos%C3%A9+del+Altillo/@24.8154175,-125.872112,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1fffaa28d5299:0x61e629e38968c706!8m2!3d19.3485662!4d-99.1795909?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1582652,
+          19.4830057
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.4830057,-99.1582652/@24.8154175,-125.872112,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4830057!4d-99.1582652?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1571467,
+          19.483074
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.483074,-99.1571467/@23.5959631,-112.0846487,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.483074!4d-99.1571467?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1596744,
+          19.4835146
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.4835146,-99.1596744/@24.8154175,-125.872112,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4835146!4d-99.1596744?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1590018,
+          19.483281
+        ]
+      },
+      "properties": {
+        "name": "Aldo C",
+        "google_maps_url": "https://www.google.com/maps/place/Aldo+C/@24.8154175,-125.872112,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f859999c8f11:0xfec3bae3ace44670!8m2!3d19.483281!4d-99.1590018?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1629839,
+          19.4875895
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.4875895,-99.1629839/@23.5959631,-112.0846487,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4875895!4d-99.1629839?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1623938,
+          19.4844323
+        ]
+      },
+      "properties": {
+        "name": "Pte 116 649-A-B",
+        "google_maps_url": "https://www.google.com/maps/place/Pte+116+649-A-B,+Industrial+Vallejo,+Azcapotzalco,+02300+Ciudad+de+M%C3%A9xico,+CDMX/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f85eacffffff:0x8be431f1204e9893!8m2!3d19.4844323!4d-99.1623938!16s%2Fg%2F11ry1t9wsm?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1643941,
+          19.4902416
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.490241599999997,-99.1643941/@20.6488052,-121.8246192,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4902416!4d-99.1643941?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1612073,
+          19.4903449
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.4903449,-99.1612073/@23.5959631,-112.0846487,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4903449!4d-99.1612073?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1580744,
+          19.4981117
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.4981117,-99.15807439999999/@23.5959631,-112.0846487,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4981117!4d-99.1580744?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1559874,
+          19.4938851
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.4938851,-99.1559874/@20.6488052,-121.8246192,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4938851!4d-99.1559874?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1128313,
+          19.4165461
+        ]
+      },
+      "properties": {
+        "name": "Parroquia Nuestra Señora Aparecida de Brasil",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+Nuestra+Se%C3%B1ora+Aparecida+de+Brasil/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1ff2402bb78d9:0xe0b3db4033272412!8m2!3d19.4165461!4d-99.1128313!16s%2Fg%2F11h90pqqmj?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.0426626,
+          19.3483378
+        ]
+      },
+      "properties": {
+        "name": "Parroquia del Divino Niño Jesús",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+del+Divino+Ni%C3%B1o+Jes%C3%BAs/@24.8154175,-125.872112,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1fd639b8563fd:0xe55cc2c7d5fb6e6d!8m2!3d19.3483378!4d-99.0426626?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1415292,
+          19.3281583
+        ]
+      },
+      "properties": {
+        "name": "Rectoría San Antonio de Padua",
+        "google_maps_url": "https://www.google.com/maps/place/Rector%C3%ADa+San+Antonio+de+Padua/@24.8154175,-125.872112,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85ce01d212d81865:0x5c0751cd3526e72b!8m2!3d19.3281583!4d-99.1415292?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1387247,
+          19.3943693
+        ]
+      },
+      "properties": {
+        "name": "19°23'39.7\"N 99°08'19.4\"W",
+        "google_maps_url": "https://www.google.com/maps/place/19.394369299999997,-99.1387247/@20.6488052,-121.8246192,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.3943693!4d-99.1387247?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1626969,
+          19.354181
+        ]
+      },
+      "properties": {
+        "name": "Ignacio Allende 132",
+        "google_maps_url": "https://www.google.com/maps/place/Ignacio+Allende+132/@24.8154175,-125.872112,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1ffc3f21826b5:0xb3341019c774ebc9!8m2!3d19.354181!4d-99.1626969?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1616374,
+          19.3527374
+        ]
+      },
+      "properties": {
+        "name": "Mercado 89 Coyoacán",
+        "google_maps_url": "https://www.google.com/maps/place/Mercado+89+Coyoac%C3%A1n/@24.8154175,-125.872112,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1ffc464ce8279:0x77e3dbe6da694814!8m2!3d19.3527374!4d-99.1616374?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1358892,
+          19.4306857
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.430685699999998,-99.1358892/@20.6488052,-121.8246192,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4306857!4d-99.1358892?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1495183,
+          19.422935
+        ]
+      },
+      "properties": {
+        "name": "Av. Niños Héroes 106",
+        "google_maps_url": "https://www.google.com/maps/place/Av.+Ni%C3%B1os+H%C3%A9roes+106,+Doctores,+Cuauht%C3%A9moc,+06720+Ciudad+de+M%C3%A9xico,+CDMX/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1ff28e8957459:0xb231c43e991ddb57!8m2!3d19.422935!4d-99.1495183!16s%2Fg%2F11c0y1rhzb?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.131401,
+          19.4792995
+        ]
+      },
+      "properties": {
+        "name": "Distribuidora Ariel SA de CV",
+        "google_maps_url": "https://www.google.com/maps/place/Distribuidora+Ariel+SA+de+CV/@24.8154175,-125.872112,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f908f2c5e3f5:0x4764af6b5a696a7c!8m2!3d19.4792995!4d-99.131401?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1392592,
+          19.4810457
+        ]
+      },
+      "properties": {
+        "name": "Grupo Estrella Blanca",
+        "google_maps_url": "https://www.google.com/maps/place/Grupo+Estrella+Blanca/@20.6488052,-121.8246192,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f9d351fec0e1:0x11f13e02d7ffdb50!8m2!3d19.4810457!4d-99.1392592!16s%2Fg%2F11g0zb6myc?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1391967,
+          19.4796183
+        ]
+      },
+      "properties": {
+        "name": "Central de Autobuses del Norte",
+        "google_maps_url": "https://www.google.com/maps/place/Central+de+Autobuses+del+Norte/@20.6488052,-121.8246192,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f9075cbe8145:0xabc5c350e7e60165!8m2!3d19.4796183!4d-99.1391967?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.0973255,
+          19.4783568
+        ]
+      },
+      "properties": {
+        "name": "Centro Pedagógico Cri Cri",
+        "google_maps_url": "https://www.google.com/maps/place/Centro+Pedag%C3%B3gico+Cri+Cri/@24.8154175,-125.872112,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1fbd4422595f1:0xdf2289d1b53dcb9d!8m2!3d19.4783568!4d-99.0973255!16s%2Fg%2F11fr3m689y?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1241035,
+          19.4986046
+        ]
+      },
+      "properties": {
+        "name": "Parroquia de la Divina Providencia",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+de+la+Divina+Providencia/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f9be09e67fef:0x470f1d1f66dee7ee!8m2!3d19.4986046!4d-99.1241035!16s%2Fg%2F1tgyx194?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1492538,
+          19.5126304
+        ]
+      },
+      "properties": {
+        "name": "Ensamblartek SA de CV",
+        "google_maps_url": "https://www.google.com/maps/place/Ensamblartek+SA+de+CV/@24.8154175,-125.872112,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f833b06776f1:0xb73c8247ff28d53e!8m2!3d19.5126304!4d-99.1492538!16s%2Fg%2F11cp84tz3_?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1618114,
+          19.5160285
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.5160285,-99.16181139999999/@24.8154175,-125.872112,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.5160285!4d-99.1618114?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1637349,
+          19.4354239
+        ]
+      },
+      "properties": {
+        "name": "The Anglo",
+        "google_maps_url": "https://www.google.com/maps/place/The+Anglo/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f8cba20d0f37:0x3d728bcd6f0c556!8m2!3d19.4354239!4d-99.1637349!16s%2Fg%2F1tgpyjvj?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1788184,
+          19.5083033
+        ]
+      },
+      "properties": {
+        "name": "Smurfit Westrock Company \"Empaques Modernos San Pablo SA de CV\"",
+        "google_maps_url": "https://www.google.com/maps/place/Smurfit+Westrock+Company+%22Empaques+Modernos+San+Pablo+SA+de+CV%22/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f8126aade729:0x347f68393e983bbc!8m2!3d19.5083033!4d-99.1788184?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1666957,
+          19.4871593
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.4871593,-99.16669569999999/@24.8154175,-125.872112,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4871593!4d-99.1666957?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.168582,
+          19.4935466
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.4935466,-99.168582/@24.8154175,-125.872112,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4935466!4d-99.168582?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1680586,
+          19.4934509
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.4934509,-99.1680586/@20.6488052,-121.8246192,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.4934509!4d-99.1680586?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1637907,
+          19.4885845
+        ]
+      },
+      "properties": {
+        "name": "Pte 122 686",
+        "google_maps_url": "https://www.google.com/maps/place/Pte+122+686/@24.8154175,-125.872112,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f85cf27efc9d:0xc2ffa64c49a59758!8m2!3d19.4885845!4d-99.1637907?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1674977,
+          19.492553
+        ]
+      },
+      "properties": {
+        "name": "Calle Pte. 128",
+        "google_maps_url": "https://www.google.com/maps/place/Calle+Pte.+128/@24.8154175,-125.872112,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f8429c23523f:0xda2a6f79d2441f19!8m2!3d19.492553!4d-99.1674977?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1650921,
+          19.4898243
+        ]
+      },
+      "properties": {
+        "name": "Sinergia",
+        "google_maps_url": "https://www.google.com/maps/place/Sinergia/@20.6488052,-121.8246192,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f85d27abee0b:0xf282c932cd76603b!8m2!3d19.4898243!4d-99.1650921?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1704558,
+          19.5026721
+        ]
+      },
+      "properties": {
+        "name": "FLAGASA",
+        "google_maps_url": "https://www.google.com/maps/place/FLAGASA/@24.8154175,-125.872112,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f84733c8eed3:0x68da0777343fb90f!8m2!3d19.5026721!4d-99.1704558?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.163392,
+          19.5032245
+        ]
+      },
+      "properties": {
+        "name": "maizoro",
+        "google_maps_url": "https://www.google.com/maps/place/maizoro/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f83f5c6ef695:0xe3b2ab98bc29c87d!8m2!3d19.5032245!4d-99.163392?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.161775,
+          19.5007581
+        ]
+      },
+      "properties": {
+        "name": "VERIFICENTRO AZ 20 VALLEJO",
+        "google_maps_url": "https://www.google.com/maps/place/VERIFICENTRO+AZ+20+VALLEJO/@24.8154175,-125.872112,5z/data=!3m1!5s0x85d1f81529af814d:0x5b85c261a81ab85e!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f9d22415eb11:0xa3034fed8fb07283!8m2!3d19.5007581!4d-99.161775?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1631714,
+          19.4960886
+        ]
+      },
+      "properties": {
+        "name": "El lugarzzito",
+        "google_maps_url": "https://www.google.com/maps/place/El+lugarzzito/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f94b2670c973:0xdbd6fde9c94893d0!8m2!3d19.4960886!4d-99.1631714!16s%2Fg%2F11v190x8t_?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1588112,
+          19.5023048
+        ]
+      },
+      "properties": {
+        "name": "Corporativo Price Shoes",
+        "google_maps_url": "https://www.google.com/maps/place/Corporativo+Price+Shoes/@24.8154175,-125.872112,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f84788fcd37f:0xcc804c1dcac3ec8f!8m2!3d19.5023048!4d-99.1588112!16s%2Fg%2F11b6hz7hkj?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1617021,
+          19.495886
+        ]
+      },
+      "properties": {
+        "name": "Veterinaria Tenochtitlan",
+        "google_maps_url": "https://www.google.com/maps/place/Veterinaria+Tenochtitlan/@24.8154175,-125.872112,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f8440faaaaab:0x8b5730afc33f489d!8m2!3d19.495886!4d-99.1617021!16s%2Fg%2F11fwcmt312?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1587823,
+          19.5086379
+        ]
+      },
+      "properties": {
+        "name": "Central de Carga Vallejo",
+        "google_maps_url": "https://www.google.com/maps/place/Central+de+Carga+Vallejo/@20.6488052,-121.8246192,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f83a03f539fd:0xa8215bf50bd66a1d!8m2!3d19.5086379!4d-99.1587823?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1579828,
+          19.5026129
+        ]
+      },
+      "properties": {
+        "name": "Mundo Terra",
+        "google_maps_url": "https://www.google.com/maps/place/Mundo+Terra/@24.8154175,-125.872112,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f847c1875fb3:0x55c100123947276c!8m2!3d19.5026129!4d-99.1579828!16s%2Fg%2F1q5bsy0cv?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1569489,
+          19.5001477
+        ]
+      },
+      "properties": {
+        "name": "Pin colocado",
+        "google_maps_url": "https://www.google.com/maps/place/19.5001477,-99.15694889999999/@24.8154175,-125.872112,5z/data=!4m8!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m3!8m2!3d19.5001477!4d-99.1569489?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1423251,
+          19.3191045
+        ]
+      },
+      "properties": {
+        "name": "Rectoría de La Inmaculada Concepcion",
+        "google_maps_url": "https://www.google.com/maps/place/Rector%C3%ADa+de+La+Inmaculada+Concepcion/@20.6488052,-121.8246192,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85ce01cba417e987:0x1da4c4d2bb04f87d!8m2!3d19.3191045!4d-99.1423251?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.175425,
+          19.3755576
+        ]
+      },
+      "properties": {
+        "name": "Templo de Santa Mónica",
+        "google_maps_url": "https://www.google.com/maps/place/Templo+de+Santa+M%C3%B3nica/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1ff9a91b0aff5:0xb69b57eda7028daf!8m2!3d19.3755576!4d-99.175425!16s%2Fg%2F1td_hlqr?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1812087,
+          19.3339534
+        ]
+      },
+      "properties": {
+        "name": "La muela",
+        "google_maps_url": "https://www.google.com/maps/place/La+muela/@20.6488052,-121.8246192,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85ce0002fdcb178d:0x116b3909aec7d998!8m2!3d19.3339534!4d-99.1812087?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.0998646,
+          19.4053359
+        ]
+      },
+      "properties": {
+        "name": "Palacio de los Deportes",
+        "google_maps_url": "https://www.google.com/maps/place/Palacio+de+los+Deportes/@20.6488052,-121.8246192,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1fc20d4ff6b6d:0xd2a19a4361b56cd2!8m2!3d19.4053359!4d-99.0998646?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.11426,
+          19.43006
+        ]
+      },
+      "properties": {
+        "name": "San Lázaro",
+        "google_maps_url": "https://www.google.com/maps/place/San+L%C3%A1zaro/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1feb24713a9e9:0x620e5b6c2aba4180!8m2!3d19.43006!4d-99.11426!16s%2Fg%2F11l691vrd_?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.12091,
+          19.42954
+        ]
+      },
+      "properties": {
+        "name": "Candelaria",
+        "google_maps_url": "https://www.google.com/maps/place/Candelaria/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1feb5cb06c931:0xea46ea1d9e3dbc7a!8m2!3d19.42954!4d-99.12091?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1250598,
+          19.4254579
+        ]
+      },
+      "properties": {
+        "name": "Metro Merced",
+        "google_maps_url": "https://www.google.com/maps/place/Metro+Merced/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1ff97cde11d89:0xb46bd9fc18ba8202!8m2!3d19.4254579!4d-99.1250598!16s%2Fg%2F11kpzwkwg_?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1890902,
+          19.6275312
+        ]
+      },
+      "properties": {
+        "name": "Bacardí Planta Tultitlan",
+        "google_maps_url": "https://www.google.com/maps/place/Bacard%C3%AD+Planta+Tultitlan/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1f5f88f31e155:0x2aed16e24ca0e0aa!8m2!3d19.6275312!4d-99.1890902!16s%2Fg%2F1tk_k1d3?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1754885,
+          19.3478854
+        ]
+      },
+      "properties": {
+        "name": "Fundación de Obras Sociales de San Vicente IAP",
+        "google_maps_url": "https://www.google.com/maps/place/Fundaci%C3%B3n+de+Obras+Sociales+de+San+Vicente+IAP/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1ffe59f4e6183:0x6792a2ab5d0a1c3b!8m2!3d19.3478854!4d-99.1754885?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.204889,
+          19.3879576
+        ]
+      },
+      "properties": {
+        "name": "Concha Acústica",
+        "google_maps_url": "https://www.google.com/maps/place/Concha+Ac%C3%BAstica/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d201cc23728ff7:0x1f4d7ae5c8d8a639!8m2!3d19.3879576!4d-99.204889!16s%2Fg%2F11dfjbbgpt?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1573435,
+          19.3793138
+        ]
+      },
+      "properties": {
+        "name": "Parroquia de la Medalla Milagrosa",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+de+la+Medalla+Milagrosa/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1ffa6057a31ab:0xc6c70a2a943cfd39!8m2!3d19.3793138!4d-99.1573435!16s%2Fg%2F11fkf2wm7g?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.2313534,
+          19.4981098
+        ]
+      },
+      "properties": {
+        "name": "Parroquia del Señor del Campo Florido",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+del+Se%C3%B1or+del+Campo+Florido/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d202e08a1d7953:0x3878253567970dca!8m2!3d19.4981098!4d-99.2313534?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -96.7135291,
+          17.0535777
+        ]
+      },
+      "properties": {
+        "name": "Gasolinera 5 Señores",
+        "google_maps_url": "https://www.google.com/maps/place/Gasolinera+5+Se%C3%B1ores/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85c7224ee919636f:0xd244d504f9c7e880!8m2!3d17.0535777!4d-96.7135291!16s%2Fg%2F1td6yftn?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.101971,
+          19.4179194
+        ]
+      },
+      "properties": {
+        "name": "Parroquia del Sagrado Corazón de Jesús y San Felipe Neri",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+del+Sagrado+Coraz%C3%B3n+de+Jes%C3%BAs+y+San+Felipe+Neri/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1fff115a8205f:0x5213c45f0e7b2ae1!8m2!3d19.4179194!4d-99.101971!16s%2Fg%2F11fl1p6mtf?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1703666,
+          19.3993969
+        ]
+      },
+      "properties": {
+        "name": "Hidrosina 30",
+        "google_maps_url": "https://www.google.com/maps/place/Hidrosina+30/@23.5959631,-112.0846487,5z/data=!4m10!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m5!1s0x85d1ff6d006b3569:0xc536621ad26efb4a!8m2!3d19.3993969!4d-99.1703666!16s%2Fg%2F11c1t4_j05?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1515484,
+          19.3408171
+        ]
+      },
+      "properties": {
+        "name": "Capilla de Nuestra Señora de Guadalupe",
+        "google_maps_url": "https://www.google.com/maps/place/Capilla+de+Nuestra+Se%C3%B1ora+de+Guadalupe/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1ffd69e851bd3:0xd02c0f1eb1a6069!8m2!3d19.3408171!4d-99.1515484?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.1169523,
+          19.4396276
+        ]
+      },
+      "properties": {
+        "name": "Parroquia del Sagrado Corazón de Jesús",
+        "google_maps_url": "https://www.google.com/maps/place/Parroquia+del+Sagrado+Coraz%C3%B3n+de+Jes%C3%BAs/@23.5959631,-112.0846487,5z/data=!4m9!1m3!11m2!2szQJG7-QWh7A8Qa7fFcqVdjYFHI4xAw!3e3!3m4!1s0x85d1f94c1a929683:0xa9f1a0f168b8c302!8m2!3d19.4396276!4d-99.1169523?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+      }
+    }
+  ]
+}

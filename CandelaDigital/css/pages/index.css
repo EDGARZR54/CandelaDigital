@@ -1,0 +1,12 @@
+/* ==========================================================================
+   INDEX.CSS — ajustes específicos de la página de inicio
+   ========================================================================== */
+
+.intro {
+  max-width: 68ch;
+}
+.intro p {
+  font-size: clamp(1.05rem, 0.4vw + 0.95rem, 1.3rem);
+  color: var(--color-texto-suave);
+}
+.intro strong { color: var(--color-texto); font-weight: 600; }

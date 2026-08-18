@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa · Cascarones · Documentación digital y análisis geométrico del modernismo mexicano</title>
+<meta name="description" content="Más allá de los seis casos documentados: hacia un atlas nacional de cascarones de concreto del modernismo mexicano.">
+
+<!-- Google Fonts: Spectral (display) + Lato (cuerpo / datos) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&display=swap" rel="stylesheet">
+
+<!-- Aplica el tema guardado (o la preferencia del sistema) ANTES de que se
+     pinte el primer frame, para evitar el parpadeo de "claro" al recargar
+     en modo oscuro. Misma clave de localStorage que js/navbar.js ('cascarones:tema'). -->
+<script>
+  (function () {
+    var CLAVE_TEMA = 'cascarones:tema';
+    var guardado = localStorage.getItem(CLAVE_TEMA);
+    var tema = (guardado === 'oscuro' || guardado === 'claro')
+      ? guardado
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+    document.documentElement.setAttribute('data-tema', tema);
+  })();
+</script>
+
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/footer.css">
+<link rel="stylesheet" href="css/componentes.css">
+<link rel="stylesheet" href="css/footer-logos.css">
+<!-- Sin hoja de estilos propia: esta página se arma solo con las clases
+     que ya existen en base.css / componentes.css. -->
+
+</head>
+<body>
+
+<!-- ============================== NAV ============================== -->
+<div id="navbar-placeholder"></div>
+
+<main>
+
+  <!-- ==============================================================
+       ENCABEZADO — reutiliza .hero__texto/.hero__parrafo (ya existen
+       en componentes.css) fuera de .hero, para tener el mismo tono
+       tipográfico del home sin el lienzo 3D ni min-height:100svh.
+       Deliberadamente NO lleva la franja .cifras debajo: esta página
+       es conclusión/narrativa, no otro panel de datos.
+       ============================================================== -->
+  <section class="seccion">
+    <div class="contenedor">
+      <div class="hero__texto" style="max-width: 52rem;">
+        <p class="eyebrow">Conclusiones · Líneas futuras</p>
+        <h1>Seis casos son el <span class="subrayado">punto de partida</span>, no el límite</h1>
+        <p class="hero__parrafo" style="max-width: 62ch; font-size: var(--tam-h3); margin-bottom: 0;">
+          Documentar a fondo seis cascarones de concreto —con fotogrametría, escaneo LiDAR y
+          análisis geométrico comparativo— reveló algo más grande que los propios seis casos: a lo
+          largo de la investigación identificamos un número considerablemente mayor de cascarones
+          del movimiento moderno en el país, muchos sin registro, sin protección patrimonial y en
+          riesgo real de desaparecer.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==============================================================
+       MAPA GENERAL — contenedor sin implementar, a todo lo ancho
+       (no en .dos-columnas como el teaser del home, para que el panel
+       no se sienta repetido). Reutiliza .marco-visor tal cual existe
+       en componentes.css.
+       ============================================================== -->
+  <section class="seccion seccion--alterna">
+    <div class="contenedor">
+      <p class="eyebrow">Hacia un atlas nacional</p>
+      <h2>Todos los cascarones identificados</h2>
+      <p class="hero__parrafo" style="max-width: 62ch; margin: 1rem 0 2rem;">
+        A diferencia del mapa de los seis casos documentados, este busca reunir <em>todos</em> los
+        cascarones que hemos podido identificar durante la investigación —documentados a fondo o
+        no— distinguiendo su nivel de registro. Explóralo libremente: acercate, alejate y hacé clic
+        en un pin para ver el caso y su ubicación en Google Maps.
+      </p>
+
+      <!-- ==========================================================
+           MAPA GENERAL — se embebe atlas.html (mapa MapLibre fijo,
+           con pines y popup a Google Maps por caso) SIN modificarlo
+           en su lógica, dentro de un iframe. Conserva el 100% de sus
+           funciones (zoom libre, drag, popups) intactas y aisladas
+           del resto de la página.
+           Requiere que exista, junto a esta página (misma raíz),
+           atlas.html y la carpeta data/ con CascaronesMexico.geojson
+           y MapStyle.json.
+           ========================================================== -->
+      <iframe
+        id="mapa-general"
+        src="atlas.html"
+        title="Mapa general interactivo de cascarones identificados"
+        style="width:100%; height:85vh; min-height:520px; display:block; border:1px solid var(--color-borde); border-radius: var(--radio);"
+      ></iframe>
+    </div>
+  </section>
+
+  <!-- ==============================================================
+       PRÓXIMOS PASOS — texto simple + lista, sin tarjetas ni columnas
+       dobles, para no repetir el patrón visual de otras secciones.
+       ============================================================== -->
+  <section class="seccion">
+    <div class="contenedor">
+      <p class="eyebrow">Próximos pasos</p>
+      <h2>Cómo seguir</h2>
+      <ol class="hero__parrafo" style="max-width: 62ch; margin-top: 1.25rem;">
+        <li>Ampliar el levantamiento fotogramétrico/LiDAR a nuevos casos identificados.</li>
+        <li>Sistematizar fuentes secundarias —archivos, prensa, tesis— para consolidar el inventario.</li>
+        <li>Gestionar reconocimiento patrimonial para los casos en mayor riesgo.</li>
+        <li>Abrir el mapa a colaboración externa para reportar cascarones aún no identificados.</li>
+      </ol>
+
+      <p class="hero__parrafo" style="max-width: 62ch;">
+        Si conoces un cascarón que no aparece en este registro, o tienes planos, fotografías o
+        información de alguno de los casos identificados, contáctanos: este atlas seguirá creciendo
+        más allá del alcance de este proyecto.
+      </p>
+
+      <div class="hero__acciones">
+        <a href="acerca.html" class="boton boton--primario">Sobre el proyecto</a>
+        <a href="galeria.html" class="boton boton--fantasma">Ver los seis casos documentados</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============================== FOOTER ============================== -->
+<div id="footer-placeholder"></div>
+
+<script src="js/navbar.js"></script>
+
+</body>
+</html>

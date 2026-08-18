@@ -1,0 +1,115 @@
+/* ==========================================================================
+   FOOTER.CSS
+   ========================================================================== */
+
+.pie {
+  border-top: 1px solid var(--color-borde);
+  padding-block: 3.5rem 2.5rem;
+}
+
+.pie__superior {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 2.5rem;
+  margin-bottom: 2.5rem;
+}
+@media (max-width: 700px) {
+  .pie__superior { grid-template-columns: 1fr; gap: 2rem; }
+}
+
+.pie__marca .nav__logo { display: inline-block; margin-bottom: 0.8rem; }
+
+.pie__descripcion {
+  color: var(--color-texto-suave);
+  font-size: 0.92rem;
+  max-width: 40ch;
+}
+
+.pie__titulo-col {
+  font-family: var(--fuente-datos);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-texto);
+  margin-bottom: 0.9rem;
+}
+
+.pie__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.pie__lista a {
+  color: var(--color-texto-suave);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+.pie__lista a:hover { color: var(--color-primario); }
+
+/* ---- Franja de apoyo institucional (leyenda + logos) ------------------- */
+.pie__apoyo {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2rem;
+  padding: 1.8rem 0;
+  border-top: 1px solid var(--color-borde);
+}
+@media (max-width: 700px) {
+  .pie__apoyo { grid-template-columns: 1fr; text-align: center; }
+}
+
+.pie__apoyo-texto {
+  font-family: var(--fuente-datos);
+  font-weight: var(--peso-datos);
+  font-size: 0.85rem;
+  color: var(--color-texto-suave);
+  max-width: 46ch;
+}
+
+.pie__logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  min-width: 260px;
+  min-height: 64px;
+  padding: 0.75rem 1.5rem;
+  border: 1px dashed var(--color-borde);
+  border-radius: var(--radio);
+  font-family: var(--fuente-datos);
+  font-weight: var(--peso-datos);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--color-texto-suave);
+  text-transform: uppercase;
+}
+.pie__logos img {
+  max-height: 40px;
+  width: auto;
+  filter: grayscale(1);
+  opacity: 0.85;
+}
+
+.pie__inferior {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding-top: 1.6rem;
+  border-top: 1px solid var(--color-borde);
+}
+
+.pie__inferior p {
+  font-family: var(--fuente-datos);
+  font-weight: var(--peso-datos);
+  font-size: 0.78rem;
+  color: var(--color-texto-suave);
+  margin: 0;
+}

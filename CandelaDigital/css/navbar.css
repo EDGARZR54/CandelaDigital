@@ -1,0 +1,137 @@
+/* ==========================================================================
+   NAVBAR.CSS
+   ========================================================================== */
+
+.nav {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 100;
+  padding-block: 1.1rem;
+  background: transparent;
+  transition: background-color var(--transicion), padding var(--transicion), border-color var(--transicion);
+  border-bottom: 1px solid transparent;
+}
+
+.nav.nav--fija {
+  background: rgba(var(--color-blanco), 0.88);
+  backdrop-filter: blur(10px);
+  border-bottom-color: var(--color-borde);
+  padding-block: 0.7rem;
+}
+[data-tema="oscuro"] .nav.nav--fija,
+@media (prefers-color-scheme: dark) { }
+[data-tema="oscuro"] .nav.nav--fija { background: rgba(18, 18, 18, 0.86); }
+
+.nav__contenido {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.nav__logo {
+  font-family: var(--fuente-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  color: var(--color-texto);
+  white-space: nowrap;
+}
+.nav__logo span { color: var(--color-primario); }
+
+.nav__enlaces {
+  display: flex;
+  align-items: center;
+  gap: clamp(1.1rem, 2vw, 2.1rem);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav__enlaces a {
+  font-family: var(--fuente-datos);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--color-texto);
+  padding: 0.3rem 0;
+  border-bottom: 1px solid transparent;
+  transition: color var(--transicion), border-color var(--transicion);
+}
+.nav__enlaces a:hover,
+.nav__enlaces a[aria-current="page"] {
+  color: var(--color-primario);
+  border-bottom-color: var(--color-primario);
+}
+
+/* ---- Interruptor de modo oscuro ---------------------------------------- */
+.nav__tema {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  border: 1px solid var(--color-borde);
+  background: none;
+  color: var(--color-texto);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color var(--transicion), color var(--transicion);
+}
+.nav__tema:hover { border-color: var(--color-primario); color: var(--color-primario); }
+.nav__tema svg { width: 1.05rem; height: 1.05rem; }
+.nav__tema .icono-sol { display: none; }
+[data-tema="oscuro"] .nav__tema .icono-luna { display: none; }
+[data-tema="oscuro"] .nav__tema .icono-sol { display: block; }
+
+/* ---- Botón de menú móvil ------------------------------------------------ */
+.nav__disparador {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 2.1rem;
+  height: 2.1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+.nav__disparador span {
+  display: block;
+  height: 2px;
+  background: var(--color-texto);
+  border-radius: 2px;
+  transition: transform var(--transicion), opacity var(--transicion);
+}
+.nav[data-abierto="true"] .nav__disparador span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav[data-abierto="true"] .nav__disparador span:nth-child(2) { opacity: 0; }
+.nav[data-abierto="true"] .nav__disparador span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+@media (max-width: 780px) {
+  .nav__disparador { display: flex; }
+
+  .nav__enlaces {
+    position: fixed;
+    inset: 0;
+    top: 0;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 1.6rem;
+    padding: 2.5rem clamp(1.5rem, 8vw, 3rem);
+    background: var(--color-fondo);
+    transform: translateX(100%);
+    transition: transform 320ms ease;
+  }
+  .nav__enlaces a { font-size: 1.1rem; }
+
+  .nav[data-abierto="true"] .nav__enlaces { transform: translateX(0); }
+
+  .nav__acciones { display: flex; align-items: center; gap: 0.6rem; }
+}

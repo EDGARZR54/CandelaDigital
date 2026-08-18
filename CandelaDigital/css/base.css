@@ -1,0 +1,138 @@
+/* ==========================================================================
+   BASE.CSS — reset, tipografía base, utilidades
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--tam-cuerpo);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color var(--transicion), color var(--transicion);
+}
+
+img, svg, video { display: block; max-width: 100%; }
+
+h1, h2, h3, h4 {
+  font-family: var(--fuente-display);
+  font-weight: 600;
+  line-height: 1.15;
+  margin: 0 0 0.5em;
+  letter-spacing: -0.01em;
+}
+
+h1 { font-size: var(--tam-h1); font-weight: 500; }
+h2 { font-size: var(--tam-h2); }
+h3 { font-size: var(--tam-h3); }
+
+p { margin: 0 0 1em; }
+p:last-child { margin-bottom: 0; }
+
+a {
+  color: var(--color-secundario);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+a:hover { color: var(--color-primario); }
+
+/* Foco visible y consistente, accesible por teclado */
+:focus-visible {
+  outline: 2px solid var(--color-secundario);
+  outline-offset: 3px;
+}
+
+/* ---- Texto tipo "dato" / créditos / leyendas --------------------------- */
+.dato,
+.creditos,
+figcaption,
+.ficha-tecnica {
+  font-family: var(--fuente-datos);
+  font-weight: var(--peso-datos);
+  font-size: var(--tam-dato);
+  color: var(--color-texto-suave);
+  letter-spacing: 0.01em;
+}
+
+/* ---- Eyebrow / etiquetas de sección ------------------------------------ */
+.eyebrow {
+  display: inline-block;
+  font-family: var(--fuente-datos);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-primario);
+  margin-bottom: 0.9rem;
+}
+
+/* ---- Contenedor / layout ------------------------------------------------ */
+.contenedor {
+  width: 100%;
+  max-width: var(--ancho-contenido);
+  margin-inline: auto;
+  padding-inline: clamp(1.25rem, 4vw, 2.5rem);
+}
+
+.seccion {
+  padding-block: var(--espacio-seccion);
+}
+
+.oculto-visualmente {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- Botones ------------------------------------------------------------ */
+.boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-family: var(--fuente-datos);
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 0.85em 1.5em;
+  border: 1px solid currentColor;
+  border-radius: var(--radio);
+  transition: background-color var(--transicion), color var(--transicion), border-color var(--transicion);
+  cursor: pointer;
+  background: none;
+}
+
+.boton--primario {
+  color: rgb(var(--color-blanco));
+  background: var(--color-primario);
+  border-color: var(--color-primario);
+}
+.boton--primario:hover { background: var(--color-secundario); border-color: var(--color-secundario); color: rgb(var(--color-blanco)); }
+
+.boton--fantasma {
+  color: var(--color-texto);
+  border-color: var(--color-borde);
+}
+.boton--fantasma:hover { border-color: var(--color-primario); color: var(--color-primario); }

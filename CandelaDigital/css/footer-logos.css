@@ -1,0 +1,24 @@
+/* Logotipo de apoyo institucional del footer compartido (partials/footer.html):
+   alterna entre versión a color (modo claro) y versión blanca (modo oscuro)
+   según el atributo data-tema del <html>. Antes vivía como <style> inline
+   solo en creditos.html; al unificar navbar/footer en un parcial compartido
+   se vuelve una regla global, así se ve igual en todas las páginas. */
+.pie .pie__logos img.logo-apoyo {
+  height: 54px !important;
+  width: auto !important;
+  max-height: none !important;
+  max-width: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+}
+.pie .pie__logos img.logo-apoyo.logo-apoyo--oscuro { display: none !important; }
+[data-tema="oscuro"] .pie .pie__logos img.logo-apoyo.logo-apoyo--claro { display: none !important; }
+[data-tema="oscuro"] .pie .pie__logos img.logo-apoyo.logo-apoyo--oscuro { display: inline-block !important; }
+
+.pie .pie__logos {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}

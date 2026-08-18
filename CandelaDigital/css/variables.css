@@ -1,0 +1,78 @@
+/* ==========================================================================
+   VARIABLES.CSS
+   Paleta de color y sistema tipográfico del proyecto.
+   Cambia estos valores para ajustar el aspecto de todo el sitio.
+   ========================================================================== */
+
+:root {
+  /* ---- Color base (modo claro, por defecto) -------------------------- */
+  --color-blanco: 238, 241, 243;   /* #EEF1F3 — fondo principal */
+  --color-negro:  21, 21, 21;      /* #151515 — texto principal */
+
+  --color-terracota: 150, 74, 61;  /* #964A3D — impermeabilización, tierra */
+  --color-azul:       30, 88, 162; /* #1E58A2 — cielo, geometría */
+
+  /* Rol semántico de cada color. Terracota = primario (material del
+     objeto de estudio); azul = secundario (acento de interacción:
+     enlaces activos, capas del mapa, controles del visor). */
+  --color-primario:      rgb(var(--color-terracota));
+  --color-primario-rgb:  var(--color-terracota);
+  --color-secundario:    rgb(var(--color-azul));
+  --color-secundario-rgb: var(--color-azul);
+
+  --color-fondo:       rgb(var(--color-blanco));
+  --color-fondo-alt:   rgb(228, 231, 233);   /* tarjetas, franjas */
+  --color-texto:       rgb(var(--color-negro));
+  --color-texto-suave: rgba(var(--color-negro), 0.66);
+  --color-borde:       rgba(var(--color-negro), 0.14);
+  --color-sombra:      rgba(var(--color-negro), 0.10);
+
+  /* ---- Tipografía ------------------------------------------------------ */
+  --fuente-display: 'Spectral', Georgia, 'Times New Roman', serif;
+  --fuente-cuerpo:  'Lato', 'Helvetica Neue', Arial, sans-serif;
+  --fuente-datos:   'Lato', 'Helvetica Neue', Arial, sans-serif;
+
+  --peso-datos: 300; /* créditos, fichas técnicas, leyendas */
+
+  /* Escala tipográfica fluida (se adapta entre móvil y escritorio) */
+  --tam-h1: clamp(2.4rem, 5vw + 1rem, 5rem);
+  --tam-h2: clamp(1.7rem, 2.6vw + 0.8rem, 2.75rem);
+  --tam-h3: clamp(1.25rem, 1.4vw + 0.8rem, 1.65rem);
+  --tam-cuerpo: clamp(1rem, 0.3vw + 0.9rem, 1.125rem);
+  --tam-dato: clamp(0.78rem, 0.2vw + 0.72rem, 0.875rem);
+
+  /* ---- Layout ----------------------------------------------------------- */
+  --ancho-contenido: 1180px;
+  --espacio-seccion: clamp(3.5rem, 8vw, 7rem);
+  --radio: 2px; /* casi sin redondeo: alusión a encofrado/cimbra recta */
+
+  --transicion: 220ms ease;
+}
+
+/* ---- Modo oscuro ------------------------------------------------------- */
+[data-tema="oscuro"] {
+  --color-fondo:       rgb(18, 18, 18);
+  --color-fondo-alt:   rgb(27, 27, 27);
+  --color-texto:       rgb(var(--color-blanco));
+  --color-texto-suave: rgba(var(--color-blanco), 0.68);
+  --color-borde:       rgba(var(--color-blanco), 0.16);
+  --color-sombra:      rgba(0, 0, 0, 0.45);
+
+  /* Versiones más claras para mantener contraste sobre fondo oscuro */
+  --color-primario:   rgb(201, 122, 99);   /* terracota aclarada */
+  --color-secundario: rgb(111, 163, 222);  /* azul aclarado */
+}
+
+/* Respeta el sistema operativo si el usuario no ha elegido manualmente */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    --color-fondo:       rgb(18, 18, 18);
+    --color-fondo-alt:   rgb(27, 27, 27);
+    --color-texto:       rgb(var(--color-blanco));
+    --color-texto-suave: rgba(var(--color-blanco), 0.68);
+    --color-borde:       rgba(var(--color-blanco), 0.16);
+    --color-sombra:      rgba(0, 0, 0, 0.45);
+    --color-primario:   rgb(201, 122, 99);
+    --color-secundario: rgb(111, 163, 222);
+  }
+}
