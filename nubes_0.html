@@ -199,10 +199,35 @@ const POTREE_LFS_URL =
 
 const originalFetch = window.fetch;
 
+// -------------------------------------------------------------------
+// Redirección de octree.bin a Git LFS.
+//
+// IMPORTANTE sobre CORS: no podemos reenviar el objeto `options` del
+// fetch original tal cual. El loader de Potree arma esa petición
+// pensando que va a un endpoint same-origin (tu propio GitHub Pages),
+// y a veces incluye headers como "Content-Type" por costumbre de la
+// librería. Contra media.githubusercontent.com eso dispara un preflight
+// (OPTIONS) que ese host rechaza, porque su Access-Control-Allow-Headers
+// no incluye "content-type" (solo suele permitir cosas como "range").
+// Por eso reconstruimos las opciones desde cero y sólo dejamos pasar
+// el header "Range", que es el que realmente se necesita para leer
+// los distintos nodos del octree binario.
+// -------------------------------------------------------------------
 window.fetch = function(url, options) {
     if (typeof url === "string" && url.endsWith("/octree.bin")) {
-        console.log("Redirigiendo octree.bin a Git LFS:", POTREE_LFS_URL);
-        return originalFetch(POTREE_LFS_URL, options);
+        const newOptions = { method: (options && options.method) || "GET" };
+
+        if (options && options.signal) newOptions.signal = options.signal;
+
+        if (options && options.headers) {
+            const h = new Headers(options.headers);
+            if (h.has("range")) {
+                newOptions.headers = { Range: h.get("range") };
+            }
+        }
+
+        console.log("Redirigiendo octree.bin a Git LFS:", POTREE_LFS_URL, newOptions);
+        return originalFetch(POTREE_LFS_URL, newOptions);
     }
 
     return originalFetch(url, options);
