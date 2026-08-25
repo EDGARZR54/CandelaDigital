@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visor de geometrías · Cascarones</title>
+
+<!-- Mismo bloque de Google Fonts que galeria.html (Spectral + Lato):
+     var(--fuente-display)/var(--fuente-cuerpo)/var(--fuente-datos) en
+     variables.css apuntan a estas familias — sin este link, el visor
+     caería en las fuentes de respaldo del sistema en vez de las del
+     resto del sitio. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&display=swap" rel="stylesheet">
+
+<!-- Mismo detector de tema claro/oscuro que el resto del sitio (idéntico
+     al de galeria.html/index.html): sin esto, [data-tema="claro"] en
+     variables.css/galeria.css nunca se activaría acá y el visor quedaría
+     huérfano del toggle de tema aunque comparta las mismas variables. -->
+<script>
+  (function () {
+    var CLAVE_TEMA = 'cascarones:tema';
+    var guardado = localStorage.getItem(CLAVE_TEMA);
+    var tema = (guardado === 'oscuro' || guardado === 'claro')
+      ? guardado
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+    document.documentElement.setAttribute('data-tema', tema);
+  })();
+</script>
+
+<!-- Mismas hojas de estilo del proyecto que consume galeria.html, asumiendo
+     que este visor vive en la raíz del sitio junto a ella. Sin navbar.css/
+     footer.css: esta página no monta nav ni footer propios (no son parte
+     de este documento), así que no hace falta cargar ese CSS. Todo lo
+     visual de acá abajo (paneles de vidrio, botones, colorbar, GUI) reusa
+     las variables --color-*/--radio/--transicion/--fuente-* y los
+     patrones ya existentes en galeria.css (.ficha__panel, .ficha__campo,
+     etc.) — no se define ningún color/radio/fuente nuevo en este archivo. -->
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/pages/galeria.css">
+
+<!-- Mismo import map que el sitio, para que los módulos arrastrados
+     puedan hacer `import ... from 'three'` / 'three/addons/...' sin
+     preocuparse de rutas relativas al CDN. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<style>
+  /*
+      Este bloque YA NO define un sistema de color/tipografía propio
+      (antes: --fondo/--panel/--borde/--texto/--acento/--mono con
+      valores hardcodeados). Todo lo que sigue es SOLO layout —
+      posición, tamaño, flex/grid — construido en base a las
+      variables y patrones que ya trae css/pages/galeria.css:
+
+        --color-fondo / --color-fondo-alt / --color-texto /
+        --color-texto-suave / --color-primario / --color-borde /
+        --color-blanco / --color-negro   (variables.css)
+        --radio / --transicion / --fuente-cuerpo / --fuente-datos /
+        --peso-datos                      (variables.css)
+
+      Y, para el "look" de vidrio de los paneles flotantes, las MISMAS
+      declaraciones que ya usa ".ficha__panel" en galeria.css (radio +
+      borde/fondo en rgba(var(--color-blanco))+ backdrop-filter),
+      repetidas acá porque ".ficha__panel" en sí trae su propia
+      geometría de sidebar (width: var(--ficha-panel-ancho); height:
+      100%; pointer-events:none) que no sirve para una tarjeta modal
+      centrada ni para una leyenda angosta — pero los VALORES (radio,
+      opacidad, blur) son los mismos, no unos inventados nuevos.
+  */
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    /* margin/background/color/font-family ya los define galeria.css
+       (html, body {...}) — acá solo se agrega lo que ese archivo no
+       necesita para una página que hace scroll normal, pero que a
+       este visor de pantalla completa sí le hace falta. */
+    height: 100%;
+    overflow: hidden;
+  }
+
+  canvas#lienzo {
+    position: fixed;
+    inset: 0;
+    display: block;
+    touch-action: none;
+  }
+
+  /* ---- Zona de arrastre ---- */
+  .zona-soltar {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    /* mismo recurso rgba(var(--color-negro), X) que ya usa galeria.css
+       (p. ej. #galeria-mapa-mini .maplibregl-ctrl-attrib) para un velo
+       oscuro consistente con el tema, en vez de un rgb() hardcodeado */
+    background: rgba(var(--color-negro), 0.72);
+    backdrop-filter: blur(2px);
+    z-index: 10;
+    pointer-events: none;
+  }
+  .zona-soltar--visible { display: flex; pointer-events: auto; }
+
+  /* Tarjeta: mismas declaraciones que ".ficha__panel" (radio, borde y
+     fondo translúcidos, blur) — ver nota arriba sobre por qué no se
+     comparte la clase literal. */
+  .zona-soltar__tarjeta {
+    width: min(92vw, 460px);
+    padding: 2.5rem 2rem;
+    text-align: center;
+
+    border-radius: var(--radio);
+    border: 1.5px dashed rgba(var(--color-blanco), 0.18);
+    background: rgba(var(--color-blanco), 0.12);
+    backdrop-filter: blur(6px);
+
+    transition: border-color var(--transicion), background var(--transicion);
+  }
+  [data-tema="claro"] .zona-soltar__tarjeta {
+    border-color: rgba(var(--color-negro), 0.14);
+    background: rgba(var(--color-negro), 0.08);
+  }
+  .zona-soltar--activa .zona-soltar__tarjeta {
+    border-color: var(--color-primario);
+  }
+
+  .zona-soltar__icono {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 1.1rem;
+    color: var(--color-primario);
+  }
+
+  .zona-soltar__titulo {
+    margin: 0 0 0.4rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .zona-soltar__detalle {
+    margin: 0 0 1.4rem;
+    font-size: 0.88rem;
+    color: var(--color-texto-suave);
+    line-height: 1.5;
+  }
+
+  /* Botón: mismo lenguaje que "#gui button" en galeria.css (plano, sin
+     radio, mayúsculas en --fuente-datos, subrayado de acento que se
+     despliega en hover/foco) en vez de una píldora con relleno — así
+     el único botón de texto de este documento habla el mismo idioma
+     que el resto del sitio, no uno nuevo. */
+  .boton {
+    appearance: none;
+    position: relative;
+
+    border: 1px solid var(--color-borde);
+    border-radius: 0;
+    background: none;
+
+    color: var(--color-texto-suave);
+    font: inherit;
+    font-family: var(--fuente-datos);
+    font-weight: var(--peso-datos);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+
+    transition: color var(--transicion), border-color var(--transicion);
+  }
+  .boton:hover,
+  .boton:focus-visible {
+    color: var(--color-primario);
+    border-color: var(--color-primario);
+    outline: none;
+  }
+
+  .zona-soltar__convencion {
+    margin-top: 1.4rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--color-borde);
+    font-family: var(--fuente-datos);
+    font-size: 0.72rem;
+    color: var(--color-texto-suave);
+    text-align: left;
+    line-height: 1.6;
+  }
+  .zona-soltar__convencion code { color: var(--color-texto); }
+
+  /* ---- Barra de archivo cargado ----
+     Misma píldora rgba(var(--color-blanco)) + border-radius:999px que ya
+     usa galeria.css para elementos redondeados (switch, dots) — no un
+     radio inventado. */
+  .barra-archivo {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem 0.5rem 0.9rem;
+
+    border-radius: 999px;
+    border: 1px solid rgba(var(--color-blanco), 0.18);
+    background: rgba(var(--color-blanco), 0.12);
+    backdrop-filter: blur(6px);
+
+    font-size: 0.8rem;
+  }
+  [data-tema="claro"] .barra-archivo {
+    border-color: rgba(var(--color-negro), 0.14);
+    background: rgba(var(--color-negro), 0.08);
+  }
+  .barra-archivo[hidden] { display: none; }
+  .barra-archivo__nombre {
+    font-family: var(--fuente-datos);
+    color: var(--color-texto);
+    max-width: 40vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Mismo gesto que ".ficha__boton-invertir": glifo sin caja, que se
+     resalta con el acento primario en hover/foco. */
+  .barra-archivo__boton {
+    appearance: none;
+    border: none;
+    border-radius: 999px;
+    background: none;
+    color: var(--color-texto-suave);
+    font: inherit;
+    font-family: var(--fuente-datos);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.7rem;
+    cursor: pointer;
+    transition: color var(--transicion), background var(--transicion);
+  }
+  .barra-archivo__boton:hover {
+    color: var(--color-primario);
+    background: rgba(var(--color-blanco), 0.08);
+  }
+  [data-tema="claro"] .barra-archivo__boton:hover {
+    background: rgba(var(--color-negro), 0.06);
+  }
+
+  /* ---- Panel de error ----
+     Mismo panel de vidrio que el resto (radio/borde/fondo/blur
+     compartidos); el único acento disponible en el sistema de color
+     del sitio es --color-primario, así que se usa como marca lateral
+     en vez de un rojo de alerta que no existe en variables.css. */
+  .error {
+    position: fixed;
+    left: 1rem;
+    bottom: 1rem;
+    z-index: 20;
+    max-width: min(90vw, 560px);
+    padding: 0.9rem 1rem;
+
+    border-radius: var(--radio);
+    border: 1px solid rgba(var(--color-blanco), 0.18);
+    border-left: 3px solid var(--color-primario);
+    background: rgba(var(--color-blanco), 0.12);
+    backdrop-filter: blur(6px);
+
+    font-family: var(--fuente-datos);
+    font-size: 0.78rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    color: var(--color-texto);
+  }
+  [data-tema="claro"] .error {
+    border-color: rgba(var(--color-negro), 0.14);
+    border-left-color: var(--color-primario);
+    background: rgba(var(--color-negro), 0.08);
+  }
+  .error[hidden] { display: none; }
+
+  #entrada-archivo { display: none; }
+
+  /* ---- Panel de lil-gui ----
+     lil-gui trae su propia hoja de estilo con variables CSS propias
+     (--background-color, --text-color, etc.) — acá solo se les pasa
+     el MISMO set de tokens de variables.css que usa el resto del
+     documento, así el panel de controles no queda como un widget de
+     otro sistema en medio de la página. */
+  .lil-gui {
+    --background-color: var(--color-fondo-alt);
+    --text-color: var(--color-texto);
+    --title-background-color: var(--color-fondo-alt);
+    --title-text-color: var(--color-primario);
+    --widget-color: var(--color-borde);
+    --hover-color: var(--color-primario);
+    --focus-color: var(--color-primario);
+    --font-family: var(--fuente-cuerpo);
+    --font-family-mono: var(--fuente-datos);
+  }
+</style>
+</head>
+<body>
+
+<canvas id="lienzo"></canvas>
+
+<div class="barra-archivo" id="barra-archivo" hidden>
+  <span class="barra-archivo__nombre" id="nombre-archivo"></span>
+  <button class="barra-archivo__boton" id="boton-cambiar" type="button">Cambiar archivo</button>
+</div>
+
+<div class="error" id="panel-error" hidden></div>
+
+<div class="zona-soltar zona-soltar--visible" id="zona-soltar">
+  <div class="zona-soltar__tarjeta">
+    <svg class="zona-soltar__icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+      <path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+    </svg>
+    <p class="zona-soltar__titulo">Arrastra un archivo .js aquí</p>
+    <p class="zona-soltar__detalle">
+      Cualquier módulo que exporte una función de geometría paramétrica,
+      como <code>cono-sinusoidal.js</code>.
+    </p>
+    <button class="boton" id="boton-elegir" type="button">Elegir archivo…</button>
+    <input type="file" id="entrada-archivo" accept=".js,text/javascript">
+
+    <div class="zona-soltar__convencion">
+      Convención esperada — el módulo debe exportar al menos una de estas dos:<br>
+      <code>crearGeometria*()</code> → devuelve un <code>THREE.BufferGeometry</code> ya listo.<br>
+      <code>superficie*(u, v, destino, parametros)</code> → función paramétrica cruda.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { ParametricGeometry } from 'three/addons/geometries/ParametricGeometry.js';
+  // Line2/LineGeometry/LineMaterial: a diferencia de THREE.Line (que usa
+  // LineBasicMaterial y GL_LINES, cuyo `linewidth` no tiene efecto en la
+  // inmensa mayoría de navegadores/WebGL), Line2 triangula la línea en
+  // pantalla, así que sí acepta un grosor real en píxeles vía
+  // `LineMaterial.linewidth`. Esto es lo que reemplaza a los cilindros:
+  // ejes que son líneas de verdad, no geometría con volumen fingiendo
+  // serlo.
+  import { Line2 } from 'three/addons/lines/Line2.js';
+  import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+  import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+  import GUI from 'https://cdn.jsdelivr.net/npm/lil-gui@0.19/dist/lil-gui.esm.min.js';
+
+  const lienzo = document.getElementById('lienzo');
+  const zonaSoltar = document.getElementById('zona-soltar');
+  const botonElegir = document.getElementById('boton-elegir');
+  const entradaArchivo = document.getElementById('entrada-archivo');
+  const barraArchivo = document.getElementById('barra-archivo');
+  const nombreArchivoEl = document.getElementById('nombre-archivo');
+  const botonCambiar = document.getElementById('boton-cambiar');
+  const panelError = document.getElementById('panel-error');
+
+  // ---- Escena base -----------------------------------------------------
+  const escena = new THREE.Scene();
+  const camara = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
+  camara.position.set(3, 2.2, 4);
+
+  const renderer = new THREE.WebGLRenderer({ canvas: lienzo, antialias: true, logarithmicDepthBuffer: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+  escena.add(new THREE.AmbientLight(0xffffff, 0.7));
+  const luzPrincipal = new THREE.DirectionalLight(0xffffff, 0.9);
+  luzPrincipal.position.set(4, 6, 5);
+  escena.add(luzPrincipal);
+  const luzRelleno = new THREE.DirectionalLight(0xffffff, 0.3);
+  luzRelleno.position.set(-4, -2, -5);
+  escena.add(luzRelleno);
+
+  const rejilla = new THREE.GridHelper(10, 20, 0x3a3f47, 0x24272c);
+  rejilla.visible = false;
+  escena.add(rejilla);
+
+  // Ejes X/Y/Z como líneas reales (Line2), no cilindros.
+  //
+  // Los cilindros disimulaban el z-fighting por accidente: al tener radio
+  // dejaban de ser coplanares con la rejilla, así que sus fragmentos
+  // nunca competían a la misma profundidad. Pero eso es un efecto
+  // secundario de tener volumen — no algo que dependa del grosor
+  // aparente. Dos líneas *sin* volumen que comparten exactamente el
+  // mismo plano (como el eje X y la línea central de la rejilla, ambos
+  // en y=0) pueden parpadear sin importar cuán delgadas o gruesas se
+  // vean en pantalla, porque el conflicto pasa en el depth buffer, no
+  // en el ancho de línea.
+  //
+  // Sobre `polygonOffset`: en teoría es el fix correcto (Line2 SÍ
+  // triangula la línea en pantalla, así que ES geometría de triángulos
+  // y polygonOffset debería empujarla en el depth buffer). En la
+  // práctica, con `renderer.logarithmicDepthBuffer = true` (ver arriba)
+  // three.js calcula la profundidad a mano dentro del fragment shader
+  // (gl_FragDepth) en vez de dejar que la etapa fija de rasterización
+  // la resuelva — que es donde actúa glPolygonOffset. El resultado es
+  // que el offset queda parcial o totalmente anulado por ese cálculo
+  // manual y sigue parpadeando (es una limitación conocida de three.js,
+  // no algo mal configurado acá). Se deja igual como red de seguridad
+  // para el caso en que el depth buffer logarítmico no esté activo,
+  // pero el fix real para ESTA escena es el de abajo.
+  //
+  // Fix real: un desplazamiento explícito y mínimo en espacio de mundo
+  // (no en pantalla, no en "grosor") para los dos ejes que son
+  // coplanares con la rejilla (X y Z, que viven en y=0). Es la misma
+  // idea de fondo que el volumen de los cilindros — separar en
+  // profundidad de verdad — pero ahora es un valor intencional y
+  // controlado (medio milímetro a la escala de esta escena) en vez de
+  // un efecto secundario del radio de un cilindro. El eje Y no lo
+  // necesita: es perpendicular a la rejilla y sólo la toca en el
+  // origen, un único punto sin superficie que competir.
+  const EPSILON_COPLANAR = 0.004;
+  function crearEjes(longitud = 2, grosorPx = 2.5) {
+    const grupo = new THREE.Group();
+    const definiciones = [
+      { color: 0xff3653, puntos: [0, EPSILON_COPLANAR, 0, longitud, EPSILON_COPLANAR, 0] }, // X
+      { color: 0x4caf3a, puntos: [0, 0, 0, 0, longitud, 0] },                               // Y
+      { color: 0x3a8bff, puntos: [0, EPSILON_COPLANAR, 0, 0, EPSILON_COPLANAR, longitud] }, // Z
+    ];
+    const materiales = [];
+    for (const { color, puntos } of definiciones) {
+      const geometria = new LineGeometry();
+      geometria.setPositions(puntos);
+
+      const material = new LineMaterial({
+        color,
+        // linewidth en píxeles de pantalla (worldUnits:false, default):
+        // ligeramente más grueso que la rejilla (que siempre renderiza
+        // a 1px de dispositivo, por la limitación de linewidth de
+        // LineBasicMaterial) sin llegar a verse como un tubo/pipe.
+        linewidth: grosorPx,
+        worldUnits: false,
+        // Red de seguridad para cuando no hay depth buffer logarítmico
+        // de por medio (ver nota arriba); el fix que realmente importa
+        // acá es EPSILON_COPLANAR.
+        polygonOffset: true,
+        polygonOffsetFactor: -4,
+        polygonOffsetUnits: -4,
+      });
+      material.resolution.set(window.innerWidth, window.innerHeight);
+
+      const linea = new Line2(geometria, material);
+      linea.computeLineDistances();
+      // Además del offset en mundo: dibujar los ejes después de la
+      // rejilla. `depthFunc` por defecto es LEQUAL, así que ante un
+      // empate exacto de profundidad gana el fragmento dibujado
+      // después — un segundo colchón por si EPSILON_COPLANAR quedara
+      // por debajo de la precisión del depth buffer en algún punto de
+      // la escena (p. ej. muy lejos de cámara).
+      linea.renderOrder = 1;
+      grupo.add(linea);
+      materiales.push(material);
+    }
+    // Se guardan los materiales para poder actualizar `resolution` en
+    // el resize (LineMaterial necesita saber el tamaño del viewport en
+    // píxeles para convertir linewidth a espacio de clip).
+    grupo.userData.materialesLinea = materiales;
+    return grupo;
+  }
+  const ejes = crearEjes(2);
+  ejes.visible = false;
+  escena.add(ejes);
+
+  const controles = new OrbitControls(camara, renderer.domElement);
+  controles.enableDamping = true;
+
+  let objeto = null;
+  let urlBlobActual = null;
+
+  // Color de relleno y de fondo fijos (ya no configurables desde el panel).
+  const COLOR_RELLENO = '#964a3d';
+  const COLOR_FONDO = '#111318';
+
+  const opciones = {
+    rejilla: false,
+  };
+  renderer.setClearColor(new THREE.Color(COLOR_FONDO));
+
+  function construirMaterial() {
+    const color = new THREE.Color(COLOR_RELLENO);
+    return new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.45,
+      metalness: 0.05,
+      side: THREE.DoubleSide,
+    });
+  }
+
+  // Centra la geometría y coloca la cámara a una distancia proporcional a
+  // su tamaño real, sin importar la escala con la que fue exportada.
+  function encuadrar(geometria) {
+    geometria.computeBoundingSphere();
+    const esfera = geometria.boundingSphere;
+    if (!esfera || !isFinite(esfera.radius) || esfera.radius === 0) return;
+    geometria.translate(-esfera.center.x, -esfera.center.y, -esfera.center.z);
+    const distancia = (esfera.radius / Math.sin((camara.fov * Math.PI) / 360)) * 1.4;
+    camara.position.set(distancia * 0.6, distancia * 0.45, distancia * 0.75);
+    camara.near = Math.max(distancia / 1000, 0.001);
+    camara.far = distancia * 100;
+    camara.updateProjectionMatrix();
+    controles.target.set(0, 0, 0);
+    controles.update();
+  }
+
+  function mostrarGeometria(geometria) {
+    if (objeto) {
+      escena.remove(objeto);
+      objeto.traverse((hijo) => {
+        if (hijo.geometry) hijo.geometry.dispose();
+        if (hijo.material) hijo.material.dispose();
+      });
+    }
+
+    encuadrar(geometria);
+    geometria.computeVertexNormals();
+
+    const malla3d = new THREE.Mesh(geometria, construirMaterial());
+    objeto = malla3d;
+    escena.add(objeto);
+  }
+
+  // ---- Carga de módulos arrastrados --------------------------------------
+  function limpiarBlobAnterior() {
+    if (urlBlobActual) {
+      URL.revokeObjectURL(urlBlobActual);
+      urlBlobActual = null;
+    }
+  }
+
+  function mostrarError(mensaje) {
+    panelError.textContent = mensaje;
+    panelError.hidden = false;
+  }
+  function ocultarError() {
+    panelError.hidden = true;
+    panelError.textContent = '';
+  }
+
+  // Busca, entre las exportaciones del módulo, la función de geometría
+  // siguiendo la misma convención de nombres que cono-sinusoidal.js.
+  function geometriaDesdeModulo(modulo) {
+    const entradas = Object.entries(modulo);
+
+    const constructor = entradas.find(
+      ([nombre, valor]) => typeof valor === 'function' && /^crearGeometria/i.test(nombre)
+    );
+    if (constructor) {
+      const [nombre, fn] = constructor;
+      const geometria = fn();
+      if (!(geometria && geometria.isBufferGeometry)) {
+        throw new Error(`"${nombre}" no devolvió un THREE.BufferGeometry.`);
+      }
+      return geometria;
+    }
+
+    const superficie = entradas.find(
+      ([nombre, valor]) => typeof valor === 'function' && /^superficie/i.test(nombre)
+    );
+    if (superficie) {
+      const [, fn] = superficie;
+      const geometria = new ParametricGeometry((u, v, destino) => fn(u, v, destino, {}), 120, 120);
+      return geometria;
+    }
+
+    const nombresDisponibles = entradas
+      .filter(([, valor]) => typeof valor === 'function')
+      .map(([nombre]) => nombre);
+
+    throw new Error(
+      'El archivo no exporta ninguna función "crearGeometria*" ni "superficie*".\n' +
+      (nombresDisponibles.length
+        ? `Funciones exportadas encontradas: ${nombresDisponibles.join(', ')}`
+        : 'No se encontraron funciones exportadas.')
+    );
+  }
+
+  async function cargarArchivo(archivo) {
+    ocultarError();
+    if (!/\.m?js$/i.test(archivo.name)) {
+      mostrarError(`"${archivo.name}" no parece un archivo .js.`);
+      return;
+    }
+    try {
+      const codigo = await archivo.text();
+      limpiarBlobAnterior();
+      const blob = new Blob([codigo], { type: 'text/javascript' });
+      urlBlobActual = URL.createObjectURL(blob);
+
+      const modulo = await import(/* webpackIgnore: true */ urlBlobActual);
+      const geometria = geometriaDesdeModulo(modulo);
+
+      mostrarGeometria(geometria);
+      nombreArchivoEl.textContent = archivo.name;
+      barraArchivo.hidden = false;
+      zonaSoltar.classList.remove('zona-soltar--visible');
+    } catch (err) {
+      console.error(err);
+      mostrarError(`No se pudo cargar "${archivo.name}":\n${err.message}`);
+      zonaSoltar.classList.add('zona-soltar--visible');
+    }
+  }
+
+  // ---- Arrastrar y soltar -------------------------------------------------
+  ['dragenter', 'dragover'].forEach((evento) => {
+    window.addEventListener(evento, (e) => {
+      e.preventDefault();
+      zonaSoltar.classList.add('zona-soltar--visible', 'zona-soltar--activa');
+    });
+  });
+  window.addEventListener('dragleave', (e) => {
+    if (e.relatedTarget === null) zonaSoltar.classList.remove('zona-soltar--activa');
+  });
+  window.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zonaSoltar.classList.remove('zona-soltar--activa');
+    const archivo = e.dataTransfer.files[0];
+    if (archivo) cargarArchivo(archivo);
+  });
+
+  botonElegir.addEventListener('click', () => entradaArchivo.click());
+  botonCambiar.addEventListener('click', () => {
+    zonaSoltar.classList.add('zona-soltar--visible');
+    entradaArchivo.click();
+  });
+  entradaArchivo.addEventListener('change', () => {
+    const archivo = entradaArchivo.files[0];
+    if (archivo) cargarArchivo(archivo);
+    entradaArchivo.value = '';
+  });
+
+  // ---- Panel de control (lil-gui) -----------------------------------------
+  const gui = new GUI({ title: 'Visor' });
+  gui.add(opciones, 'rejilla').name('rejilla / ejes').onChange((v) => {
+    rejilla.visible = v;
+    ejes.visible = v;
+  });
+
+  // ---- Resize y animación --------------------------------------------------
+  window.addEventListener('resize', () => {
+    camara.aspect = window.innerWidth / window.innerHeight;
+    camara.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    // LineMaterial calcula el grosor en píxeles a partir de esta
+    // resolución; sin actualizarla acá, los ejes quedarían con el
+    // grosor calculado para el viewport viejo tras cada resize.
+    for (const material of ejes.userData.materialesLinea) {
+      material.resolution.set(window.innerWidth, window.innerHeight);
+    }
+  });
+
+  function animar() {
+    controles.update();
+    renderer.render(escena, camara);
+    requestAnimationFrame(animar);
+  }
+  animar();
+</script>
+</body>
+</html>

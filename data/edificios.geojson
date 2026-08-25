@@ -1,0 +1,762 @@
+{
+  "type": "FeatureCollection",
+  "name": "cascarones-modernismo-mexicano",
+  "_notas_de_uso": [
+    "Fuente única de datos: la usan mapa/mapa.js (capa MapLibre), edificios/index.html (listado) y la plantilla de ficha por edificio.",
+    "Todas las rutas (modelo_3d, nube_de_puntos, fotografias) son RELATIVAS a la raíz del repositorio, nunca empiezan con '/'.",
+    "El campo 'id' del Feature es el slug: debe coincidir con el nombre del archivo de ficha (edificios/<id>.html) y con las carpetas en assets/models/<id>/, assets/pointclouds/<id>/, assets/img/<id>/.",
+    "estado_actual.categoria usa un vocabulario cerrado para poder colorear el mapa por estado: 'bueno' | 'regular' | 'riesgo' | 'perdido'."
+  ],
+  "features": [
+    {
+      "type": "Feature",
+      "id": "los-manantiales",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.09287549446282,
+          19.24858222935405
+        ]
+      },
+      "properties": {
+        "identificacion": {
+          "nombre": "Los Manantiales",
+          "nombre_alternativo": "Los Manantiales",
+          "autores": [
+            {
+              "nombre": "Félix Candela Outiriño",
+              "rol": "Ingeniero / diseño estructural"
+            },
+            {
+              "nombre": "Joaquín & Fernando Álvarez Ordóñez",
+              "rol": "Arquitectos"
+            }
+          ],
+          "año_construccion": "1957-1958",
+          "año_incierto": false,
+          "tipologia": "Restaurante"
+        },
+        "ubicacion": {
+          "estado": "Ciudad de México",
+          "municipio": "Xochimilco",
+          "direccion": "C. Canal 27, Santa María Nativitas, Xochimilco, CDMX",
+          "CodigoPostal": 16450,
+          "referencia": "Accesible por trajinera desde el embarcadero Nativitas"
+        },
+        "geometria": {
+          "tipologia_estructural": "Planta circular de cuatro paraboloides hiperbólicos",
+          "superficie_m2": 966,
+          "altura_m": 6.3,
+          "espesor_cascaron_cm": 4,
+          "claro_maximo_m": 27,
+          "formula": {
+            "tipo": "hypar",
+            "descripcion": "Superficie reglada, doblemente generada por rectas",
+            "ecuacion": "z = k * x * y",
+            "parametros": {
+              "k": 0.9,
+              "a": 13.5,
+              "b": 13.5,
+              "unidad": "m"
+            }
+          }
+        },
+        "estado_actual": {
+          "categoria": "Regular",
+          "notas": "Manchas de humedad visibles en intradós; sin intervenciones estructurales mayores registradas.",
+          "fecha_evaluacion": "2026-03-10"
+        },
+        "contenido": {
+          "descripcion": "Ocho paraboloides hiperbólicos agrupados en planta que evoca una flor de ocho pétalos, apoyados en columnas puntuales al centro de cada hypar...",
+          "contexto_historico": "Construido en 1958 como parte de la revalorización turística de los canales de Xochimilco, es uno de los ejemplos más citados de la obra de Candela por la ligereza aparente lograda mediante geometría reglada..."
+        },
+        "levantamiento": {
+          "fecha_captura": "2026-02-14",
+          "metodo": [
+            "fotogrametria_aerea",
+            "fotogrametria_terrestre",
+            "escaneo_lidar"
+          ],
+          "detalles": {
+            "numero_fotografias": 342,
+            "altura_vuelo_m": 35,
+            "resolucion_gsd_cm": 0.8,
+            "equipo_dron": "DJI Mavic 3 Enterprise",
+            "equipo_lidar": "Leica BLK360",
+            "numero_estaciones_lidar": 14,
+            "densidad_puntos_pts_m2": 1200,
+            "software_procesamiento": [
+              "Agisoft Metashape",
+              "CloudCompare"
+            ]
+          }
+        },
+        "medios": {
+          "fotografias": [
+            {
+              "url": "assets/img/los-manantiales/01-fachada.jpg",
+              "alt": "Vista general de los ocho paraboloides desde el embarcadero",
+              "autor": "Nombre del fotógrafo",
+              "fecha": "2026-02-14",
+              "portada": true
+            },
+            {
+              "url": "assets/img/los-manantiales/02-intrados.jpg",
+              "alt": "Intradós de uno de los cascarones, detalle de encofrado",
+              "autor": "Nombre del fotógrafo",
+              "fecha": "2026-02-14",
+              "portada": false
+            }
+          ],
+          "modelo_3d": {
+            "tipo": "procedural",
+            "ruta": null,
+            "descripcion": "Generado en el navegador a partir de geometria.formula, no requiere archivo .glb",
+            "procedural": "los-manantiales"
+          },
+          "nube_de_puntos": {
+            "formato": "potree",
+            "ruta_metadata": "assets/pointclouds/los-manantiales/potree/metadata.json",
+            "num_puntos_aprox": 48000000,
+            "peso_mb": 1850,
+            "ruta_cruda_referencia": "no publicada — .las original en almacenamiento externo"
+          }
+        },
+        "enlaces": {
+          "ficha_pdf": null,
+          "fuentes_externas": [
+            {
+              "titulo": "Registro INBA / catálogo de patrimonio moderno",
+              "url": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "Concha-acustica",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.20498007247566,
+          19.38798347842861
+        ]
+      },
+      "properties": {
+        "identificacion": {
+          "nombre": "Concha Acústica",
+          "nombre_alternativo": "Pabellon Musical, I.M.S.S.",
+          "autores": [
+            {
+              "nombre": "Félix Candela Outiriño",
+              "rol": "Ingeniero / diseño estructural"
+            },
+            {
+              "nombre": "Mario Pani Darqui",
+              "rol": "Arquitecto"
+            }
+          ],
+          "año_construccion": "1956",
+          "año_incierto": false,
+          "tipologia": "Pabellón"
+        },
+        "ubicacion": {
+          "estado": "Ciudad de México",
+          "municipio": "Álvaro Obregón",
+          "direccion": "Unidad Habitacional Santa Fé IMSS, Álvaro Obregón, CDMX",
+          "CodigoPostal": "01150",
+          "referencia": "Nota falsa"
+        },
+        "geometria": {
+          "tipologia_estructural": "Gran voladizo sujetado por una generatriz vertical",
+          "superficie_m2": 966,
+          "altura_m": 6.3,
+          "espesor_cascaron_cm": 4,
+          "claro_maximo_m": 27,
+          "formula": {
+            "tipo": "hypar",
+            "descripcion": "Cuadrilátero alabeado definido por tres piezas iguales que cubren un área triangular",
+            "ecuacion": "Ecuacion falsa",
+            "parametros": {
+              "k": 0.9,
+              "a": 13.5,
+              "b": 13.5,
+              "unidad": "m"
+            }
+          }
+        },
+        "estado_actual": {
+          "categoria": "Regular",
+          "notas": "Manchas de humedad visibles en intradós; sin intervenciones estructurales mayores registradas.",
+          "fecha_evaluacion": "2026-03-10"
+        },
+        "contenido": {
+          "descripcion": "Ocho paraboloides hiperbólicos agrupados en planta que evoca una flor de ocho pétalos, apoyados en columnas puntuales al centro de cada hypar...",
+          "contexto_historico": "Construido en 1958 como parte de la revalorización turística de los canales de Xochimilco, es uno de los ejemplos más citados de la obra de Candela por la ligereza aparente lograda mediante geometría reglada..."
+        },
+        "levantamiento": {
+          "fecha_captura": "2026-02-14",
+          "metodo": [
+            "fotogrametria_aerea",
+            "fotogrametria_terrestre",
+            "escaneo_lidar"
+          ],
+          "detalles": {
+            "numero_fotografias": 342,
+            "altura_vuelo_m": 35,
+            "resolucion_gsd_cm": 0.8,
+            "equipo_dron": "DJI Mavic 3 Enterprise",
+            "equipo_lidar": "Leica BLK360",
+            "numero_estaciones_lidar": 14,
+            "densidad_puntos_pts_m2": 1200,
+            "software_procesamiento": [
+              "Agisoft Metashape",
+              "CloudCompare"
+            ]
+          }
+        },
+        "medios": {
+          "fotografias": [
+            {
+              "url": "assets/img/concha-acustica/01-fachada.jpg",
+              "alt": "Vista general de los ocho paraboloides desde el embarcadero",
+              "autor": "Nombre del fotógrafo",
+              "fecha": "2026-02-14",
+              "portada": true
+            },
+            {
+              "url": "assets/img/concha-acustica/02-intrados.jpg",
+              "alt": "Intradós de uno de los cascarones, detalle de encofrado",
+              "autor": "Nombre del fotógrafo",
+              "fecha": "2026-02-14",
+              "portada": false
+            }
+          ],
+          "modelo_3d": {
+            "tipo": "procedural",
+            "ruta": null,
+            "descripcion": "Generado en el navegador a partir de geometria.formula, no requiere archivo .glb",
+            "procedural": "concha-acustica"
+          },
+          "nube_de_puntos": {
+            "formato": "potree",
+            "ruta_metadata": "assets/pointclouds/concha-acustica/potree/metadata.json",
+            "num_puntos_aprox": 48000000,
+            "peso_mb": 1850,
+            "ruta_cruda_referencia": "no publicada — .las original en almacenamiento externo"
+          }
+        },
+        "enlaces": {
+          "ficha_pdf": null,
+          "fuentes_externas": [
+            {
+              "titulo": "Registro INBA / catálogo de patrimonio moderno",
+              "url": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "la-muela",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.18125188978675,
+          19.333955639449407
+        ]
+      },
+      "properties": {
+        "identificacion": {
+          "nombre": "Pabellón de Rayos Cósmicos",
+          "nombre_alternativo": "La Muela",
+          "autores": [
+            {
+              "nombre": "Félix Candela Outiriño",
+              "rol": "Ingeniero / diseño estructural"
+            },
+            {
+              "nombre": "Jorge González Reyna & Rafael M. de Arozarena ",
+              "rol": "Arquitectos"
+            }
+          ],
+          "año_construccion": "1951",
+          "año_incierto": false,
+          "tipologia": "Observatorio"
+        },
+        "ubicacion": {
+          "estado": "Ciudad de México",
+          "municipio": "Coyoacán",
+          "direccion": "Ciudad Universitaria, Coyoacán, CDMX",
+          "CodigoPostal": "04510",
+          "referencia": "Nota falsa"
+        },
+        "geometria": {
+          "tipologia_estructural": "Paraboloide hiperbólico",
+          "superficie_m2": 966,
+          "altura_m": 6.3,
+          "espesor_cascaron_cm": 1.5,
+          "claro_maximo_m": 27,
+          "formula": {
+            "tipo": "hypar",
+            "descripcion": "Bóveda de doble curvatura",
+            "ecuacion": "Ecuacion falsa",
+            "parametros": {
+              "k": 0.9,
+              "a": 13.5,
+              "b": 13.5,
+              "unidad": "m"
+            }
+          }
+        },
+        "estado_actual": {
+          "categoria": "Regular",
+          "notas": "Manchas de humedad visibles en intradós; sin intervenciones estructurales mayores registradas.",
+          "fecha_evaluacion": "2026-03-10"
+        },
+        "contenido": {
+          "descripcion": "Ocho paraboloides hiperbólicos agrupados en planta que evoca una flor de ocho pétalos, apoyados en columnas puntuales al centro de cada hypar...",
+          "contexto_historico": "Construido en 1958 como parte de la revalorización turística de los canales de Xochimilco, es uno de los ejemplos más citados de la obra de Candela por la ligereza aparente lograda mediante geometría reglada..."
+        },
+        "levantamiento": {
+          "fecha_captura": "2026-02-14",
+          "metodo": [
+            "fotogrametria_aerea",
+            "fotogrametria_terrestre",
+            "escaneo_lidar"
+          ],
+          "detalles": {
+            "numero_fotografias": 342,
+            "altura_vuelo_m": 35,
+            "resolucion_gsd_cm": 0.8,
+            "equipo_dron": "DJI Mavic 3 Enterprise",
+            "equipo_lidar": "Leica BLK360",
+            "numero_estaciones_lidar": 14,
+            "densidad_puntos_pts_m2": 1200,
+            "software_procesamiento": [
+              "Agisoft Metashape",
+              "CloudCompare"
+            ]
+          }
+        },
+        "medios": {
+          "fotografias": [
+            {
+              "url": "assets/img/la-muela/01-fachada.jpg",
+              "alt": "Vista general de los ocho paraboloides desde el embarcadero",
+              "autor": "Nombre del fotógrafo",
+              "fecha": "2026-02-14",
+              "portada": true
+            },
+            {
+              "url": "assets/img/la-muela/02-intrados.jpg",
+              "alt": "Intradós de uno de los cascarones, detalle de encofrado",
+              "autor": "Nombre del fotógrafo",
+              "fecha": "2026-02-14",
+              "portada": false
+            }
+          ],
+          "modelo_3d": {
+            "tipo": "procedural",
+            "ruta": null,
+            "descripcion": "Generado en el navegador a partir de geometria.formula, no requiere archivo .glb",
+            "procedural": "la-muela"
+          },
+          "nube_de_puntos": {
+            "formato": "potree",
+            "ruta_metadata": "assets/pointclouds/la-muela/potree/metadata.json",
+            "num_puntos_aprox": 48000000,
+            "peso_mb": 1850,
+            "ruta_cruda_referencia": "no publicada — .las original en almacenamiento externo"
+          }
+        },
+        "enlaces": {
+          "ficha_pdf": null,
+          "fuentes_externas": [
+            {
+              "titulo": "Registro INBA / catálogo de patrimonio moderno",
+              "url": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "protomartir",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.23278112171221,
+          19.459267270292315
+        ]
+      },
+      "properties": {
+        "identificacion": {
+          "nombre": "Parroquia de San Esteban Protomártir",
+          "nombre_alternativo": "San Esteban Protomártir",
+          "autores": [
+            {
+              "nombre": "Félix Candela Outiriño",
+              "rol": "Ingeniero / diseño estructural"
+            },
+            {
+              "nombre": "X",
+              "rol": "Arquitectos"
+            }
+          ],
+          "año_construccion": "1966",
+          "año_incierto": false,
+          "tipologia": "Iglesia"
+        },
+        "ubicacion": {
+          "estado": "Estado de México",
+          "municipio": "Naucalpan de Juárez",
+          "direccion": "Calz. San Esteban 34, Naucalpan, Edo. de Méx.",
+          "CodigoPostal": "53550",
+          "referencia": "Nota falsa"
+        },
+        "geometria": {
+          "tipologia_estructural": "Paraboloide hiperbólico",
+          "superficie_m2": 966,
+          "altura_m": 6.3,
+          "espesor_cascaron_cm": 1.5,
+          "claro_maximo_m": 27,
+          "formula": {
+            "tipo": "hypar",
+            "descripcion": "Bóveda de doble curvatura",
+            "ecuacion": "Ecuacion falsa",
+            "parametros": {
+              "k": 0.9,
+              "a": 13.5,
+              "b": 13.5,
+              "unidad": "m"
+            }
+          }
+        },
+        "estado_actual": {
+          "categoria": "Regular",
+          "notas": "Manchas de humedad visibles en intradós; sin intervenciones estructurales mayores registradas.",
+          "fecha_evaluacion": "2026-03-10"
+        },
+        "contenido": {
+          "descripcion": "Ocho paraboloides hiperbólicos agrupados en planta que evoca una flor de ocho pétalos, apoyados en columnas puntuales al centro de cada hypar...",
+          "contexto_historico": "Construido en 1958 como parte de la revalorización turística de los canales de Xochimilco, es uno de los ejemplos más citados de la obra de Candela por la ligereza aparente lograda mediante geometría reglada..."
+        },
+        "levantamiento": {
+          "fecha_captura": "2026-02-14",
+          "metodo": [
+            "fotogrametria_aerea",
+            "fotogrametria_terrestre",
+            "escaneo_lidar"
+          ],
+          "detalles": {
+            "numero_fotografias": 342,
+            "altura_vuelo_m": 35,
+            "resolucion_gsd_cm": 0.8,
+            "equipo_dron": "DJI Mavic 3 Enterprise",
+            "equipo_lidar": "Leica BLK360",
+            "numero_estaciones_lidar": 14,
+            "densidad_puntos_pts_m2": 1200,
+            "software_procesamiento": [
+              "Agisoft Metashape",
+              "CloudCompare"
+            ]
+          }
+        },
+        "medios": {
+          "fotografias": [
+            {
+              "url": "assets/img/protomartir/01-fachada.jpg",
+              "alt": "Vista general de los ocho paraboloides desde el embarcadero",
+              "autor": "Nombre del fotógrafo",
+              "fecha": "2026-02-14",
+              "portada": true
+            },
+            {
+              "url": "assets/img/protomartir/02-intrados.jpg",
+              "alt": "Intradós de uno de los cascarones, detalle de encofrado",
+              "autor": "Nombre del fotógrafo",
+              "fecha": "2026-02-14",
+              "portada": false
+            }
+          ],
+          "modelo_3d": {
+            "tipo": "procedural",
+            "ruta": null,
+            "descripcion": "Generado en el navegador a partir de geometria.formula, no requiere archivo .glb",
+            "procedural": "protomartir"
+          },
+          "nube_de_puntos": {
+            "formato": "potree",
+            "ruta_metadata": "assets/pointclouds/protomartir/potree/metadata.json",
+            "num_puntos_aprox": 48000000,
+            "peso_mb": 1850,
+            "ruta_cruda_referencia": "no publicada — .las original en almacenamiento externo"
+          }
+        },
+        "enlaces": {
+          "ficha_pdf": null,
+          "fuentes_externas": [
+            {
+              "titulo": "Registro INBA / catálogo de patrimonio moderno",
+              "url": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "vallejo",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.16187291312161,
+          19.51618780621071
+        ]
+      },
+      "properties": {
+        "identificacion": {
+          "nombre": "Gasolinera Vallejo",
+          "nombre_alternativo": "Gasolinera Vallejo",
+          "autores": [
+            {
+              "nombre": "Félix Candela Outiriño",
+              "rol": "Ingeniero / diseño estructural"
+            },
+            {
+              "nombre": "X",
+              "rol": "Arquitectos"
+            }
+          ],
+          "año_construccion": "Noc",
+          "año_incierto": true,
+          "tipologia": "Gasolinera"
+        },
+        "ubicacion": {
+          "estado": "Ciudad de México",
+          "municipio": "Gustavo A. Madero",
+          "direccion": "Calzada Vallejo 1539, Progreso Nacional, Gustavo A. Madero, CDMX",
+          "CodigoPostal": "07650",
+          "referencia": "Nota falsa"
+        },
+        "geometria": {
+          "tipologia_estructural": "Paraguas experimental",
+          "superficie_m2": 966,
+          "altura_m": 6.3,
+          "espesor_cascaron_cm": 1.5,
+          "claro_maximo_m": 27,
+          "formula": {
+            "tipo": "hypar",
+            "descripcion": "Paraguas experimental",
+            "ecuacion": "Ecuacion falsa",
+            "parametros": {
+              "k": 0.9,
+              "a": 13.5,
+              "b": 13.5,
+              "unidad": "m"
+            }
+          }
+        },
+        "estado_actual": {
+          "categoria": "Regular",
+          "notas": "Manchas de humedad visibles en intradós; sin intervenciones estructurales mayores registradas.",
+          "fecha_evaluacion": "2026-03-10"
+        },
+        "contenido": {
+          "descripcion": "Ocho paraboloides hiperbólicos agrupados en planta que evoca una flor de ocho pétalos, apoyados en columnas puntuales al centro de cada hypar...",
+          "contexto_historico": "Construido en 1958 como parte de la revalorización turística de los canales de Xochimilco, es uno de los ejemplos más citados de la obra de Candela por la ligereza aparente lograda mediante geometría reglada..."
+        },
+        "levantamiento": {
+          "fecha_captura": "2026-02-14",
+          "metodo": [
+            "fotogrametria_aerea",
+            "fotogrametria_terrestre",
+            "escaneo_lidar"
+          ],
+          "detalles": {
+            "numero_fotografias": 342,
+            "altura_vuelo_m": 35,
+            "resolucion_gsd_cm": 0.8,
+            "equipo_dron": "DJI Mavic 3 Enterprise",
+            "equipo_lidar": "Leica BLK360",
+            "numero_estaciones_lidar": 14,
+            "densidad_puntos_pts_m2": 1200,
+            "software_procesamiento": [
+              "Agisoft Metashape",
+              "CloudCompare"
+            ]
+          }
+        },
+        "medios": {
+          "fotografias": [
+            {
+              "url": "assets/img/vallejo/01-fachada.jpg",
+              "alt": "Vista general de los ocho paraboloides desde el embarcadero",
+              "autor": "Nombre del fotógrafo",
+              "fecha": "2026-02-14",
+              "portada": true
+            },
+            {
+              "url": "assets/img/vallejo/02-intrados.jpg",
+              "alt": "Intradós de uno de los cascarones, detalle de encofrado",
+              "autor": "Nombre del fotógrafo",
+              "fecha": "2026-02-14",
+              "portada": false
+            }
+          ],
+          "modelo_3d": {
+            "tipo": "procedural",
+            "ruta": null,
+            "descripcion": "Generado en el navegador a partir de geometria.formula, no requiere archivo .glb",
+            "procedural": "paraguas"
+          },
+          "nube_de_puntos": {
+            "formato": "potree",
+            "ruta_metadata": "assets/pointclouds/vallejo/potree/metadata.json",
+            "num_puntos_aprox": 48000000,
+            "peso_mb": 1850,
+            "ruta_cruda_referencia": "no publicada — .las original en almacenamiento externo"
+          }
+        },
+        "enlaces": {
+          "ficha_pdf": null,
+          "fuentes_externas": [
+            {
+              "titulo": "Registro INBA / catálogo de patrimonio moderno",
+              "url": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "acceso-cardenas",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.22856257380323,
+          18.887449310748718
+        ]
+      },
+      "properties": {
+        "identificacion": {
+          "nombre": "Acceso Lázaro Cardenas",
+          "nombre_alternativo": "Acceso Lázaro Cardenas",
+          "autores": [
+            {
+              "nombre": "Félix Candela Outiriño",
+              "rol": "Ingeniero / diseño estructural"
+            },
+            {
+              "nombre": "Félix Candela Outiriño",
+              "rol": "Arquitectos"
+            }
+          ],
+          "año_construccion": "1957",
+          "año_incierto": false,
+          "tipologia": "Monumento"
+        },
+        "ubicacion": {
+          "estado": "Morelos",
+          "municipio": "Cuernavaca",
+          "direccion": "Av. Estado de Puebla, Lázaro Cárdenas, Cuernavaca, Morelos",
+          "CodigoPostal": "62076",
+          "referencia": "Nota falsa"
+        },
+        "geometria": {
+          "tipologia_estructural": "Paraboloide hiperbólico",
+          "superficie_m2": 966,
+          "altura_m": 6.3,
+          "espesor_cascaron_cm": 1.5,
+          "claro_maximo_m": 27,
+          "formula": {
+            "tipo": "hypar",
+            "descripcion": "Paraguas experimental",
+            "ecuacion": "Ecuacion falsa",
+            "parametros": {
+              "k": 0.9,
+              "a": 13.5,
+              "b": 13.5,
+              "unidad": "m"
+            }
+          }
+        },
+        "estado_actual": {
+          "categoria": "Regular",
+          "notas": "Manchas de humedad visibles en intradós; sin intervenciones estructurales mayores registradas.",
+          "fecha_evaluacion": "2026-03-10"
+        },
+        "contenido": {
+          "descripcion": "Ocho paraboloides hiperbólicos agrupados en planta que evoca una flor de ocho pétalos, apoyados en columnas puntuales al centro de cada hypar...",
+          "contexto_historico": "Construido en 1958 como parte de la revalorización turística de los canales de Xochimilco, es uno de los ejemplos más citados de la obra de Candela por la ligereza aparente lograda mediante geometría reglada..."
+        },
+        "levantamiento": {
+          "fecha_captura": "2026-02-14",
+          "metodo": [
+            "fotogrametria_aerea",
+            "fotogrametria_terrestre",
+            "escaneo_lidar"
+          ],
+          "detalles": {
+            "numero_fotografias": 342,
+            "altura_vuelo_m": 35,
+            "resolucion_gsd_cm": 0.8,
+            "equipo_dron": "DJI Mavic 3 Enterprise",
+            "equipo_lidar": "Leica BLK360",
+            "numero_estaciones_lidar": 14,
+            "densidad_puntos_pts_m2": 1200,
+            "software_procesamiento": [
+              "Agisoft Metashape",
+              "CloudCompare"
+            ]
+          }
+        },
+        "medios": {
+          "fotografias": [
+            {
+              "url": "assets/img/vallejo/01-fachada.jpg",
+              "alt": "Vista general de los ocho paraboloides desde el embarcadero",
+              "autor": "Nombre del fotógrafo",
+              "fecha": "2026-02-14",
+              "portada": true
+            },
+            {
+              "url": "assets/img/vallejo/02-intrados.jpg",
+              "alt": "Intradós de uno de los cascarones, detalle de encofrado",
+              "autor": "Nombre del fotógrafo",
+              "fecha": "2026-02-14",
+              "portada": false
+            }
+          ],
+          "modelo_3d": {
+            "tipo": "procedural",
+            "ruta": null,
+            "descripcion": "Generado en el navegador a partir de geometria.formula, no requiere archivo .glb",
+            "procedural": "acceso-cardenas"
+          },
+          "nube_de_puntos": {
+            "formato": "potree",
+            "ruta_metadata": "assets/pointclouds/vallejo/potree/metadata.json",
+            "num_puntos_aprox": 48000000,
+            "peso_mb": 1850,
+            "ruta_cruda_referencia": "no publicada — .las original en almacenamiento externo"
+          }
+        },
+        "enlaces": {
+          "ficha_pdf": null,
+          "fuentes_externas": [
+            {
+              "titulo": "Registro INBA / catálogo de patrimonio moderno",
+              "url": ""
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

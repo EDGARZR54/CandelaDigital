@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StreetData Insight – Mapa</title>
+
+  <!-- Aplica el tema guardado (o la preferencia del sistema) ANTES del
+       primer frame — mismo bloque y misma clave de localStorage
+       ('cascarones:tema') que mapa.html/galeria.html/navbar.js. Esta
+       página vive normalmente dentro de un <iframe> (ver mapa.html),
+       pero también puede abrirse suelta, así que arranca con el tema
+       correcto en cualquiera de los dos casos. Solo decide qué
+       "MapStyle*.json" cargar (ver estiloSegunTema() más abajo); el
+       resto del look de esta página (fondo #111 de carga, texto
+       blanco) queda fijo a propósito, es la "sala de carga" del mapa,
+       no contenido del sitio. -->
+  <script>
+    (function () {
+      var CLAVE_TEMA = 'cascarones:tema';
+      var guardado = localStorage.getItem(CLAVE_TEMA);
+      var tema = (guardado === 'oscuro' || guardado === 'claro')
+        ? guardado
+        : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+      document.documentElement.setAttribute('data-tema', tema);
+    })();
+  </script>
+
+  <link href="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden; /* no hay scroll: el mapa es la única vista */
+      font-family: 'DM Sans', sans-serif;
+      background: #111;
+      color: #fff;
+    }
+
+    #map {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.5s ease-out;
+    }
+    #map.ready {
+      opacity: 1;
+    }
+
+    .map-loading {
+      position: fixed;
+      inset: 0;
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #111;
+      color: #888;
+      font-size: 0.95rem;
+      letter-spacing: 0.05em;
+      pointer-events: none;
+      transition: opacity 0.4s ease-out;
+    }
+    .map-loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Popup al hacer clic en un pin (se conserva del original) */
+    .maplibregl-popup-content {
+      font-family: 'DM Sans', sans-serif;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+  <div class="map-loading" id="mapLoading">Cargando mapa…</div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+  <script>
+    (function() {
+      let map = null;
+      let features = [];
+
+      /*
+          Se llenaba antes como variable local de init() —
+          hace falta acá afuera porque actualizarTemaMapa()
+          (más abajo) también la necesita para re-agregar la
+          fuente "edificios" después de un cambio de estilo
+          (mismo GeoJSON ya filtrado, sin volver a hacer
+          fetch()).
+      */
+      let geojsonFiltrado = null;
+
+      // --- Estilo del mapa según tema claro/oscuro ---
+      // Mismos dos archivos que ya usa galeria-mapa.js
+      // (ver CONFIG.mapa.styleUrl/styleUrlOscuro en
+      // galeria-config.js) — acá van directo, sin CONFIG,
+      // porque esta página es standalone (no importa ese
+      // módulo).
+      const STYLE_URL_CLARO = 'data/MapStyle.json';
+      const STYLE_URL_OSCURO = 'data/MapStyleDark.json';
+
+      // "claro" | "oscuro" | null (todavía sin mapa) — el
+      // tema con el que se armó el estilo ACTUALMENTE
+      // aplicado. Lo usa actualizarTemaMapa() para no llamar
+      // a map.setStyle() de más.
+      let temaActual = null;
+
+      function temaVigente() {
+        return document.documentElement.getAttribute('data-tema') === 'oscuro'
+          ? 'oscuro' : 'claro';
+      }
+
+      function estiloSegunTema() {
+        return temaVigente() === 'oscuro' ? STYLE_URL_OSCURO : STYLE_URL_CLARO;
+      }
+
+      // --- Log del zoom actual ---
+      // Se imprime en cada cambio de zoom (rueda, pellizco, botones +/-,
+      // doble clic) una vez que el mapa existe (ver map.on('zoom', ...) más
+      // abajo). Definida acá arriba, fuera del flujo async de init(), para
+      // que window.__logZoom() esté disponible desde que carga la página,
+      // sin depender de que el fetch del GeoJSON ya haya terminado.
+      function logZoom() {
+        if (!map) {
+          console.warn('[zoom] el mapa todavía no está listo');
+          return;
+        }
+        console.log('[zoom] ' + map.getZoom().toFixed(2));
+      }
+      window.__logZoom = logZoom;
+
+      // --- Límite del CENTRO de cámara (no del viewport completo) ---
+      // Mismo mecanismo que en el original: guarda el bbox (con offset) y
+      // asegura que map.getCenter() nunca caiga fuera de esta caja, sin
+      // importar si el movimiento vino de un drag del usuario o de un zoom.
+      // El viewport SÍ puede mostrar área fuera de la caja; lo único
+      // restringido es el punto central.
+      let cameraBounds = null; // [minLng, minLat, maxLng, maxLat]
+      let clampingCenter = false; // evita reentradas al llamar setCenter() dentro del propio handler de 'move'
+
+      function clampCenterToBounds() {
+        if (!cameraBounds || !map || clampingCenter) return;
+
+        const center = map.getCenter();
+        const [minLng, minLat, maxLng, maxLat] = cameraBounds;
+
+        const clampedLng = Math.min(Math.max(center.lng, minLng), maxLng);
+        const clampedLat = Math.min(Math.max(center.lat, minLat), maxLat);
+
+        if (clampedLng !== center.lng || clampedLat !== center.lat) {
+          clampingCenter = true;
+          map.setCenter([clampedLng, clampedLat]);
+          clampingCenter = false;
+        }
+      }
+
+      // --- Color del pin ---
+      const PIN_COLOR = '#db6a40';
+
+      // Genera el SVG de un pin clásico (forma de gota) con el "hole"
+      // (círculo blanco) característico de los pines de mapa.
+      function buildPinSVG(color) {
+        return `
+          <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24">
+            <path fill="${color}" stroke="#ffffff" stroke-width="0.6"
+              d="M12 1.5C7.86 1.5 4.5 4.86 4.5 9c0 5.63 7.5 13.5 7.5 13.5S19.5 14.63 19.5 9c0-4.14-3.36-7.5-7.5-7.5z"/>
+            <circle cx="12" cy="9" r="2.6" fill="#ffffff"/>
+          </svg>`;
+      }
+
+      // Carga (si hace falta) la imagen "pin-marker" en el ImageManager
+      // del mapa. Separada de la definición de la capa (ver pinLayerSpec()
+      // más abajo) por dos motivos: 1) la usa el listener de
+      // "styleimagemissing" (ver map.on('styleimagemissing', ...) más
+      // abajo) como red de seguridad si el estilo tuvo que reconstruirse
+      // entero en vez de "diffearse" (ver actualizarTemaMapa()); 2) al
+      // cambiar de tema no hace falta volver a cargarla "a mano": si el
+      // diff de setStyle() tiene éxito, el ImageManager es el MISMO
+      // objeto de antes, así que "pin-marker" sigue registrado solo.
+      function asegurarImagenPin() {
+        return new Promise((resolve, reject) => {
+          if (map.hasImage('pin-marker')) { resolve(); return; }
+          const svg = buildPinSVG(PIN_COLOR);
+          const img = new Image(96, 96);
+          img.onload = () => {
+            if (!map.hasImage('pin-marker')) {
+              map.addImage('pin-marker', img);
+            }
+            resolve();
+          };
+          img.onerror = reject;
+          img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+        });
+      }
+
+      // Definición de la capa de pines — objeto plano, sin efectos
+      // secundarios, para reusarla tal cual tanto en addPinLayer() (carga
+      // inicial) como al inyectarla en el JSON de un estilo nuevo antes de
+      // pasárselo a setStyle() (ver actualizarTemaMapa()).
+      function pinLayerSpec() {
+        return {
+          id: 'edificios-pines',
+          type: 'symbol',
+          source: 'edificios',
+          layout: {
+            'icon-image': 'pin-marker',
+            'icon-anchor': 'bottom',
+            'icon-size': [
+              'interpolate', ['linear'], ['zoom'],
+              10, 0.35,
+              15, 0.6,
+              18, 0.9
+            ],
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true
+          }
+        };
+      }
+
+      // Carga el ícono del pin como imagen del mapa y crea la capa symbol.
+      async function addPinLayer() {
+        await asegurarImagenPin();
+        map.addLayer(pinLayerSpec());
+      }
+
+      // --- Bounding box de todos los puntos ---
+      // Calcula el rectángulo mínimo que contiene todas las coordenadas del
+      // GeoJSON (con turf.bbox) y le agrega un margen (BBOX_OFFSET_KM) hacia
+      // afuera en las cuatro direcciones. Este mismo bbox se usa para dos
+      // cosas: 1) limitar el centro de la cámara (cameraBounds) y 2) calcular
+      // el centro geométrico donde arranca el mapa (ver init).
+      const BBOX_OFFSET_KM = 1;
+
+      function computeBoundingBox(geojsonData) {
+        const rawBbox = turf.bbox(geojsonData); // [minLng, minLat, maxLng, maxLat]
+
+        // turf.buffer() sobre un rectángulo da un polígono con las esquinas
+        // redondeadas (no un rectángulo más grande). Para conservar la forma
+        // de "caja", volvemos a tomar el bbox del resultado: como el borde
+        // redondeado sigue estando a BBOX_OFFSET_KM de distancia del
+        // rectángulo original en cualquier dirección, su bbox coincide
+        // exactamente con el rectángulo original expandido BBOX_OFFSET_KM
+        // en cada lado.
+        const rawBboxPolygon = turf.bboxPolygon(rawBbox);
+        const buffered = turf.buffer(rawBboxPolygon, BBOX_OFFSET_KM, { units: 'kilometers' });
+        return turf.bbox(buffered); // [minLng, minLat, maxLng, maxLat], con margen
+      }
+
+      async function init() {
+        try {
+          const response = await fetch('data/CascaronesMexico.geojson');
+          if (!response.ok) throw new Error('No se pudo cargar el archivo GeoJSON');
+          const geojsonData = await response.json();
+
+          // Este GeoJSON solo trae 'name' y 'google_maps_url' por feature
+          // (no hay estructura de edificios/identificación como en el
+          // original), así que no hace falta aplanar nada: se usan tal cual
+          // en el popup.
+          //
+          // Se descartan features sin geometría de punto válida (p. ej.
+          // casos identificados pero aún sin coordenadas confirmadas) ANTES
+          // de calcular el bbox y de armar la fuente del mapa: turf.bbox()
+          // y el resto del flujo rompen si algún feature tiene
+          // geometry: null. Se avisa por consola cuáles quedan afuera.
+          geojsonFiltrado = {
+            type: 'FeatureCollection',
+            features: geojsonData.features.filter(feature => {
+              const tieneGeometria = feature.geometry
+                && feature.geometry.type === 'Point'
+                && Array.isArray(feature.geometry.coordinates)
+                && feature.geometry.coordinates.length === 2;
+              if (!tieneGeometria) {
+                console.warn('[mapa] Feature sin geometría de punto válida, se omite:', feature.properties?.name || '(sin nombre)', feature);
+              }
+              return tieneGeometria;
+            })
+          };
+          features = geojsonFiltrado.features;
+
+          // --- Bounding box (con margen) calculado ANTES de crear el mapa ---
+          // Se usa para cameraBounds (límite del centro de cámara) y para
+          // calcular el centro exacto del mapa al arrancar.
+          const paddedBbox = features.length > 0
+            ? computeBoundingBox(geojsonFiltrado)
+            : null;
+          cameraBounds = paddedBbox;
+
+          // Centro geométrico del bbox: punto medio entre las esquinas
+          // min/max en cada eje.
+          const bboxCenter = paddedBbox
+            ? [
+                (paddedBbox[0] + paddedBbox[2]) / 2,
+                (paddedBbox[1] + paddedBbox[3]) / 2
+              ]
+            : [-99.13, 19.43]; // fallback si no hay puntos
+
+          /*
+              Tema vigente AL MOMENTO de crear el mapa (por
+              si el visitante llega con modo oscuro ya
+              guardado en localStorage) — se guarda en
+              "temaActual" para que actualizarTemaMapa() sepa
+              más adelante si el tema cambió de verdad
+              respecto de este estilo inicial.
+          */
+          temaActual = temaVigente();
+
+          map = new maplibregl.Map({
+            container: 'map',
+            style: estiloSegunTema() + '?v=' + Date.now(), // cache-busting
+            center: bboxCenter,
+            zoom: 4.5,
+            minZoom: 4, // no se puede alejar más allá de zoom 4
+            bearing: 0,
+            antialias: true,
+            maplibreLogo: false
+          });
+
+          window.__map = map; // ayuda de depuración desde la consola
+
+          // --- Interacción del usuario: libre, sin storytelling por scroll ---
+          map.scrollZoom.enable();
+          map.dragPan.enable();
+          map.doubleClickZoom.enable();
+          map.touchZoomRotate.enable();
+          map.boxZoom.disable();    // fuera de alcance: selección por recuadro
+          map.keyboard.disable();
+          map.dragRotate.disable(); // se conserva bearing=0
+
+          map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+
+          map.on('zoom', logZoom);
+
+          // Red de seguridad para "pin-marker" (ver el comentario junto a
+          // asegurarImagenPin()): si cualquier capa la pide y no está
+          // registrada en el ImageManager vigente, MapLibre dispara este
+          // evento antes de darla por "faltante" — alcanza con volver a
+          // cargarla. Cubre el caso límite en que actualizarTemaMapa()
+          // (más abajo) tuvo que caer a una reconstrucción completa del
+          // estilo en vez de una fusión sin baches.
+          map.on('styleimagemissing', (e) => {
+            if (e.id !== 'pin-marker') return;
+            asegurarImagenPin().catch(err => {
+              console.error('[mapa] no se pudo reponer la imagen del pin tras "styleimagemissing":', err);
+            });
+          });
+
+          map.on('load', async () => {
+            try {
+              map.addSource('edificios', {
+                type: 'geojson',
+                data: geojsonFiltrado
+              });
+
+              // Restringe el CENTRO de la cámara a cameraBounds ante
+              // cualquier movimiento (drag, zoom, etc.).
+              map.on('move', clampCenterToBounds);
+
+              await addPinLayer();
+
+              // --- Popup al hacer clic en un pin ---
+              const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true });
+              map.on('click', 'edificios-pines', function (e) {
+                const feature = e.features[0];
+                if (!feature) return;
+                const props = feature.properties;
+                const nombre = props.name || 'Sin nombre';
+                const url = props.google_maps_url;
+                const html = `
+                  <div style="font-weight:700;">${nombre}</div>
+                  ${url ? `<a href="${url}" target="_blank" rel="noopener" style="font-size:0.85rem;color:#1a73e8;">Ver en Google Maps</a>` : ''}
+                `;
+                popup.setLngLat(feature.geometry.coordinates)
+                  .setHTML(html)
+                  .addTo(map);
+              });
+              map.on('mouseenter', 'edificios-pines', () => { map.getCanvas().style.cursor = 'pointer'; });
+              map.on('mouseleave', 'edificios-pines', () => { map.getCanvas().style.cursor = ''; });
+
+              // El mapa ya nació centrado y con el zoom correcto, así que ya podemos revelarlo.
+              document.getElementById('map').classList.add('ready');
+              setTimeout(() => {
+                document.getElementById('mapLoading').classList.add('hidden');
+              }, 500);
+            } catch (error) {
+              console.error('Error:', error);
+              document.getElementById('map').classList.add('ready');
+              document.getElementById('mapLoading').textContent = 'Error al preparar el mapa';
+            }
+          });
+
+        } catch (error) {
+          console.error('Error:', error);
+          document.getElementById('mapLoading').textContent = 'Error al cargar los datos del mapa';
+          alert('No se pudo cargar "data/CascaronesMexico.geojson". Verifica la ruta.');
+        }
+      }
+
+      /*
+          Cambia el basemap (MapStyle.json / MapStyleDark.json)
+          cuando el tema del sitio cambia — llamada desde el
+          listener de "storage" de más abajo.
+
+          Esta página normalmente vive dentro de un <iframe>
+          (ver mapa.html): cuando el visitante toca el botón
+          de tema del navbar, ESE toggle ocurre en el
+          document del padre, no en este. El evento nativo
+          "storage" es justamente el mecanismo pensado para
+          esto — dispara en cualquier otro documento del
+          MISMO origen cuando localStorage cambia (nunca en
+          el documento que hizo el cambio), así que llega
+          acá sin necesidad de postMessage ni de que
+          mapa.html sepa que este iframe existe.
+
+          POR QUÉ NO "map.setStyle(url)" a secas (bug
+          reportado dos veces: "al cambiar de tema los pines
+          desaparecen"): pasarle una URL a setStyle() dispara
+          un fetch async por dentro — hay una ventana de
+          tiempo, documentada como bug abierto en el propio
+          repo de MapLibre/Mapbox ("setStyle(URL) is a race
+          condition"), donde el swap real del estilo puede
+          terminar de aplicarse DESPUÉS de que cualquier
+          addSource()/addLayer() nuestro ya corrió, así que
+          el swap se los lleva puestos sin importar qué
+          evento se use para esperar (se probó primero con
+          "style.load", que ni siquiera dispara siempre en
+          esta versión, y después con un sondeo de
+          "styledata"/isStyleLoaded() que sigue cayendo en
+          la misma ventana: el primer chequeo síncrono puede
+          dar "true" contra el estilo VIEJO, todavía no
+          reemplazado).
+
+          LA SOLUCIÓN: el JSON del estilo se baja ACÁ (fetch
+          propio) y se le inyectan la fuente "edificios" y
+          la capa "edificios-pines" ANTES de pasárselo a
+          setStyle() — ya como objeto, no URL. Con un objeto,
+          MapLibre puede "diffear" el estilo actual contra
+          el nuevo de forma SINCRÓNICA (setState(), sin red
+          de por medio) — no hay ningún tick intermedio en
+          el que algo pueda colarse. Como la fuente/capa ya
+          vienen incluidas en el JSON nuevo, el diff no
+          genera ninguna operación de "quitar" para ellas.
+          La imagen "pin-marker" (agregada en runtime con
+          addImage(), no vive en el JSON del estilo) tampoco
+          se pierde: mientras el diff tenga éxito, es el
+          MISMO objeto Style de antes, así que su
+          ImageManager no se recrea.
+
+          Único borde suelto: si el diff llegara a fallar,
+          MapLibre cae solo a una reconstrucción completa
+          desde ese mismo JSON — ahí SÍ se pierde el
+          ImageManager, pero la capa "edificios-pines" (que
+          ya viene en el JSON) pide "pin-marker" al
+          pintarse, dispara "styleimagemissing", y el
+          listener registrado más arriba la repone sola.
+          Cubierto en cualquiera de los dos caminos.
+
+          No-op si el mapa todavía no se creó, o si el tema
+          "nuevo" resuelve al mismo estilo que el actual.
+      */
+      async function actualizarTemaMapa() {
+        if (!map) return;
+
+        const nuevoTema = temaVigente();
+        if (nuevoTema === temaActual) return;
+
+        const nuevoEstiloUrl = estiloSegunTema();
+        temaActual = nuevoTema;
+
+        try {
+          const respuesta = await fetch(nuevoEstiloUrl + '?v=' + Date.now());
+          if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+          const styleJson = await respuesta.json();
+
+          styleJson.sources = Object.assign({}, styleJson.sources, {
+            edificios: { type: 'geojson', data: geojsonFiltrado }
+          });
+
+          // Por si el JSON bajado no trajera "layers", y sobre todo por
+          // si por algún motivo ya trajera una capa con este mismo id:
+          // se descarta la duplicada antes de agregar la nuestra, así
+          // pinLayerSpec() es siempre la única fuente de verdad.
+          styleJson.layers = (styleJson.layers || []).filter(l => l.id !== 'edificios-pines');
+          styleJson.layers.push(pinLayerSpec());
+
+          map.setStyle(styleJson);
+        } catch (err) {
+          console.error('[mapa] no se pudo cambiar el estilo del mapa según el tema:', err);
+        }
+      }
+
+      // El evento "storage" solo trae "key"/"newValue" (strings), así
+      // que se valida acá igual que en el script de arranque del <head>
+      // antes de aplicarlo — un valor inesperado en localStorage no
+      // debería poder dejar el mapa en un estado roto.
+      window.addEventListener('storage', (e) => {
+        if (e.key !== 'cascarones:tema') return;
+
+        const nuevo = (e.newValue === 'oscuro' || e.newValue === 'claro')
+          ? e.newValue
+          : 'claro';
+
+        document.documentElement.setAttribute('data-tema', nuevo);
+        actualizarTemaMapa();
+      });
+
+      init();
+    })();
+  </script>
+
+</body>
+</html>

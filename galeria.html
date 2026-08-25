@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Galeria · Cascarones</title>
+
+<!-- Google Fonts: Spectral (display) + Lato (cuerpo / datos) — mismo
+     bloque que index.html, para que la galería use la misma tipografía
+     que el resto del sitio. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&display=swap" rel="stylesheet">
+
+<!-- El navbar y el footer de esta página SÍ siguen el tema claro/oscuro
+     que el visitante haya elegido (igual que el resto del sitio) — por
+     eso este script es idéntico al de index.html, y por eso el botón
+     de claro/oscuro del navbar sigue abajo, igual que en las demás
+     páginas.
+
+     La escena 3D en sí (el lienzo y el texto que va encima: hero,
+     ficha, GUI, paneles) es harina de otro costal: es una "sala de
+     exhibición" que siempre se ve oscura, sin importar data-tema —
+     eso NO se resuelve acá, sino con variables --galeria-* fijas en
+     css/pages/galeria.css (ver el comentario ahí), independientes de
+     esta preferencia global. -->
+<script>
+  (function () {
+    var CLAVE_TEMA = 'cascarones:tema';
+    var guardado = localStorage.getItem(CLAVE_TEMA);
+    var tema = (guardado === 'oscuro' || guardado === 'claro')
+      ? guardado
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+    document.documentElement.setAttribute('data-tema', tema);
+  })();
+</script>
+
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/footer.css">
+<link rel="stylesheet" href="css/footer-logos.css">
+<link rel="stylesheet" href="css/pages/galeria.css">
+
+<!-- KaTeX: renderiza la fórmula fija de la sección "Geometría"
+     (ver "#formula-geometria" en el HTML de abajo y
+     ".ficha__formula-geometria" en galeria.css). "defer" en los
+     dos <script>: no bloquean el parseo del resto de la página,
+     y de paso garantizan que corran en orden (katex.min.js antes
+     que auto-render, que lo necesita) sin tener que anidarlos a
+     mano. Hashes de integridad = los oficiales que publica KaTeX
+     para esta versión (ver https://katex.org/docs/browser.html). -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/katex.min.css" integrity="sha384-u1zONI5gPXUx0UKI62c75/zww972y0v2rSK5ZYlVdS6xEuWDeZWUI66v6t1gvlXJ" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/katex.min.js" integrity="sha384-ykMNcWQhhTUb0YV9SPpPUFURHZ+tWmubkakGBP+OgNK/UXdO2gtzglWx0Rj9hnO3" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"></script>
+
+<!-- Import map: resuelve los specifiers "pelones" ('three', 'three/addons/...')
+     que usan internamente los addons oficiales de Three.js (ParametricGeometry,
+     etc.) y los módulos de js/three/geometrias/. Debe declararse ANTES de
+     cualquier <script type="module"> que importe Three — mismo bloque que
+     index.html, para que ambas páginas usen exactamente la misma versión y
+     no convivan dos instancias distintas de Three.js en el sitio. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+</head>
+
+
+<body>
+
+
+<!-- ============================== NAV ==============================
+     Idéntico al header de index.html/creditos.html, botón de
+     claro/oscuro incluido: el navbar sigue el tema global del sitio
+     (ver script arriba). Lo que se queda fijo en oscuro es solo la
+     escena 3D de más abajo — ver el comentario de --galeria-* en
+     css/pages/galeria.css. -->
+<div id="navbar-placeholder"></div>
+
+
+<!-- =========================
+     CONTENEDOR "CLAVADO"
+     Agrupa todo lo que antes
+     era position:fixed cada
+     uno por su cuenta (hero,
+     gui, escena, ficha,
+     paneles, hint de scroll).
+     Mientras el scroll esté
+     dentro del presupuesto de
+     las 5 fases con escena, este
+     contenedor tapa la
+     ventana igual que antes.
+     Al pasar ese total,
+     galeria.js le agrega la
+     clase "liberada" (ver
+     galeria.css) para que se
+     desprenda y el <footer>
+     real, que vive debajo del
+     espaciador, quede visible.
+========================= -->
+
+<div id="galeria-escena-fija">
+
+  <!-- =========================
+       HERO
+       (sección A: mismo texto y
+       mismas clases que el hero
+       de index.html — .eyebrow
+       de css/base.css, .subrayado
+       y el ancho de .hero__texto
+       replicados en
+       css/pages/galeria.css ya
+       que esta página no carga
+       css/componentes.css.
+       galeria.js ya NO escribe
+       este texto: vive fijo acá,
+       igual que en index.html —
+       así es seleccionable y
+       está disponible sin JS.)
+  ========================= -->
+
+  <div id="hero">
+      <div class="hero__texto">
+        <p class="eyebrow">Geometría hecha estructura</p>
+        <h1 class="titulo">Cascarones de <span class="subrayado">concreto</span></h1>
+        <p class="descripcion">
+          Documentación digital y análisis geométrico de seis cascarones de concreto del
+          movimiento moderno en México, ubicados en Ciudad de México, Estado de México y Morelos.
+          Mediante fotogrametría y escaneo LiDAR se generan nubes de puntos y modelos
+          tridimensionales de alta precisión para estudiar su configuración formal, estructural
+          y su estado actual de conservación.
+        </p>
+      </div>
+  </div>
+
+
+  <!-- =========================
+       PROYECTO
+       (fase intermedia entre el
+       hero y el revelado en
+       cascada: mismo texto y
+       mismas cifras que la
+       sección "El proyecto" de
+       index.html — ver
+       componentes.css/index.css,
+       replicadas acá en
+       css/pages/galeria.css ya
+       que esta página no carga
+       esas hojas. La opacidad
+       la controla galeria.js /
+       galeria-proyecto.js según
+       el scroll; el "6" de
+       cascarones documentados
+       lo completa galeria.js
+       con la cantidad real de
+       elementos del GeoJSON.
+  ========================= -->
+
+  <div id="proyecto">
+      <div class="contenedor">
+
+          <div class="proyecto__intro">
+              <p class="eyebrow">El proyecto</p>
+              <p>
+                Los cascarones de concreto del movimiento moderno mexicano representan una de las
+                expresiones más significativas de innovación estructural y formal de la arquitectura
+                del siglo XX: sistemas eficientes en material y complejos en geometría, hoy en riesgo
+                por la pérdida del conocimiento técnico para construirlos y, en muchos casos, por
+                falta de mantenimiento o protección patrimonial. Este proyecto documenta seis de estos
+                cascarones mediante levantamiento digital —fotogrametría y escaneo LiDAR— para generar
+                un registro preciso de su estado actual y un análisis geométrico comparativo entre casos.
+              </p>
+          </div>
+
+          <div class="proyecto__cifras">
+              <div>
+                  <p class="cifra__numero" id="proyecto-cifra-cascarones">6</p>
+                  <p class="cifra__etiqueta">Cascarones documentados</p>
+              </div>
+              <div>
+                  <p class="cifra__numero">3</p>
+                  <p class="cifra__etiqueta">Estados — CDMX, Edo. Méx., Morelos</p>
+              </div>
+              <div>
+                  <p class="cifra__numero">2</p>
+                  <p class="cifra__etiqueta">Técnicas de captura — fotogrametría y LiDAR</p>
+              </div>
+          </div>
+
+      </div>
+  </div>
+
+
+  <!-- =========================
+       GUI DE REORDENAR
+       (oculto hasta terminar
+       el scroll; los botones
+       los arma galeria.js desde
+       CONFIG.sortOptions)
+  ========================= -->
+
+  <div id="gui"></div>
+
+
+  <!-- =========================
+       ESCENA 3D (fija)
+  ========================= -->
+
+  <div id="scene"></div>
+
+
+  <!-- =========================
+       FICHA
+       (sección C: scroll
+       horizontal / spotlight —
+       los campos los arma
+       galeria.js desde
+       elemento.ficha)
+  ========================= -->
+
+  <div id="carousel-panel">
+
+      <!-- Misma clase ".contenedor" que usa el navbar (ver base.css:
+           max-width + margin-inline:auto + padding-inline) — así el
+           nombre/ficha quedan exactamente alineados con el logo del
+           navbar, sin importar el ancho de la ventana. El degradado
+           de fondo queda en #carousel-panel (por fuera de este div),
+           que sí ocupa todo el ancho de la ventana. -->
+      <div class="contenedor">
+
+          <div class="index" id="panel-index">
+          </div>
+
+          <h2 class="nombre" id="panel-nombre">
+          </h2>
+
+          <p class="subtitulo" id="panel-subtitulo">
+          </p>
+
+          <!-- "#ficha-fila" envuelve a "#panel-ficha" (los 7
+               ".spec" de datos). Hasta hace poco tenía un segundo
+               hijo acá, "#ficha-controles" (autorotar + sliders de
+               corte X/Y/Z) — se sacó de acá porque en ventanas
+               angostas (~830px) no entraban los dos juntos sin que
+               alguno quedara mal. Se movió a una sección
+               colapsable propia dentro del panel derecho (ver
+               "Corte" en #panel-derecho-cuerpo, más abajo) — mismo
+               markup, mismos ids, sin escribirlo de nuevo. -->
+          <div class="ficha__fila" id="ficha-fila">
+
+              <div class="specs" id="panel-ficha">
+              </div>
+
+          </div>
+
+      </div>
+
+  </div>
+
+
+  <!-- =========================
+       PANEL DERECHO DE LA FICHA
+       (rectángulo semi-opaco, alto completo de la
+       ventana con el mismo margen arriba que abajo.
+       Separado de #carousel-panel a propósito: ese
+       contenedor mide solo lo que ocupa su propio
+       contenido + su padding, no toda la ventana — ver
+       el comentario junto a "#ficha-panel-marco" en
+       galeria.css. Su visibilidad sigue a la de la
+       ficha vía el selector "#carousel-panel.visible ~
+       #ficha-panel-marco", así que tiene que quedar
+       DESPUÉS de #carousel-panel en el HTML.
+
+       Adentro, de arriba a abajo:
+
+       - ".ficha__sheet-tirador": SOLO existe/actúa en mobile
+         (ver el media query de 780px en galeria.css) — ahí
+         ".ficha__panel" deja de ser la columna fija de
+         siempre y pasa a ser un bottom sheet: colapsado
+         muestra nada más este tirador (grip + "Detalles"),
+         expandido revela todo lo de abajo. Se abre con un
+         tap O arrastrando, mismo criterio que el panel de
+         detalles de Google Maps — la lógica vive en
+         galeria-panel-derecho.js, wireada desde galeria.js.
+         En escritorio esto queda oculto (display:none) y el
+         resto del panel se comporta exactamente igual que
+         antes.
+
+       - ".ficha__panel-cuerpo": TODO lo de abajo, como una
+         sola unidad con scroll propio (ver ese comentario en
+         galeria.css). Adentro, SEIS secciones
+         ".ficha__panel-seccion--colapsable" independientes
+         entre sí (abrir una no cierra las otras — a
+         diferencia de un acordeón clásico) — cada una es un
+         <button aria-expanded> ("cabecera") seguido de un
+         <div aria-controls> ("contenido"), mismo par
+         header/panel que ya usa ".ficha__sheet-tirador" para
+         el bottom sheet, ahora repetido a nivel de sección.
+         La lógica de toggle (independiente del bottom sheet:
+         eso sigue siendo pura mecánica de arrastre/tap en
+         galeria-panel-derecho.js) vive en
+         galeria-panel-derecho-secciones.js, wireada desde
+         galeria.js.
+
+         · "Ubicación": el cuadrado del preview (hoy el mapa,
+           ver galeria-mapa.js; alto=ancho, sin márgenes
+           dentro de su propio contenido — ver
+           ".ficha__panel-seccion--ubicacion" en galeria.css
+           para el porqué de por qué NO comparte el padding
+           del resto de las secciones) + "#panel-derecho-specs"
+           (coordenadas + ubicación desglosada, MISMA clase
+           ".specs"/".spec" que ya usa "#panel-ficha" — ver
+           galeria-ficha.js. Contenido armado por
+           normalizarElemento() en galeria-config.js, campo
+           "panelDerecho"). Arranca EXPANDIDA (aria-expanded
+           en el HTML, ver más abajo — es la fuente de verdad
+           que después usa reset() en
+           galeria-panel-derecho-secciones.js para volver acá
+           cada vez que se re-entra a "fichas"). Sigue
+           primera: es información específica de la geometría
+           enfocada, tiene sentido verla de entrada — a
+           diferencia del resto, que es configuración/debug.
+
+         · "Visualización" (ex "Corte" — se
+           renombró porque ya no es solo cortes): switch
+           "Autorotado" (ver galeria-autorotar.js —
+           FUNCIONAL: prende/apaga el giro sobre el centroide
+           de la geometría en foco, el mismo que ya manejaba
+           "rotation" en galeria-rotacion.js) + sliders de
+           corte X/Y/Z del modelo 3D activo (id
+           "ficha-controles", igual que antes; la lógica real
+           de CORTE —mover los planos de clipping— todavía
+           está pendiente de escribir, eso sigue siendo
+           maqueta visual) + el material GLOBAL (sólido/
+           estado/normales + mostrar malla,
+           "#panel-material", mudado acá desde su propia
+           sección — HTML nativo, select + switch, ver
+           galeria-panel-material.js). Subió al
+           2do lugar (antes 3ro, después de "Vista"): a
+           diferencia de "Geometría" de acá abajo, nada de
+           esto depende de la geometría puntual enfocada —
+           son ajustes generales de cómo se VE la escena
+           entera, tiene más sentido cerca de arriba que
+           mezclado con lo específico. Arranca COLAPSADA:
+           sigue siendo control secundario, no info primaria.
+
+         · "Geometría" (ex "Vista" — se sacaron los dos
+           droplist, maqueta sin lógica real detrás; el zoom
+           ya se hace con la rueda del mouse sobre el modelo
+           3D activo, no hacía falta un control acá para
+           eso): ahora contiene los sliders (nativos,
+           ".ficha__slider") de la carpeta
+           "Forma" por elemento (fase C, apunta al elemento
+           enfocado del carrusel — ver
+           galeria-panel-parametros.js), mudado acá desde su
+           propia sección "Parámetros". Arranca COLAPSADA
+           (igual que "Parámetros" antes de mudarse: sigue
+           siendo un control de debug/ajuste fino, no
+           info primaria).
+
+         · "Simulación": todavía SIN CONTENIDO (placeholder).
+           Arranca COLAPSADA — no hay nada que mostrar de
+           entrada.
+
+         · "Levantamiento 3D": todavía SIN CONTENIDO
+           (placeholder). Arranca COLAPSADA, mismo motivo
+           que "Simulación".
+
+         · "Fotografías": carrusel (anterior/siguiente +
+           contador) en vez de una imagen real todavía, más
+           el slider de opacidad. Maqueta nada más — el
+           conteo real ("Foto 0" de N) y el cambio de foto al
+           clickear los botones quedan para JS. Se corrió al
+           FINAL (antes iba justo después de "Corte"): ahora
+           queda después de las dos secciones nuevas sin
+           contenido, agrupando primero todo lo que sí hace
+           algo. Arranca COLAPSADA, mismo criterio de
+           siempre.
+  ========================= -->
+
+  <div id="ficha-panel-marco">
+
+      <!-- Fórmula de la sección "Geometría" (mientras esté
+           EXPANDIDA — ver ".ficha__formula-geometria" en
+           galeria.css, que la muestra/oculta con un
+           selector ":has()" sobre
+           "#ficha-seccion-geometria-contenido[data-colapsado]",
+           sin JS propio para esto). Contenido FIJO por
+           ahora (no cambia según el elemento enfocado — ver
+           el comentario grande de más arriba, sección
+           "Geometría"): es la fórmula paramétrica del cono
+           sinusoidal (ver js/three/geometrias/
+           cono-sinusoidal.js), renderizada una sola vez al
+           arrancar la página por galeria.js (ver
+           "renderMathInElement" ahí). Delimitador "\( … \)"
+           únicamente (inline, no display): son varias
+           líneas cortas apiladas, no un bloque centrado
+           como en un documento.
+
+           Primer hijo de "#ficha-panel-marco" A PROPÓSITO,
+           con "margin-right: auto" (ver esa regla en
+           galeria.css): ese contenedor ya es "display:flex;
+           justify-content:flex-end" para empujar
+           ".ficha__panel" a la derecha — un primer hijo con
+           margin-right:auto cae solo en el margen IZQUIERDO
+           que ya deja armado ese mismo flex, sin inventar un
+           "left" propio ni duplicar el cálculo de
+           padding-inline/max-width que ya resuelve
+           "#ficha-panel-marco". Mismo criterio para el
+           margen superior: "align-self:flex-start" para
+           anclarse arriba del contenedor en vez de estirarse
+           con "align-items:stretch" (el default), así hereda
+           el "top:5rem" (despeje del navbar) que ya trae
+           "#ficha-panel-marco" sin un "top" propio. -->
+      <div class="ficha__formula-geometria" id="formula-geometria">
+          <p>\( k, n \in \mathbb{R} \)</p>
+          <p>\( x = u \cos v \)</p>
+          <p>\( y = u \sin v \)</p>
+          <p>\( z = k \, u \cos(n \, v) \)</p>
+          <p>\( -10 \leq u \leq 10 \)</p>
+          <p>\( -2\pi \leq v \leq 2\pi \)</p>
+      </div>
+
+      <div class="ficha__panel" id="panel-derecho">
+
+          <!-- Solo mobile (ver comentario de arriba): tap O
+               arrastre para expandir/colapsar. aria-expanded
+               lo mantiene sincronizado galeria-panel-derecho.js;
+               aria-controls apunta al contenido real que
+               revela. -->
+          <button
+              type="button"
+              class="ficha__sheet-tirador"
+              id="ficha-sheet-tirador"
+              aria-expanded="false"
+              aria-controls="panel-derecho-cuerpo"
+          >
+              <span class="ficha__sheet-grip" aria-hidden="true"></span>
+              <span class="ficha__sheet-titulo">Detalles</span>
+          </button>
+
+          <div class="ficha__panel-cuerpo" id="panel-derecho-cuerpo">
+
+              <!-- Sección "Ubicación": mapa + coordenadas.
+                   Arranca EXPANDIDA. -->
+              <section class="ficha__panel-seccion ficha__panel-seccion--colapsable ficha__panel-seccion--ubicacion">
+
+                  <button
+                      type="button"
+                      class="ficha__seccion-header"
+                      id="ficha-seccion-ubicacion-header"
+                      aria-expanded="true"
+                      aria-controls="ficha-seccion-ubicacion-contenido"
+                  >
+                      <span class="ficha__panel-titulo">Ubicación</span>
+                      <svg class="ficha__seccion-chevron" aria-hidden="true" viewBox="0 0 16 16" fill="none">
+                          <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                  </button>
+
+                  <div class="ficha__seccion-contenido" id="ficha-seccion-ubicacion-contenido">
+                      <div class="ficha__seccion-contenido-inner">
+
+                          <div class="ficha__panel-cuadro" id="panel-derecho-cuadro" aria-hidden="true">
+                          </div>
+
+                          <div class="specs" id="panel-derecho-specs">
+                          </div>
+
+                      </div>
+                  </div>
+
+              </section>
+
+              <!-- Sección "Visualización" (ex
+                   "Corte" — se renombró porque ya no es solo
+                   cortes, ver el comentario grande de más
+                   arriba para el detalle completo del porqué
+                   de la fusión y de por qué subió de lugar):
+                   switch "Autorotado" (FUNCIONAL, ver
+                   galeria-autorotar.js) + sliders de corte
+                   X/Y/Z del modelo 3D activo (todavía
+                   maqueta) + material GLOBAL, HTML nativo
+                   (select + switch, no lil-gui)
+                   (mudado acá desde su propia sección, ver
+                   galeria-panel-material.js). Arranca
+                   COLAPSADA: sigue siendo control secundario,
+                   no info primaria como Ubicación. -->
+              <section class="ficha__panel-seccion ficha__panel-seccion--colapsable">
+
+                  <button
+                      type="button"
+                      class="ficha__seccion-header"
+                      id="ficha-seccion-opciones-visualizacion-header"
+                      aria-expanded="false"
+                      aria-controls="ficha-seccion-opciones-visualizacion-contenido"
+                  >
+                      <span class="ficha__panel-titulo">Visualización</span>
+                      <svg class="ficha__seccion-chevron" aria-hidden="true" viewBox="0 0 16 16" fill="none">
+                          <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                  </button>
+
+                  <div class="ficha__seccion-contenido" id="ficha-seccion-opciones-visualizacion-contenido" data-colapsado="true">
+                      <div class="ficha__seccion-contenido-inner">
+
+                          <div class="ficha__controles" id="ficha-controles">
+
+                              <button
+                                  type="button"
+                                  class="ficha__switch"
+                                  id="boton-autorotar"
+                                  role="switch"
+                                  aria-checked="true"
+                              >
+                                  <span class="ficha__campo-label">Autorotado</span>
+                                  <span class="ficha__switch-pista" aria-hidden="true">
+                                      <span class="ficha__switch-perilla"></span>
+                                  </span>
+                              </button>
+
+                              <!-- "Mostrar plano de corte" / "Mostrar
+                                   intersección": mismo patrón de switch
+                                   que "Autorotado" arriba (role="switch"
+                                   + aria-checked, NO aria-pressed — ver
+                                   la cabecera de galeria-autorotar.js
+                                   sobre por qué un interruptor con label
+                                   propio usa esa semántica y no la de
+                                   los botones de invertir de más abajo).
+
+                                   TODAVÍA SIN LÓGICA (arrancan
+                                   aria-checked="false"): igual que los 3
+                                   sliders de corte X/Y/Z, son maqueta —
+                                   el corte real (mover los planos de
+                                   clipping) todavía está pendiente de
+                                   escribir. Cuando se escriba esa
+                                   lógica, van a necesitar su propio
+                                   módulo (mismo criterio de separación
+                                   que galeria-autorotar.js: este HTML no
+                                   importa "three", solo expone el
+                                   switch). -->
+                              <button
+                                  type="button"
+                                  class="ficha__switch"
+                                  id="boton-mostrar-plano-corte"
+                                  role="switch"
+                                  aria-checked="false"
+                              >
+                                  <span class="ficha__campo-label">Mostrar planos de corte</span>
+                                  <span class="ficha__switch-pista" aria-hidden="true">
+                                      <span class="ficha__switch-perilla"></span>
+                                  </span>
+                              </button>
+
+                              <button
+                                  type="button"
+                                  class="ficha__switch"
+                                  id="boton-mostrar-interseccion"
+                                  role="switch"
+                                  aria-checked="false"
+                              >
+                                  <span class="ficha__campo-label">Mostrar intersección</span>
+                                  <span class="ficha__switch-pista" aria-hidden="true">
+                                      <span class="ficha__switch-perilla"></span>
+                                  </span>
+                              </button>
+
+                              <div class="ficha__seccion-corte" data-eje="x">
+                                  <label class="ficha__campo-label" for="ficha-corte-x">Plano de corte en X</label>
+                                  <div class="ficha__corte-fila">
+                                      <input type="range" class="ficha__slider" id="ficha-corte-x" min="0" max="100" value="100">
+                                      <button type="button" class="ficha__boton-invertir" id="ficha-corte-x-invertir" aria-pressed="false" title="Invertir sentido del corte">⇄</button>
+                                  </div>
+                              </div>
+
+                              <div class="ficha__seccion-corte" data-eje="y">
+                                  <label class="ficha__campo-label" for="ficha-corte-y">Plano de corte en Y</label>
+                                  <div class="ficha__corte-fila">
+                                      <input type="range" class="ficha__slider" id="ficha-corte-y" min="0" max="100" value="100">
+                                      <button type="button" class="ficha__boton-invertir" id="ficha-corte-y-invertir" aria-pressed="false" title="Invertir sentido del corte">⇄</button>
+                                  </div>
+                              </div>
+
+                              <div class="ficha__seccion-corte" data-eje="z">
+                                  <label class="ficha__campo-label" for="ficha-corte-z">Plano de corte en Z</label>
+                                  <div class="ficha__corte-fila">
+                                      <input type="range" class="ficha__slider" id="ficha-corte-z" min="0" max="100" value="100">
+                                      <button type="button" class="ficha__boton-invertir" id="ficha-corte-z-invertir" aria-pressed="false" title="Invertir sentido del corte">⇄</button>
+                                  </div>
+                              </div>
+
+                          </div>
+
+                          <!-- Material GLOBAL (sólido/estado/
+                               normales + mostrar malla),
+                               aplicado a TODOS los elementos —
+                               ver galeria-panel-material.js.
+                               NATIVO (select + switch, mismas
+                               clases ".ficha__select"/
+                               ".ficha__switch" que el resto del
+                               panel): ya no es un lil-gui montado
+                               adentro de esta sección colapsable
+                               — el colapso/expandido ya lo
+                               resuelve la sección de afuera, no
+                               hacía falta un segundo panel con su
+                               propia tipografía adentro. Hermano
+                               de "#ficha-controles", NO adentro:
+                               mismo motivo que antes (querySelector
+                               de createCorteControles() no debe
+                               alcanzar hasta acá). -->
+                          <div id="panel-material">
+
+                              <div class="ficha__campo">
+                                  <label class="ficha__campo-label" for="ficha-material-tipo">Tipo de material</label>
+                                  <span class="ficha__select-wrap">
+                                      <select class="ficha__select" id="ficha-material-tipo">
+                                          <option value="solido">Sólido (tema)</option>
+                                          <option value="estado">Estado de conservación</option>
+                                          <option value="normales" selected>Normales</option>
+                                          <option value="ninguno">Ninguno</option>
+                                      </select>
+                                  </span>
+                              </div>
+
+                              <button
+                                  type="button"
+                                  class="ficha__switch"
+                                  id="boton-mostrar-malla"
+                                  role="switch"
+                                  aria-checked="false"
+                              >
+                                  <span class="ficha__campo-label">Mostrar malla</span>
+                                  <span class="ficha__switch-pista" aria-hidden="true">
+                                      <span class="ficha__switch-perilla"></span>
+                                  </span>
+                              </button>
+
+                              <!-- Densidad del overlay de malla (ver
+                                   galeria-malla-cuadricula.js): cuántas
+                                   isocurvas U/V mostrar, no la
+                                   resolución real de la geometría —
+                                   mismo campo/rango (4–150) que
+                                   "mallaDensidad" en
+                                   visor-geometrias.html. Mismo patrón
+                                   ".ficha__campo" + ".ficha__campo-
+                                   valor" que ya usan los sliders
+                                   dinámicos de "Geometría" (ver
+                                   galeria-panel-parametros.js) para el
+                                   número al lado del label. -->
+                              <div class="ficha__campo">
+                                  <label class="ficha__campo-label" for="ficha-material-densidad">Densidad de malla <span class="ficha__campo-valor" id="ficha-material-densidad-valor">10</span></label>
+                                  <input type="range" class="ficha__slider" id="ficha-material-densidad" min="4" max="150" value="10">
+                              </div>
+
+                          </div>
+
+                      </div>
+                  </div>
+
+              </section>
+
+              <!-- Sección "Geometría" (ex "Vista" — se
+                   sacaron los dos droplist, ver el comentario
+                   grande de más arriba): sliders nativos
+                   (".ficha__slider", no lil-gui) de la
+                   carpeta "Forma" por elemento (fase C, mudado
+                   acá desde su propia sección "Parámetros" —
+                   armados en runtime por
+                   galeria-panel-parametros.js, así que este
+                   div arranca y se queda vacío en el HTML).
+                   Arranca COLAPSADA, mismo criterio que
+                   "Parámetros" antes de mudarse acá. -->
+              <section class="ficha__panel-seccion ficha__panel-seccion--colapsable">
+
+                  <button
+                      type="button"
+                      class="ficha__seccion-header"
+                      id="ficha-seccion-geometria-header"
+                      aria-expanded="false"
+                      aria-controls="ficha-seccion-geometria-contenido"
+                  >
+                      <span class="ficha__panel-titulo">Geometría</span>
+                      <svg class="ficha__seccion-chevron" aria-hidden="true" viewBox="0 0 16 16" fill="none">
+                          <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                  </button>
+
+                  <div class="ficha__seccion-contenido" id="ficha-seccion-geometria-contenido" data-colapsado="true">
+                      <div class="ficha__seccion-contenido-inner">
+
+                          <div id="panel-parametros"></div>
+
+                      </div>
+                  </div>
+
+              </section>
+
+              <!-- Sección "Simulación": todavía SIN CONTENIDO
+                   (placeholder, ver el comentario grande de
+                   más arriba). Arranca COLAPSADA — no hay
+                   nada que mostrar de entrada. -->
+              <section class="ficha__panel-seccion ficha__panel-seccion--colapsable">
+
+                  <button
+                      type="button"
+                      class="ficha__seccion-header"
+                      id="ficha-seccion-simulacion-header"
+                      aria-expanded="false"
+                      aria-controls="ficha-seccion-simulacion-contenido"
+                  >
+                      <span class="ficha__panel-titulo">Simulación</span>
+                      <svg class="ficha__seccion-chevron" aria-hidden="true" viewBox="0 0 16 16" fill="none">
+                          <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                  </button>
+
+                  <div class="ficha__seccion-contenido" id="ficha-seccion-simulacion-contenido" data-colapsado="true">
+                      <div class="ficha__seccion-contenido-inner">
+
+                      </div>
+                  </div>
+
+              </section>
+
+              <!-- Sección "Levantamiento 3D": todavía SIN
+                   CONTENIDO (placeholder, ver el comentario
+                   grande de más arriba). Arranca COLAPSADA,
+                   mismo motivo que "Simulación". -->
+              <section class="ficha__panel-seccion ficha__panel-seccion--colapsable">
+
+                  <button
+                      type="button"
+                      class="ficha__seccion-header"
+                      id="ficha-seccion-levantamiento-3d-header"
+                      aria-expanded="false"
+                      aria-controls="ficha-seccion-levantamiento-3d-contenido"
+                  >
+                      <span class="ficha__panel-titulo">Levantamiento 3D</span>
+                      <svg class="ficha__seccion-chevron" aria-hidden="true" viewBox="0 0 16 16" fill="none">
+                          <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                  </button>
+
+                  <div class="ficha__seccion-contenido" id="ficha-seccion-levantamiento-3d-contenido" data-colapsado="true">
+                      <div class="ficha__seccion-contenido-inner">
+
+                      </div>
+                  </div>
+
+              </section>
+
+              <!-- Sección "Fotografías": miniaturas +
+                   slider de opacidad. Corrida al FINAL (antes
+                   iba justo después de "Corte", ver el
+                   comentario grande de más arriba para el
+                   porqué). Arranca COLAPSADA. -->
+              <section class="ficha__panel-seccion ficha__panel-seccion--colapsable">
+
+                  <button
+                      type="button"
+                      class="ficha__seccion-header"
+                      id="ficha-seccion-fotografias-header"
+                      aria-expanded="false"
+                      aria-controls="ficha-seccion-fotografias-contenido"
+                  >
+                      <span class="ficha__panel-titulo">Fotografías</span>
+                      <svg class="ficha__seccion-chevron" aria-hidden="true" viewBox="0 0 16 16" fill="none">
+                          <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                  </button>
+
+                  <div class="ficha__seccion-contenido" id="ficha-seccion-fotografias-contenido" data-colapsado="true">
+                      <div class="ficha__seccion-contenido-inner">
+
+                          <!-- Miniaturas armadas en runtime por
+                               galeria-panel-fotos.js a partir de
+                               elemento.fotos (ver
+                               normalizarElemento() en
+                               galeria-config.js) — mismo criterio
+                               que "#panel-parametros": este div
+                               arranca y se queda vacío en el HTML.
+                               Reemplaza al carrusel de flechas
+                               (◀ Foto N ▶) que había acá antes. -->
+                          <div class="ficha__fotos-miniaturas" id="ficha-fotos-miniaturas" role="list" aria-label="Fotografías"></div>
+
+                          <div class="ficha__campo">
+                              <label class="ficha__campo-label" for="ficha-opacidad">Opacidad</label>
+                              <input type="range" class="ficha__slider" id="ficha-opacidad" min="0" max="100" value="100">
+                          </div>
+
+                      </div>
+                  </div>
+
+              </section>
+
+          </div>
+
+      </div>
+  </div>
+
+
+  <div id="scroll-hint">
+      Desliza
+      <svg viewBox="0 0 24 24">
+          <path d="M12 4 v16 M6 14 l6 6 6-6" />
+      </svg>
+  </div>
+
+
+  <!-- =========================
+       PAGINACIÓN
+       Rail de puntos del lado
+       derecho: una parada real
+       de scroll por punto (4
+       fases fijas + una por
+       ficha). Vacío a propósito
+       — mismo criterio que
+       "#gui"/"#scene"/
+       "#carousel-panel": la
+       cantidad de fichas
+       depende del GeoJSON, así
+       que lo arma
+       galeria-paginacion.js en
+       runtime, no este markup.
+  ========================= -->
+
+  <div id="galeria-paginacion"></div>
+
+</div>
+
+
+<!-- =========================
+     ESPACIADOR
+     Su alto lo calcula
+     galeria-fases.js /
+     galeria.js (presupuesto de
+     scroll de las fases
+     de las 5 fases) — antes ese mismo
+     número se aplicaba como
+     "body { height }"; ahora
+     es un bloque real en el
+     flujo del documento, así
+     que el <footer> que sigue
+     queda naturalmente
+     "empujado" hasta el final
+     del recorrido.
+========================= -->
+
+<div id="galeria-spacer" aria-hidden="true"></div>
+
+
+<!-- ============================== FOOTER ==============================
+     Mismo footer que index.html (misma estructura, mismas clases de
+     footer.css) y sigue el mismo tema claro/oscuro que el visitante
+     haya elegido — igual que el navbar de arriba. -->
+<div id="footer-placeholder"></div>
+
+
+<!-- Three.js ya NO se carga como <script> global UMD: ahora vive detrás
+     del import map de arriba, y cada módulo de js/three/ hace su propio
+     "import * as THREE from 'three'". -->
+
+<script src="js/navbar.js"></script>
+
+<!-- Punto de entrada (ES module) -->
+<script type="module" src="js/galeria.js"></script>
+
+
+</body>
+</html>

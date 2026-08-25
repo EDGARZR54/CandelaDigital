@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Potree Viewer</title>
+
+<link rel="stylesheet" href="js/potree/build/potree/potree.css">
+<link rel="stylesheet" href="js/potree/libs/jquery-ui/jquery-ui.min.css">
+<link rel="stylesheet" href="js/potree/libs/openlayers3/ol.css">
+<link rel="stylesheet" href="js/potree/libs/spectrum/spectrum.css">
+<link rel="stylesheet" href="js/potree/libs/jstree/themes/mixed/style.css">
+
+<script src="js/potree/libs/jquery/jquery-3.1.1.min.js"></script>
+<script src="js/potree/libs/spectrum/spectrum.js"></script>
+<script src="js/potree/libs/jquery-ui/jquery-ui.min.js"></script>
+<script src="js/potree/libs/other/BinaryHeap.js"></script>
+<script src="js/potree/libs/tween/tween.min.js"></script>
+<script src="js/potree/libs/d3/d3.js"></script>
+<script src="js/potree/libs/proj4/proj4.js"></script>
+<script src="js/potree/libs/openlayers3/ol.js"></script>
+<script src="js/potree/libs/i18next/i18next.js"></script>
+<script src="js/potree/libs/jstree/jstree.js"></script>
+<script src="js/potree/libs/three.js/build/three.min.js"></script>
+<script src="js/potree/libs/plasio/js/laslaz.js"></script>
+<script src="js/potree/build/potree/potree.js"></script>
+
+<!-- Lector de metadatos EXIF/XMP (GPS, altitud, gimbal) para las fotos de dron -->
+<script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
+
+<style>
+	html, body {
+		margin: 0;
+		padding: 0;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+		font-family: 'IBM Plex Mono', 'Courier New', monospace;
+	}
+
+	#potree_render_area {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+	}
+
+	/* ---------- Panel flotante: foto sobre la nube ---------- */
+	:root{
+		--bg-panel: rgba(10,18,15,0.92);
+		--line: #21352c;
+		--phosphor: #63f2a0;
+		--phosphor-dim: #3a6b52;
+		--ink: #d7ecdf;
+		--ink-dim: #7fa392;
+		--danger: #f2705f;
+	}
+
+	#photoPanel{
+		position: absolute;
+		top: 16px;
+		right: 16px;
+		width: 260px;
+		background: var(--bg-panel);
+		border: 1px solid var(--line);
+		color: var(--ink);
+		font-size: 12px;
+		z-index: 10000;
+		backdrop-filter: blur(4px);
+	}
+	#photoPanel .head{
+		display:flex; justify-content:space-between; align-items:center;
+		padding: 8px 10px;
+		border-bottom: 1px solid var(--line);
+		font-size: 11px; letter-spacing:0.06em; text-transform:uppercase;
+		color: var(--phosphor);
+		cursor:pointer;
+		user-select:none;
+	}
+	#photoPanel .body{ padding: 10px; }
+	#photoPanel.collapsed .body{ display:none; }
+
+	#dropzone{
+		border: 1px dashed var(--phosphor-dim);
+		padding: 16px 10px;
+		text-align:center;
+		cursor:pointer;
+		font-size: 11px;
+		color: var(--ink-dim);
+		transition: border-color .15s, background .15s;
+	}
+	#dropzone.drag{ border-color: var(--phosphor); background: rgba(99,242,160,0.06); color: var(--ink); }
+	#fileInput{ display:none; }
+
+	#readout{ margin-top:10px; display:none; }
+	#readout .row{
+		display:flex; justify-content:space-between; gap:8px;
+		padding: 3px 0; border-bottom: 1px solid var(--line);
+	}
+	#readout .row span:first-child{ color: var(--ink-dim); }
+	#readout .row span:last-child{ text-align:right; }
+	#readout .row.warn span:last-child{ color: var(--danger); }
+
+	#opacityRow{ display:none; margin-top: 10px; }
+	#opacityRow label{ display:block; color: var(--ink-dim); font-size: 10px; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:4px; }
+	#opacityRow input[type=range]{ width: 100%; accent-color: var(--phosphor); }
+
+	#removeBtn{
+		display:none; margin-top: 10px; width:100%;
+		background: transparent; border: 1px solid var(--danger); color: var(--danger);
+		padding: 6px; cursor:pointer; font-family:inherit; font-size: 11px;
+		letter-spacing: 0.05em; text-transform: uppercase;
+	}
+	#removeBtn:hover{ background: rgba(242,112,95,0.08); }
+
+	#viewBtnsRow{ display:flex; }
+	.ghostBtn{
+		flex: 1;
+		background: transparent; border: 1px solid var(--phosphor-dim); color: var(--phosphor);
+		padding: 6px 4px; cursor:pointer; font-family:inherit; font-size: 10px;
+		letter-spacing: 0.04em; text-transform: uppercase;
+	}
+	.ghostBtn:hover{ background: rgba(99,242,160,0.08); border-color: var(--phosphor); }
+	.ghostBtn:disabled{ opacity:0.4; cursor:default; }
+
+	#photoError{
+		display:none; margin-top: 8px; color: var(--danger); font-size: 11px;
+	}
+</style>
+
+</head>
+<body>
+
+<div id="potree_render_area"></div>
+
+<div id="photoPanel">
+	<div class="head" id="photoPanelHead">Foto sobre la nube <span id="collapseIcon">▾</span></div>
+	<div class="body">
+		<div id="dropzone">Arrastrá una foto JPG del dron aquí<br>(o hacé clic para elegirla)</div>
+		<input type="file" id="fileInput" accept="image/jpeg,.jpg,.jpeg">
+
+		<div id="readout"></div>
+
+		<div id="opacityRow">
+			<label>Opacidad de la foto</label>
+			<input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="0.85">
+		</div>
+
+		<div id="viewBtnsRow" style="display:none; gap:6px; margin-top:10px;">
+			<button id="flyBtn" class="ghostBtn">Ver como la cámara</button>
+			<button id="restoreBtn" class="ghostBtn">Vista general</button>
+		</div>
+
+		<button id="removeBtn">Quitar foto</button>
+		<div id="photoError"></div>
+	</div>
+</div>
+
+<script>
+	window.viewer = new Potree.Viewer(document.getElementById("potree_render_area"));
+
+	// Forzamos OrbitControls: EarthControls (el default) bloquea el giro
+	// horizontal en nubes pequeñas / no georreferenciadas.
+	viewer.setControls(viewer.orbitControls);
+
+	viewer.setEDLEnabled(true);
+	viewer.setFOV(60);
+	viewer.setPointBudget(2_000_000);
+	viewer.setBackground("gradient");
+
+	Potree.loadPointCloud("js/potree/nubes/15m_utm14n_converted/metadata.json", "15m", function (e) {
+		viewer.scene.addPointCloud(e.pointcloud);
+
+		let material = e.pointcloud.material;
+		material.size = 1;
+		material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
+
+		viewer.fitToScreen();
+	});
+
+	// =========================================================================
+	// Proyección automática de fotos de dron sobre la nube de puntos.
+	//
+	// Supuestos (fijos, coinciden con el pipeline usado para generar esta nube:
+	// reproyectar_utm.py con pyproj EPSG:4326 -> EPSG:32614, altura Z sin tocar):
+	//   - La nube está en WGS84 / UTM zona 14N (EPSG:32614), en metros.
+	//   - El eje Z de la nube es la misma altura que trae el LAS original,
+	//     así que usamos la altitud EXIF/XMP de la foto tal cual, sin offsets.
+	//   - La foto se dibuja como un plano orientado según yaw/pitch/roll del
+	//     gimbal (o de vuelo si el gimbal no está disponible), a la distancia
+	//     donde el rayo central de la cámara cruza el plano del terreno estimado
+	//     (altitud absoluta menos altitud relativa). No es una ortorectificación
+	//     real sobre relieve irregular, es una aproximación de plano rígido.
+	// =========================================================================
+
+	const PROJ4_UTM14N = "+proj=utm +zone=14 +datum=WGS84 +units=m +no_defs";
+
+	const dropzone   = document.getElementById('dropzone');
+	const fileInput  = document.getElementById('fileInput');
+	const readout    = document.getElementById('readout');
+	const opacityRow = document.getElementById('opacityRow');
+	const opacitySlider = document.getElementById('opacitySlider');
+	const removeBtn  = document.getElementById('removeBtn');
+	const photoError = document.getElementById('photoError');
+	const panelHead  = document.getElementById('photoPanelHead');
+	const panel      = document.getElementById('photoPanel');
+	const collapseIcon = document.getElementById('collapseIcon');
+	const viewBtnsRow = document.getElementById('viewBtnsRow');
+	const flyBtn     = document.getElementById('flyBtn');
+	const restoreBtn = document.getElementById('restoreBtn');
+
+	const DEFAULT_FOV = 60;
+	let savedView = null;      // vista general antes de "entrar" a la cámara del dron
+	let lastShot  = null;      // {camPos, target, vfovDeg} de la última foto colocada
+
+	panelHead.addEventListener('click', () => {
+		panel.classList.toggle('collapsed');
+		collapseIcon.textContent = panel.classList.contains('collapsed') ? '▸' : '▾';
+	});
+
+	let currentPlaneMesh = null;
+	let currentTexture = null;
+
+	function getThreeScene(){
+		if (viewer.scene && viewer.scene.scene) return viewer.scene.scene;
+		console.warn("No se encontró viewer.scene.scene; no se puede agregar la foto a la escena.");
+		return null;
+	}
+
+	['dragenter','dragover'].forEach(evt => {
+		dropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('drag'); });
+	});
+	['dragleave','drop'].forEach(evt => {
+		dropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('drag'); });
+	});
+	dropzone.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) handlePhoto(f); });
+	dropzone.addEventListener('click', () => fileInput.click());
+	fileInput.addEventListener('change', () => { if (fileInput.files[0]) handlePhoto(fileInput.files[0]); });
+
+	function showError(msg){ photoError.style.display = 'block'; photoError.textContent = msg; }
+	function clearError(){ photoError.style.display = 'none'; photoError.textContent = ''; }
+
+	function pick(tags, candidates){
+		const keys = Object.keys(tags);
+		for (const cand of candidates){
+			const found = keys.find(k => k.toLowerCase() === cand.toLowerCase());
+			if (found !== undefined && tags[found] !== undefined && tags[found] !== null && tags[found] !== '') return tags[found];
+		}
+		return undefined;
+	}
+
+	function row(label, value, warn){
+		const div = document.createElement('div');
+		div.className = 'row' + (warn ? ' warn' : '');
+		div.innerHTML = `<span>${label}</span><span>${value}</span>`;
+		return div;
+	}
+
+	async function handlePhoto(file){
+		clearError();
+		readout.style.display = 'none';
+		readout.innerHTML = '';
+		opacityRow.style.display = 'none';
+		removeBtn.style.display = 'none';
+
+		if (!window.exifr){
+			showError('No cargó la librería de lectura EXIF (revisá conexión a internet).');
+			return;
+		}
+		if (!/jpe?g$/i.test(file.name) && file.type !== 'image/jpeg'){
+			showError('Necesito un JPG: es donde los drones graban los metadatos XMP de vuelo/gimbal.');
+			return;
+		}
+
+		try {
+			// 1) leer imagen (para textura + dimensiones reales)
+			const objectUrl = URL.createObjectURL(file);
+			const img = await loadImage(objectUrl);
+
+			// 2) leer metadatos
+			const buffer = await file.arrayBuffer();
+			const tags = await exifr.parse(buffer, {
+				tiff:true, exif:true, gps:true, xmp:true, iptc:true,
+				mergeOutput:true, translateKeys:true, translateValues:true, reviveValues:true
+			});
+			if (!tags) { showError('La imagen no trae metadatos EXIF/XMP.'); return; }
+
+			const lat = pick(tags, ['latitude','GPSLatitude']);
+			const lon = pick(tags, ['longitude','GPSLongitude']);
+			if (typeof lat !== 'number' || typeof lon !== 'number'){
+				showError('La foto no trae coordenadas GPS; no puedo ubicarla en la nube.');
+				return;
+			}
+
+			const absAlt = pick(tags, ['AbsoluteAltitude']);
+			const gpsAlt = pick(tags, ['GPSAltitude']);
+			const relAlt = pick(tags, ['RelativeAltitude']);
+			const alt = (typeof absAlt === 'number') ? absAlt : (typeof gpsAlt === 'number' ? gpsAlt : undefined);
+			if (typeof alt !== 'number'){
+				showError('La foto no trae altitud; no puedo ubicarla en Z.');
+				return;
+			}
+
+			let yaw   = pick(tags, ['GimbalYawDegree','FlightYawDegree']);
+			let pitch = pick(tags, ['GimbalPitchDegree','FlightPitchDegree']);
+			let roll  = pick(tags, ['GimbalRollDegree','FlightRollDegree']);
+			const gimbalSource = pick(tags, ['GimbalYawDegree']) !== undefined ? 'gimbal' : 'vuelo';
+			if (typeof yaw !== 'number')   yaw = 0;
+			if (typeof pitch !== 'number') pitch = -90; // asumimos nadir si no hay dato
+			if (typeof roll !== 'number')  roll = 0;
+
+			let fovDeg = pick(tags, ['FOV']);
+			const focal35 = pick(tags, ['FocalLengthIn35mmFormat']);
+			if (typeof fovDeg !== 'number'){
+				if (typeof focal35 === 'number' && focal35 > 0){
+					fovDeg = 2 * Math.atan(36 / (2 * focal35)) * (180/Math.PI);
+				} else {
+					fovDeg = 84; // fallback típico de gran angular en drones si no hay dato
+				}
+			}
+
+			const imgAspect = img.naturalHeight / img.naturalWidth;
+
+			// distancia estimada al terreno: usamos altitud relativa si está,
+			// si no, un valor por defecto razonable para un plano nadir
+			let distance;
+			const pitchRad = pitch * Math.PI/180;
+			if (typeof relAlt === 'number' && relAlt > 0 && Math.abs(Math.sin(pitchRad)) > 0.1){
+				distance = Math.abs(relAlt / Math.sin(pitchRad));
+			} else {
+				distance = 50;
+			}
+
+			// textura
+			if (currentTexture) currentTexture.dispose();
+			currentTexture = new THREE.Texture(img);
+			currentTexture.needsUpdate = true;
+
+			placePlane({lat, lon, alt, yaw, pitch, roll, fovDeg, imgAspect, distance});
+
+			// readout informativo
+			readout.style.display = 'block';
+			readout.appendChild(row('Lat / Lon', `${lat.toFixed(5)}, ${lon.toFixed(5)}`));
+			readout.appendChild(row('Altitud', `${alt.toFixed(1)} m` + (typeof absAlt !== 'number' ? ' (GPS EXIF)' : ' (XMP abs.)')));
+			readout.appendChild(row('Yaw / Pitch / Roll', `${yaw.toFixed(1)}° / ${pitch.toFixed(1)}° / ${roll.toFixed(1)}°`, gimbalSource !== 'gimbal'));
+			if (gimbalSource !== 'gimbal') readout.lastChild.querySelector('span:first-child').textContent = 'Yaw/Pitch/Roll (vuelo, sin gimbal)';
+			readout.appendChild(row('FOV horiz.', `${fovDeg.toFixed(1)}°` + (typeof pick(tags,['FOV']) !== 'number' ? ' (estimado)' : '')));
+			readout.appendChild(row('Distancia proyectada', `${distance.toFixed(1)} m` + (typeof relAlt !== 'number' ? ' (por defecto)' : '')));
+
+			opacityRow.style.display = 'block';
+			removeBtn.style.display = 'block';
+
+		} catch(err){
+			console.error(err);
+			showError('Error al procesar la foto: ' + err.message);
+		}
+	}
+
+	function loadImage(src){
+		return new Promise((resolve, reject) => {
+			const img = new Image();
+			img.onload = () => resolve(img);
+			img.onerror = reject;
+			img.src = src;
+		});
+	}
+
+	function flyToCameraView(camPos, target, vfovDeg){
+		if (!viewer.scene || !viewer.scene.view || typeof viewer.scene.view.lookAt !== 'function'){
+			console.warn('No se encontró viewer.scene.view; no puedo mover la cámara.');
+			return false;
+		}
+		const view = viewer.scene.view;
+
+		// guardamos la vista general solo una vez (la primera vez que "entramos")
+		if (!savedView){
+			savedView = {
+				position: view.position.clone(),
+				yaw: view.yaw,
+				pitch: view.pitch,
+				radius: view.radius,
+				fov: DEFAULT_FOV
+			};
+		}
+
+		view.position.set(camPos.x, camPos.y, camPos.z);
+		view.lookAt(new THREE.Vector3(target.x, target.y, target.z));
+		if ('radius' in view) view.radius = camPos.distanceTo(target);
+
+		viewer.setFOV(vfovDeg);
+		return true;
+	}
+
+	function restoreGeneralView(){
+		if (!savedView || !viewer.scene || !viewer.scene.view) return;
+		const view = viewer.scene.view;
+		view.position.copy(savedView.position);
+		if (typeof savedView.yaw === 'number') view.yaw = savedView.yaw;
+		if (typeof savedView.pitch === 'number') view.pitch = savedView.pitch;
+		if (typeof savedView.radius === 'number') view.radius = savedView.radius;
+		viewer.setFOV(savedView.fov);
+		savedView = null;
+	}
+
+	flyBtn.addEventListener('click', () => {
+		if (lastShot) flyToCameraView(lastShot.camPos, lastShot.target, lastShot.vfovDeg);
+	});
+	restoreBtn.addEventListener('click', () => restoreGeneralView());
+
+	function placePlane({lat, lon, alt, yaw, pitch, roll, fovDeg, imgAspect, distance}){
+		const scene = getThreeScene();
+		if (!scene){ showError('No se pudo acceder a la escena 3D de Potree.'); return; }
+
+		const utm = proj4('EPSG:4326', PROJ4_UTM14N, [lon, lat]); // [easting, northing]
+		const camPos = new THREE.Vector3(utm[0], utm[1], alt);
+
+		const yawRad   = yaw   * Math.PI/180;
+		const pitchRad = pitch * Math.PI/180;
+		const rollRad  = roll  * Math.PI/180;
+
+		// dirección a la que apunta la cámara (X=este, Y=norte, Z=arriba)
+		const forward = new THREE.Vector3(
+			Math.cos(pitchRad) * Math.sin(yawRad),
+			Math.cos(pitchRad) * Math.cos(yawRad),
+			Math.sin(pitchRad)
+		).normalize();
+
+		const worldUp = new THREE.Vector3(0,0,1);
+		let right = new THREE.Vector3().crossVectors(forward, worldUp);
+		if (right.lengthSq() < 1e-6) right.set(1,0,0); else right.normalize();
+		let up = new THREE.Vector3().crossVectors(right, forward).normalize();
+
+		// roll: gira right/up alrededor del eje de visión
+		const rollQuat = new THREE.Quaternion().setFromAxisAngle(forward, rollRad);
+		right.applyQuaternion(rollQuat);
+		up.applyQuaternion(rollQuat);
+
+		const center = camPos.clone().add(forward.clone().multiplyScalar(distance));
+
+		const hfovRad = fovDeg * Math.PI/180;
+		const vfovRad = 2 * Math.atan(Math.tan(hfovRad/2) * imgAspect);
+		const width  = 2 * distance * Math.tan(hfovRad/2);
+		const height = 2 * distance * Math.tan(vfovRad/2);
+
+		if (currentPlaneMesh){
+			scene.remove(currentPlaneMesh);
+			currentPlaneMesh.geometry.dispose();
+			currentPlaneMesh.material.dispose();
+			currentPlaneMesh = null;
+		}
+
+		const PlaneGeo = THREE.PlaneBufferGeometry || THREE.PlaneGeometry;
+		const geometry = new PlaneGeo(width, height);
+		const material = new THREE.MeshBasicMaterial({
+			map: currentTexture,
+			transparent: true,
+			opacity: parseFloat(opacitySlider.value),
+			side: THREE.DoubleSide,
+			depthWrite: false,
+			depthTest: false
+		});
+		const mesh = new THREE.Mesh(geometry, material);
+
+		const normal = forward.clone().negate();
+		const basis = new THREE.Matrix4().makeBasis(right, up, normal);
+		mesh.quaternion.setFromRotationMatrix(basis);
+		mesh.position.copy(center);
+		mesh.renderOrder = 999999; // se dibuja siempre después (encima) de la nube de puntos
+
+		scene.add(mesh);
+		currentPlaneMesh = mesh;
+
+		// El EDL (eye dome lighting) de Potree se compone en un post-proceso
+		// que se dibuja DESPUÉS del resto de la escena, así que taparía la foto
+		// aunque el material tenga depthTest:false. Lo apagamos mientras se
+		// muestra la foto y lo restauramos al quitarla.
+		viewer.setEDLEnabled(false);
+
+		const vfovDeg = vfovRad * 180/Math.PI;
+		lastShot = { camPos: camPos.clone(), target: center.clone(), vfovDeg };
+		flyToCameraView(camPos, center, vfovDeg);
+		viewBtnsRow.style.display = 'flex';
+	}
+
+	opacitySlider.addEventListener('input', () => {
+		if (currentPlaneMesh) currentPlaneMesh.material.opacity = parseFloat(opacitySlider.value);
+	});
+
+	removeBtn.addEventListener('click', () => {
+		const scene = getThreeScene();
+		if (currentPlaneMesh && scene){
+			scene.remove(currentPlaneMesh);
+			currentPlaneMesh.geometry.dispose();
+			currentPlaneMesh.material.dispose();
+			currentPlaneMesh = null;
+		}
+		viewer.setEDLEnabled(true);
+		readout.style.display = 'none';
+		readout.innerHTML = '';
+		opacityRow.style.display = 'none';
+		removeBtn.style.display = 'none';
+		viewBtnsRow.style.display = 'none';
+		fileInput.value = '';
+		lastShot = null;
+		restoreGeneralView();
+	});
+
+</script>
+
+</body>
+</html>

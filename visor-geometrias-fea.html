@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visor de geometrías · Cascarones · Simulador EF</title>
+
+<!-- Mismo bloque de Google Fonts que galeria.html (Spectral + Lato):
+     var(--fuente-display)/var(--fuente-cuerpo)/var(--fuente-datos) en
+     variables.css apuntan a estas familias — sin este link, el visor
+     caería en las fuentes de respaldo del sistema en vez de las del
+     resto del sitio. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&display=swap" rel="stylesheet">
+
+<!-- Mismo detector de tema claro/oscuro que el resto del sitio (idéntico
+     al de galeria.html/index.html): sin esto, [data-tema="claro"] en
+     variables.css/galeria.css nunca se activaría acá y el visor quedaría
+     huérfano del toggle de tema aunque comparta las mismas variables. -->
+<script>
+  (function () {
+    var CLAVE_TEMA = 'cascarones:tema';
+    var guardado = localStorage.getItem(CLAVE_TEMA);
+    var tema = (guardado === 'oscuro' || guardado === 'claro')
+      ? guardado
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+    document.documentElement.setAttribute('data-tema', tema);
+  })();
+</script>
+
+<!-- Mismas hojas de estilo del proyecto que consume galeria.html, asumiendo
+     que este visor vive en la raíz del sitio junto a ella. Sin navbar.css/
+     footer.css: esta página no monta nav ni footer propios (no son parte
+     de este documento), así que no hace falta cargar ese CSS. Todo lo
+     visual de acá abajo (paneles de vidrio, botones, colorbar, GUI) reusa
+     las variables --color-*/--radio/--transicion/--fuente-* y los
+     patrones ya existentes en galeria.css (.ficha__panel, .ficha__campo,
+     etc.) — no se define ningún color/radio/fuente nuevo en este archivo. -->
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/pages/galeria.css">
+
+<!-- Mismo import map que el sitio, para que los módulos arrastrados
+     puedan hacer `import ... from 'three'` / 'three/addons/...' sin
+     preocuparse de rutas relativas al CDN. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<style>
+  /*
+      Este bloque YA NO define un sistema de color/tipografía propio
+      (antes: --fondo/--panel/--borde/--texto/--acento/--mono con
+      valores hardcodeados). Todo lo que sigue es SOLO layout —
+      posición, tamaño, flex/grid — construido en base a las
+      variables y patrones que ya trae css/pages/galeria.css:
+
+        --color-fondo / --color-fondo-alt / --color-texto /
+        --color-texto-suave / --color-primario / --color-borde /
+        --color-blanco / --color-negro   (variables.css)
+        --radio / --transicion / --fuente-cuerpo / --fuente-datos /
+        --peso-datos                      (variables.css)
+
+      Y, para el "look" de vidrio de los paneles flotantes, las MISMAS
+      declaraciones que ya usa ".ficha__panel" en galeria.css (radio +
+      borde/fondo en rgba(var(--color-blanco))+ backdrop-filter),
+      repetidas acá porque ".ficha__panel" en sí trae su propia
+      geometría de sidebar (width: var(--ficha-panel-ancho); height:
+      100%; pointer-events:none) que no sirve para una tarjeta modal
+      centrada ni para una leyenda angosta — pero los VALORES (radio,
+      opacidad, blur) son los mismos, no unos inventados nuevos.
+  */
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    /* margin/background/color/font-family ya los define galeria.css
+       (html, body {...}) — acá solo se agrega lo que ese archivo no
+       necesita para una página que hace scroll normal, pero que a
+       este visor de pantalla completa sí le hace falta. */
+    height: 100%;
+    overflow: hidden;
+  }
+
+  canvas#lienzo {
+    position: fixed;
+    inset: 0;
+    display: block;
+    touch-action: none;
+  }
+
+  /* ---- Zona de arrastre ---- */
+  .zona-soltar {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    /* mismo recurso rgba(var(--color-negro), X) que ya usa galeria.css
+       (p. ej. #galeria-mapa-mini .maplibregl-ctrl-attrib) para un velo
+       oscuro consistente con el tema, en vez de un rgb() hardcodeado */
+    background: rgba(var(--color-negro), 0.72);
+    backdrop-filter: blur(2px);
+    z-index: 10;
+    pointer-events: none;
+  }
+  .zona-soltar--visible { display: flex; pointer-events: auto; }
+
+  /* Tarjeta: mismas declaraciones que ".ficha__panel" (radio, borde y
+     fondo translúcidos, blur) — ver nota arriba sobre por qué no se
+     comparte la clase literal. */
+  .zona-soltar__tarjeta {
+    width: min(92vw, 460px);
+    padding: 2.5rem 2rem;
+    text-align: center;
+
+    border-radius: var(--radio);
+    border: 1.5px dashed rgba(var(--color-blanco), 0.18);
+    background: rgba(var(--color-blanco), 0.12);
+    backdrop-filter: blur(6px);
+
+    transition: border-color var(--transicion), background var(--transicion);
+  }
+  [data-tema="claro"] .zona-soltar__tarjeta {
+    border-color: rgba(var(--color-negro), 0.14);
+    background: rgba(var(--color-negro), 0.08);
+  }
+  .zona-soltar--activa .zona-soltar__tarjeta {
+    border-color: var(--color-primario);
+  }
+
+  .zona-soltar__icono {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 1.1rem;
+    color: var(--color-primario);
+  }
+
+  .zona-soltar__titulo {
+    margin: 0 0 0.4rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .zona-soltar__detalle {
+    margin: 0 0 1.4rem;
+    font-size: 0.88rem;
+    color: var(--color-texto-suave);
+    line-height: 1.5;
+  }
+
+  /* Botón: mismo lenguaje que "#gui button" en galeria.css (plano, sin
+     radio, mayúsculas en --fuente-datos, subrayado de acento que se
+     despliega en hover/foco) en vez de una píldora con relleno — así
+     el único botón de texto de este documento habla el mismo idioma
+     que el resto del sitio, no uno nuevo. */
+  .boton {
+    appearance: none;
+    position: relative;
+
+    border: 1px solid var(--color-borde);
+    border-radius: 0;
+    background: none;
+
+    color: var(--color-texto-suave);
+    font: inherit;
+    font-family: var(--fuente-datos);
+    font-weight: var(--peso-datos);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+
+    transition: color var(--transicion), border-color var(--transicion);
+  }
+  .boton:hover,
+  .boton:focus-visible {
+    color: var(--color-primario);
+    border-color: var(--color-primario);
+    outline: none;
+  }
+
+  .zona-soltar__convencion {
+    margin-top: 1.4rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--color-borde);
+    font-family: var(--fuente-datos);
+    font-size: 0.72rem;
+    color: var(--color-texto-suave);
+    text-align: left;
+    line-height: 1.6;
+  }
+  .zona-soltar__convencion code { color: var(--color-texto); }
+
+  /* ---- Barra de archivo cargado ----
+     Misma píldora rgba(var(--color-blanco)) + border-radius:999px que ya
+     usa galeria.css para elementos redondeados (switch, dots) — no un
+     radio inventado. */
+  .barra-archivo {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem 0.5rem 0.9rem;
+
+    border-radius: 999px;
+    border: 1px solid rgba(var(--color-blanco), 0.18);
+    background: rgba(var(--color-blanco), 0.12);
+    backdrop-filter: blur(6px);
+
+    font-size: 0.8rem;
+  }
+  [data-tema="claro"] .barra-archivo {
+    border-color: rgba(var(--color-negro), 0.14);
+    background: rgba(var(--color-negro), 0.08);
+  }
+  .barra-archivo[hidden] { display: none; }
+  .barra-archivo__nombre {
+    font-family: var(--fuente-datos);
+    color: var(--color-texto);
+    max-width: 40vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Mismo gesto que ".ficha__boton-invertir": glifo sin caja, que se
+     resalta con el acento primario en hover/foco. */
+  .barra-archivo__boton {
+    appearance: none;
+    border: none;
+    border-radius: 999px;
+    background: none;
+    color: var(--color-texto-suave);
+    font: inherit;
+    font-family: var(--fuente-datos);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.7rem;
+    cursor: pointer;
+    transition: color var(--transicion), background var(--transicion);
+  }
+  .barra-archivo__boton:hover {
+    color: var(--color-primario);
+    background: rgba(var(--color-blanco), 0.08);
+  }
+  [data-tema="claro"] .barra-archivo__boton:hover {
+    background: rgba(var(--color-negro), 0.06);
+  }
+
+  /* ---- Panel de error ----
+     Mismo panel de vidrio que el resto (radio/borde/fondo/blur
+     compartidos); el único acento disponible en el sistema de color
+     del sitio es --color-primario, así que se usa como marca lateral
+     en vez de un rojo de alerta que no existe en variables.css. */
+  .error {
+    position: fixed;
+    left: 1rem;
+    bottom: 1rem;
+    z-index: 20;
+    max-width: min(90vw, 560px);
+    padding: 0.9rem 1rem;
+
+    border-radius: var(--radio);
+    border: 1px solid rgba(var(--color-blanco), 0.18);
+    border-left: 3px solid var(--color-primario);
+    background: rgba(var(--color-blanco), 0.12);
+    backdrop-filter: blur(6px);
+
+    font-family: var(--fuente-datos);
+    font-size: 0.78rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    color: var(--color-texto);
+  }
+  [data-tema="claro"] .error {
+    border-color: rgba(var(--color-negro), 0.14);
+    border-left-color: var(--color-primario);
+    background: rgba(var(--color-negro), 0.08);
+  }
+  .error[hidden] { display: none; }
+
+  #entrada-archivo { display: none; }
+
+  /* ---- Leyenda de desplazamiento (mapa de calor EF) ----
+     Colorbar vertical estilo matplotlib, anclada a la izquierda y
+     centrada verticalmente. Mismo panel de vidrio que el resto de
+     este documento (ver nota arriba); el título reutiliza LITERAL la
+     clase ".ficha__panel-titulo" de galeria.css (mismo trato que
+     cualquier label/eyebrow del panel derecho del sitio), sin
+     redeclarar esa tipografía acá. */
+  .leyenda-ef {
+    position: fixed;
+    left: 1.1rem;
+    top: 50%;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.9rem 1rem 0.8rem;
+
+    border-radius: var(--radio);
+    border: 1px solid rgba(var(--color-blanco), 0.18);
+    background: rgba(var(--color-blanco), 0.12);
+    backdrop-filter: blur(6px);
+
+    opacity: 0;
+    transform: translateY(-50%) translateX(-8px);
+    pointer-events: none;
+    transition: opacity var(--transicion), transform var(--transicion), background .25s ease, border-color .25s ease;
+  }
+  [data-tema="claro"] .leyenda-ef {
+    border-color: rgba(var(--color-negro), 0.14);
+    background: rgba(var(--color-negro), 0.08);
+  }
+  .leyenda-ef--visible {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+  .leyenda-ef .ficha__panel-titulo {
+    margin-bottom: 0.7rem;
+  }
+  .leyenda-ef__canvas {
+    display: block;
+  }
+  .leyenda-ef__nota {
+    margin-top: 0.7rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--color-borde);
+    font-family: var(--fuente-cuerpo);
+    line-height: 1.42;
+    font-size: 0.68rem;
+    color: var(--color-texto-suave);
+    max-width: 150px;
+    text-align: center;
+  }
+  .leyenda-ef__nota strong { color: var(--color-texto); }
+
+  /* ---- Panel de lil-gui ----
+     lil-gui trae su propia hoja de estilo con variables CSS propias
+     (--background-color, --text-color, etc.) — acá solo se les pasa
+     el MISMO set de tokens de variables.css que usa el resto del
+     documento, así el panel de controles no queda como un widget de
+     otro sistema en medio de la página. */
+  .lil-gui {
+    --background-color: var(--color-fondo-alt);
+    --text-color: var(--color-texto);
+    --title-background-color: var(--color-fondo-alt);
+    --title-text-color: var(--color-primario);
+    --widget-color: var(--color-borde);
+    --hover-color: var(--color-primario);
+    --focus-color: var(--color-primario);
+    --font-family: var(--fuente-cuerpo);
+    --font-family-mono: var(--fuente-datos);
+  }
+</style>
+</head>
+<body>
+
+<canvas id="lienzo"></canvas>
+
+<div class="barra-archivo" id="barra-archivo" hidden>
+  <span class="barra-archivo__nombre" id="nombre-archivo"></span>
+  <button class="barra-archivo__boton" id="boton-cambiar" type="button">Cambiar archivo</button>
+</div>
+
+<div class="error" id="panel-error" hidden></div>
+
+<div class="leyenda-ef" id="leyenda-ef">
+  <p class="ficha__panel-titulo">Desplazamiento (u)</p>
+  <canvas class="leyenda-ef__canvas" id="leyenda-ef-canvas"></canvas>
+  <div class="leyenda-ef__nota">
+    Deformación <strong>simulada</strong>, no es un cálculo real de elementos finitos.
+  </div>
+</div>
+
+<div class="zona-soltar zona-soltar--visible" id="zona-soltar">
+  <div class="zona-soltar__tarjeta">
+    <svg class="zona-soltar__icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+      <path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+    </svg>
+    <p class="zona-soltar__titulo">Arrastra un archivo .js aquí</p>
+    <p class="zona-soltar__detalle">
+      Cualquier módulo que exporte una función de geometría paramétrica,
+      como <code>cono-sinusoidal.js</code>.
+    </p>
+    <button class="boton" id="boton-elegir" type="button">Elegir archivo…</button>
+    <input type="file" id="entrada-archivo" accept=".js,text/javascript">
+
+    <div class="zona-soltar__convencion">
+      Convención esperada — el módulo debe exportar al menos una de estas dos:<br>
+      <code>crearGeometria*()</code> → devuelve un <code>THREE.BufferGeometry</code> ya listo.<br>
+      <code>superficie*(u, v, destino, parametros)</code> → función paramétrica cruda.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { ParametricGeometry } from 'three/addons/geometries/ParametricGeometry.js';
+  import GUI from 'https://cdn.jsdelivr.net/npm/lil-gui@0.19/dist/lil-gui.esm.min.js';
+
+  const lienzo = document.getElementById('lienzo');
+  const zonaSoltar = document.getElementById('zona-soltar');
+  const botonElegir = document.getElementById('boton-elegir');
+  const entradaArchivo = document.getElementById('entrada-archivo');
+  const barraArchivo = document.getElementById('barra-archivo');
+  const nombreArchivoEl = document.getElementById('nombre-archivo');
+  const botonCambiar = document.getElementById('boton-cambiar');
+  const panelError = document.getElementById('panel-error');
+  const leyendaEF = document.getElementById('leyenda-ef');
+  const leyendaEFCanvas = document.getElementById('leyenda-ef-canvas');
+
+  // ---- Escena base -----------------------------------------------------
+  const escena = new THREE.Scene();
+  const camara = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
+  camara.position.set(3, 2.2, 4);
+
+  const renderer = new THREE.WebGLRenderer({ canvas: lienzo, antialias: true, logarithmicDepthBuffer: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+  escena.add(new THREE.AmbientLight(0xffffff, 0.7));
+  const luzPrincipal = new THREE.DirectionalLight(0xffffff, 0.9);
+  luzPrincipal.position.set(4, 6, 5);
+  escena.add(luzPrincipal);
+  const luzRelleno = new THREE.DirectionalLight(0xffffff, 0.3);
+  luzRelleno.position.set(-4, -2, -5);
+  escena.add(luzRelleno);
+
+  const rejilla = new THREE.GridHelper(10, 20, 0x3a3f47, 0x24272c);
+  rejilla.visible = false;
+  escena.add(rejilla);
+
+  // Ejes X/Y/Z como cilindros finos en vez de THREE.AxesHelper (que usa
+  // LineBasicMaterial: su `linewidth` no tiene efecto en casi ningún
+  // navegador/WebGL, así que no hay forma de "engrosarlas" siendo líneas).
+  // Con geometría real y algo de radio, además de verse más gruesos,
+  // dejan de ser coplanares con la rejilla (que vive en el plano XZ,
+  // y=0) — eso es justo lo que producía el z-fighting.
+  function crearEjes(longitud = 2, radio = longitud * 0.012) {
+    const grupo = new THREE.Group();
+    const definiciones = [
+      { color: 0xff3653, direccion: new THREE.Vector3(1, 0, 0) }, // X
+      { color: 0x4caf3a, direccion: new THREE.Vector3(0, 1, 0) }, // Y
+      { color: 0x3a8bff, direccion: new THREE.Vector3(0, 0, 1) }, // Z
+    ];
+    for (const { color, direccion } of definiciones) {
+      // CylinderGeometry crece por defecto a lo largo de +Y, centrado en
+      // el origen; se traslada para que arranque en (0,0,0) y luego se
+      // orienta con un quaternion hacia la dirección del eje que le toca.
+      const geometria = new THREE.CylinderGeometry(radio, radio, longitud, 10);
+      geometria.translate(0, longitud / 2, 0);
+      const malla = new THREE.Mesh(geometria, new THREE.MeshBasicMaterial({ color }));
+      malla.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direccion);
+      grupo.add(malla);
+    }
+    return grupo;
+  }
+  const ejes = crearEjes(2);
+  ejes.visible = false;
+  escena.add(ejes);
+
+  const controles = new OrbitControls(camara, renderer.domElement);
+  controles.enableDamping = true;
+
+  let objeto = null;
+  let urlBlobActual = null;
+
+  // Color de relleno y de fondo fijos (ya no configurables desde el panel).
+  const COLOR_RELLENO = '#964a3d';
+  const COLOR_FONDO = '#111318';
+
+  const opciones = {
+    material: 'normales',
+    malla: true,
+    mallaDensidad: 10, // líneas aprox. (espaciado automático por distancia real)
+    rejilla: false,
+  };
+  renderer.setClearColor(new THREE.Color(COLOR_FONDO));
+
+  // ---- Estado del "Análisis de Elementos Finitos" (simulado) --------------
+  //
+  // De momento no hay un solver real: `generarDeformacionSimulada()` inventa
+  // un campo de desplazamientos por vértice a partir de la geometría que ya
+  // está cargada (misma topología, mismo orden de vértices que la malla
+  // original). El día que exista un cálculo real, la idea es reemplazar esa
+  // función por la carga de una SEGUNDA malla (incluso desde otro archivo)
+  // con la misma cantidad y orden de vértices que la original, y usar la
+  // diferencia de posiciones vértice a vértice como `displacements`. Todo lo
+  // demás (interpolación, escala, mapa de calor, animación) seguiría
+  // funcionando igual sin cambios.
+  const estadoFEA = {
+    tipoCarga: 'boveda',     // 'boveda' | 'voladizo' | 'aleatorio'
+    factorEscala: 1,         // exageración visual de la forma deformada
+    interpolacion: 0,        // 0 = malla original · 1 = malla deformada
+    mapaCalor: true,
+    animando: false,
+    displacements: null,     // Float32Array (n*3), misma topología que la malla base
+    magnitudes: null,        // Float32Array (n) — magnitud de desplazamiento por vértice
+    heatColors: null,        // Float32Array (n*3) — color RGB precalculado por magnitud
+    maxMag: 0,
+  };
+  let animacionEFId = null;
+
+  // El mapa de calor de desplazamiento solo tiene sentido si ya hay una
+  // deformación simulada y el usuario lo pidió. Antes también se excluía el
+  // modo "normales" porque MeshNormalMaterial no lee el atributo `color` por
+  // vértice — eso ahora se resuelve con un parche de shader más abajo (ver
+  // `construirMaterial`), así que aquí ya no depende del modo de material.
+  function mapaCalorActivo() {
+    return estadoFEA.mapaCalor && !!estadoFEA.displacements;
+  }
+
+  // ---- Overlay de aristas / cuadrícula: opacidad según el modo ------------
+  //
+  // El mismo overlay paramétrico (líneas por cuadrícula, con densidad
+  // controlable) sirve para dos propósitos distintos:
+  //   - Como referencia sutil DIBUJADA SOBRE la malla sólida/normales
+  //     (opacidad baja, para no tapar el material de abajo).
+  //   - Como el propio modo "Alambre" (la malla sólida queda oculta), donde
+  //     tiene que verse opaco para funcionar como un wireframe real.
+  const OPACIDAD_ARISTAS_OVERLAY = 0.22;
+  const OPACIDAD_ARISTAS_ALAMBRE = 0.9;
+  function aristasOpacidadBase() {
+    return opciones.material === 'alambre' ? OPACIDAD_ARISTAS_ALAMBRE : OPACIDAD_ARISTAS_OVERLAY;
+  }
+
+  // Aplica opacidad y visibilidad del overlay de aristas según: el modo de
+  // material actual (Alambre fuerza que se vea, sea cual sea el checkbox
+  // "mostrar"), el checkbox "mostrar" en los demás modos, y cuánto avanzó
+  // la deformación simulada (las aristas no siguen la deformación, así que
+  // se atenúan a medida que t crece — ver aplicarDeformacion).
+  function actualizarAristasVisual() {
+    if (!objeto) return;
+    const aristas = objeto.userData.aristas;
+    aristas.material.opacity = aristasOpacidadBase();
+    aristas.visible = opciones.material === 'alambre' ? true : opciones.malla;
+    // En modo Alambre puro no hay malla sólida detrás (está oculta) que
+    // deba tapar el lado lejano del wireframe, así que además del
+    // depthWrite:false (que evita que el wireframe se oculte a sí mismo)
+    // apagamos también el depthTest: así se garantiza ver TODAS las
+    // líneas, ambos lados, sin depender de cómo cada GPU/driver resuelva
+    // el test contra un depth buffer nunca escrito (más aún usando
+    // logarithmicDepthBuffer, donde ese caso límite puede comportarse
+    // distinto según el hardware). En Sólido/Normales el overlay sigue
+    // testeando profundidad contra la malla sólida real, para que se siga
+    // ocultando correctamente detrás de la superficie opaca.
+    aristas.material.depthTest = opciones.material !== 'alambre';
+  }
+
+  function construirMaterial() {
+    // Con el mapa de calor activo el color base se pone en blanco para que
+    // el color de vértice (que va de azul a rojo según la magnitud del
+    // desplazamiento) se vea sin teñirse con `COLOR_RELLENO`.
+    const conVertexColors = mapaCalorActivo();
+    const color = conVertexColors ? new THREE.Color(0xffffff) : new THREE.Color(COLOR_RELLENO);
+    // polygonOffset empuja las caras ligeramente "hacia atrás" en el
+    // depth-buffer (sin mover la geometría real), para que el overlay de
+    // aristas —dibujado exactamente sobre la misma superficie— siempre
+    // gane el test de profundidad y no parpadee (z-fighting).
+    const offsetAntiZFighting = {
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
+    };
+    switch (opciones.material) {
+      // El modo "Alambre" ya NO arma su propio wireframe de Three.js
+      // (MeshBasicMaterial con wireframe:true) — eso era un segundo
+      // wireframe, distinto del overlay de "aristas / cuadrícula" de más
+      // abajo, sin control de densidad y que además se pintaba con los
+      // vertex colors del mapa de calor (los "colores que no quiero").
+      // Ahora "Alambre" reutiliza EXACTAMENTE ese mismo overlay paramétrico
+      // (líneas por cuadrícula/densidad): la malla sólida se oculta
+      // (ver actualizarMaterial) y solo se ve el overlay, sin vertex
+      // colors, tal como en cualquier otro modo. El material de la malla
+      // 3D en sí no importa porque queda invisible, así que cae al mismo
+      // material sólido de siempre.
+      case 'normales': {
+        const material = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide, ...offsetAntiZFighting });
+        if (conVertexColors) {
+          // MeshNormalMaterial usa un shader fijo de three.js que solo
+          // calcula color a partir de la normal — no tiene ni idea de que
+          // existe un atributo `color` por vértice. Con onBeforeCompile
+          // inyectamos ese atributo "a mano" y mezclamos el color de la
+          // normal con el color del mapa de calor, para que el gradiente
+          // de desplazamiento se vea también en este modo.
+          material.onBeforeCompile = (shader) => {
+            shader.vertexShader = shader.vertexShader
+              .replace(
+                '#include <common>',
+                '#include <common>\n\t\t\t\tattribute vec3 color;\n\t\t\t\tvarying vec3 vColorCalor;'
+              )
+              .replace(
+                '#include <normal_vertex>',
+                '#include <normal_vertex>\n\t\t\t\tvColorCalor = color;'
+              );
+            shader.fragmentShader = shader.fragmentShader
+              .replace(
+                'uniform float opacity;',
+                'uniform float opacity;\n\t\t\t\tvarying vec3 vColorCalor;'
+              )
+              .replace(
+                'gl_FragColor = vec4( packNormalToRGB( normal ), diffuseColor.a );',
+                'vec3 colorNormalBase = packNormalToRGB( normal );\n\t\t\t\tvec3 colorMezclado = mix( colorNormalBase, vColorCalor, 0.75 );\n\t\t\t\tgl_FragColor = vec4( colorMezclado, diffuseColor.a );'
+              );
+          };
+          // Cambia el atributo `color` entre geometrías/objetos con
+          // distinta topología: forzamos recompilación del programa para
+          // que three.js no reutilice un shader cacheado sin el parche.
+          material.customProgramCacheKey = () => 'normales-calor';
+        }
+        return material;
+      }
+      case 'solido':
+      case 'alambre': // invisible en pantalla (ver actualizarMaterial); el material no importa
+      default:
+        return new THREE.MeshStandardMaterial({
+          color,
+          roughness: 0.45,
+          metalness: 0.05,
+          side: THREE.DoubleSide,
+          vertexColors: conVertexColors,
+          ...offsetAntiZFighting,
+        });
+    }
+  }
+
+  // Centra la geometría y coloca la cámara a una distancia proporcional a
+  // su tamaño real, sin importar la escala con la que fue exportada.
+  function encuadrar(geometria) {
+    geometria.computeBoundingSphere();
+    const esfera = geometria.boundingSphere;
+    if (!esfera || !isFinite(esfera.radius) || esfera.radius === 0) return;
+    geometria.translate(-esfera.center.x, -esfera.center.y, -esfera.center.z);
+    const distancia = (esfera.radius / Math.sin((camara.fov * Math.PI) / 360)) * 1.4;
+    camara.position.set(distancia * 0.6, distancia * 0.45, distancia * 0.75);
+    camara.near = Math.max(distancia / 1000, 0.001);
+    camara.far = distancia * 100;
+    camara.updateProjectionMatrix();
+    controles.target.set(0, 0, 0);
+    controles.update();
+  }
+
+  // ---- Cuadrícula UV para wireframes controlables --------------------
+  //
+  // Detecta si la geometría proviene de una superficie parametrizada con
+  // UVs en cuadrícula regular (filas × columnas), como las que produce
+  // ParametricGeometry o cualquier crearGeometria*() construida a mano
+  // sobre una malla u/v. Si no encuentra esa estructura devuelve null y
+  // el visor cae de vuelta al wireframe íntegro de Three.js.
+  function extraerCuadriculaUV(geometria) {
+    const uvAttr = geometria.getAttribute('uv');
+    const posAttr = geometria.getAttribute('position');
+    if (!uvAttr || !posAttr) return null;
+
+    const PRECISION = 5;
+    const clave = (x) => x.toFixed(PRECISION);
+
+    const valoresU = new Set();
+    const valoresV = new Set();
+    for (let i = 0; i < uvAttr.count; i++) {
+      valoresU.add(clave(uvAttr.getX(i)));
+      valoresV.add(clave(uvAttr.getY(i)));
+    }
+
+    const listaU = [...valoresU].map(Number).sort((a, b) => a - b);
+    const listaV = [...valoresV].map(Number).sort((a, b) => a - b);
+    const nu = listaU.length;
+    const nv = listaV.length;
+    if (nu < 2 || nv < 2) return null;
+
+    const indiceU = new Map(listaU.map((v, i) => [clave(v), i]));
+    const indiceV = new Map(listaV.map((v, i) => [clave(v), i]));
+    const celdas = nu * nv;
+
+    // ¿El total de vértices es un múltiplo exacto de una cuadrícula
+    // nu×nv? Algunos módulos arman la pieza final concatenando varias
+    // copias de la MISMA superficie paramétrica (arreglos lineales o
+    // rotacionales hechos a mano con clone()/translate()/scale(-1,...),
+    // como el Linear Array de la-muela.js), donde cada copia recorre el
+    // dominio u,v completo de 0 a 1. Si es así, tratamos cada copia como
+    // un "parche" independiente, en vez de exigir una única cuadrícula
+    // global (que nunca cuadraría: habría el doble/triple de vértices
+    // que combinaciones únicas de UV).
+    //
+    // Algunos otros módulos (p. ej. paraguas.js) van más lejos y fusionan
+    // a la cubierta paramétrica una pieza NO paramétrica (una columna
+    // extruida como BoxGeometry) dentro de la MISMA malla final. Esos
+    // vértices sueltos ya no encajan en ningún múltiplo exacto de la
+    // grilla, así que en vez de exigir que TODO el buffer decodifique
+    // limpio (lo que descartaba la detección entera y forzaba el
+    // wireframe íntegro para toda la pieza), se intenta parche por parche
+    // desde el principio y se corta apenas uno no cierra — típicamente al
+    // llegar a esos vértices sueltos del final. Los parches válidos
+    // anteriores (la cubierta) sí quedan disponibles como cuadrícula; la
+    // parte no paramétrica (la columna) recibe su propio wireframe de
+    // respaldo por triángulo (ver indicesSobrantes más abajo).
+    const maxParchesPosibles = Math.min(64, Math.floor(uvAttr.count / celdas));
+    if (maxParchesPosibles < 1) return null;
+
+    const parches = [];
+    for (let p = 0; p < maxParchesPosibles; p++) {
+      const inicio = p * celdas;
+      // Guardamos el ÍNDICE de vértice de cada celda, no su posición. Así,
+      // cuando la pieza se deforma (ver aplicarDeformacion), el overlay de
+      // aristas/alambre puede releer la posición ACTUAL de ese mismo
+      // vértice en vez de quedar pegado a la forma original.
+      const grilla = new Array(celdas).fill(-1);
+
+      let bloqueValido = true;
+      for (let local = 0; local < celdas; local++) {
+        const i = inicio + local;
+        const iu = indiceU.get(clave(uvAttr.getX(i)));
+        const iv = indiceV.get(clave(uvAttr.getY(i)));
+        if (iu === undefined || iv === undefined) { bloqueValido = false; break; }
+        const idx = iv * nu + iu;
+        if (grilla[idx] === -1) grilla[idx] = i;
+      }
+
+      // Huecos en la cuadrícula de este parche = ya no encaja (fin de la
+      // zona paramétrica, p. ej. donde empieza una columna fusionada).
+      // Cortamos acá en vez de descartar los parches anteriores, que sí
+      // son válidos.
+      if (!bloqueValido || grilla.some((v) => v === -1)) break;
+      parches.push({ nu, nv, grilla });
+    }
+
+    if (parches.length === 0) return null;
+    const numParches = parches.length;
+
+    // Vértices que quedaron fuera de todo parche detectado (p. ej. la
+    // columna de paraguas.js, fusionada al final de la misma malla). Sin
+    // esto, esa parte no tiene ningún tipo de línea: en modo Alambre la
+    // malla sólida se oculta por completo y, al no pertenecer a ningún
+    // parche, tampoco recibe líneas de cuadrícula — quedaría invisible.
+    // Se buscan los triángulos que caen ÍNTEGRAMENTE en ese rango sobrante
+    // (nunca a caballo con la zona paramétrica) para armarles un wireframe
+    // de respaldo con sus aristas reales, igual que el wireframe íntegro
+    // automático pero acotado solo a esa porción.
+    const primerVerticeSinPatch = numParches * celdas;
+    let indicesSobrantes = null;
+    const indexAttr = geometria.index;
+    if (indexAttr && primerVerticeSinPatch < posAttr.count) {
+      const arr = [];
+      for (let t = 0; t < indexAttr.count; t += 3) {
+        const a = indexAttr.getX(t);
+        const b = indexAttr.getX(t + 1);
+        const c = indexAttr.getX(t + 2);
+        if (a >= primerVerticeSinPatch && b >= primerVerticeSinPatch && c >= primerVerticeSinPatch) {
+          arr.push(a, b, c);
+        }
+      }
+      if (arr.length > 0) indicesSobrantes = new Uint32Array(arr);
+    }
+
+    // Longitud real de arco (en unidades de mundo) de una isocurva
+    // representativa en cada dirección, promediando varias muestras para
+    // no depender de un único corte que podría no ser representativo
+    // (p. ej. piezas que se angostan hacia un extremo). Esto es lo que
+    // permite luego calcular las divisiones "por distancia" en vez de
+    // adivinar cuántas van en U y cuántas en V. Se mide una sola vez sobre
+    // la forma ORIGINAL (sin deformar): solo se usa para repartir cuántas
+    // líneas van en cada dirección, no hace falta que se re-mida si la
+    // pieza luego se deforma.
+    const { Lu, Lv } = medirLongitudesPatch(parches[0], posAttr);
+
+    return { nu, nv, numParches, parches, longitudU: Lu, longitudV: Lv, indicesSobrantes };
+  }
+
+  function medirLongitudesPatch(parche, posAttr) {
+    const { nu, nv, grilla } = parche;
+    const punto = (i, j) => new THREE.Vector3().fromBufferAttribute(posAttr, grilla[j * nu + i]);
+
+    const filasMuestra = [0.25, 0.5, 0.75].map((t) => Math.round(t * (nv - 1)));
+    let sumaLu = 0;
+    for (const j of filasMuestra) {
+      let l = 0;
+      for (let i = 0; i < nu - 1; i++) l += punto(i, j).distanceTo(punto(i + 1, j));
+      sumaLu += l;
+    }
+    const Lu = sumaLu / filasMuestra.length;
+
+    const columnasMuestra = [0.25, 0.5, 0.75].map((t) => Math.round(t * (nu - 1)));
+    let sumaLv = 0;
+    for (const i of columnasMuestra) {
+      let l = 0;
+      for (let j = 0; j < nv - 1; j++) l += punto(i, j).distanceTo(punto(i, j + 1));
+      sumaLv += l;
+    }
+    const Lv = sumaLv / columnasMuestra.length;
+
+    return { Lu, Lv };
+  }
+
+  // A partir de la densidad elegida y las longitudes reales medidas,
+  // reparte las líneas entre U y V de forma que el ESPACIADO real entre
+  // isocurvas consecutivas sea igual en ambas direcciones (en vez de
+  // mostrar la misma cantidad de líneas en un eje corto y uno largo).
+  function calcularDivisionesAutomaticas(info, densidad) {
+    const { longitudU, longitudV, nu, nv } = info;
+    if (!(longitudU > 0) || !(longitudV > 0)) {
+      // Sin longitudes válidas (geometría degenerada): repartir parejo.
+      const d = Math.max(1, Math.round(densidad));
+      return { divU: Math.min(d, nu - 1), divV: Math.min(d, nv - 1) };
+    }
+    const media = Math.sqrt(longitudU * longitudV);
+    const espaciado = media / Math.max(1, densidad);
+    const divU = Math.max(1, Math.min(Math.round(longitudU / espaciado), nu - 1));
+    const divV = Math.max(1, Math.min(Math.round(longitudV / espaciado), nv - 1));
+    return { divU, divV };
+  }
+
+  // Construye solo las líneas visibles de una cuadrícula decimada para
+  // UN parche. Importante: lo que se decima es CUÁNTAS curvas u/v se
+  // muestran (divU × divV de ellas), no la resolución de cada curva —
+  // cada curva mostrada se traza con TODOS los puntos densos de la
+  // malla real a lo largo de esa dirección. Si en vez de esto se
+  // conectara solo el punto inicial y final con una cuerda recta, esa
+  // cuerda se separaría de la superficie curva real en el tramo
+  // intermedio (más cuanto más grande el arco cubierto), dando la
+  // apariencia de z-fighting aunque en realidad es una desviación
+  // geométrica genuina. Los vértices resultantes se acumulan en el
+  // array `vertices` recibido (así varios parches pueden compartir un
+  // mismo LineSegments).
+  function construirLineasParche(parche, divU, divV, vertices, leerPunto) {
+    const { nu, nv, grilla } = parche;
+    divU = Math.max(1, Math.min(Math.round(divU), nu - 1));
+    divV = Math.max(1, Math.min(Math.round(divV), nv - 1));
+
+    // Qué columnas (líneas a U fija) y qué filas (líneas a V fija) se
+    // muestran — esto sí sigue decimado según divU/divV.
+    const columnasI = [];
+    for (let i = 0; i <= divU; i++) columnasI.push(Math.round((i * (nu - 1)) / divU));
+    const filasJ = [];
+    for (let j = 0; j <= divV; j++) filasJ.push(Math.round((j * (nv - 1)) / divV));
+
+    // `leerPunto` lee la posición ACTUAL del vértice (deformada o no) cada
+    // vez que se llama — así el wireframe sigue la forma en tiempo real en
+    // vez de quedar fijo a la geometría original.
+    const punto = (i, j) => leerPunto(grilla[j * nu + i]);
+    const agregar = (a, b) => vertices.push(a.x, a.y, a.z, b.x, b.y, b.z);
+
+    // Isocurvas horizontales (V fija, recorriendo TODO U en resolución
+    // completa) — una por cada fila seleccionada.
+    for (const j of filasJ) {
+      for (let i = 0; i < nu - 1; i++) {
+        agregar(punto(i, j), punto(i + 1, j));
+      }
+    }
+    // Isocurvas verticales (U fija, recorriendo TODO V en resolución
+    // completa) — una por cada columna seleccionada.
+    for (const i of columnasI) {
+      for (let j = 0; j < nv - 1; j++) {
+        agregar(punto(i, j), punto(i, j + 1));
+      }
+    }
+  }
+
+  // Construye la geometría de líneas completa, recorriendo todos los
+  // parches detectados (normalmente 1, o varios si la pieza es un
+  // arreglo de copias de la misma superficie paramétrica).
+  function construirLineasCuadricula(info, divU, divV, geometriaViva) {
+    // Se lee la posición ACTUAL de geometriaViva (que es la misma geometría
+    // de la malla 3D — si está deformada, ya tiene los vértices
+    // desplazados por aplicarDeformacion). Por eso alcanza con volver a
+    // llamar a esta función para que el wireframe/overlay siga la
+    // deformación.
+    //
+    // A propósito NO se desplaza el punto a lo largo de su normal para
+    // separarlo de la superficie sólida (como se hacía antes): ese empuje
+    // era direccional en espacio de mundo (siempre hacia el mismo lado de
+    // la normal), así que en una superficie ABIERTA de una sola capa —sin
+    // volumen, como un hypar o una lámina— quedaba bien visto desde el
+    // lado al que apunta la normal, pero desde el lado opuesto empujaba la
+    // línea detrás de la cara sólida visible (DoubleSide) y el depth test
+    // la ocultaba ahí. El anti z-fighting de la malla sólida ya lo resuelve
+    // `polygonOffset` en construirMaterial (offsetAntiZFighting), que es
+    // relativo a cámara y por lo tanto funciona igual de bien mirando
+    // desde cualquiera de los dos lados — no hace falta duplicar esa
+    // lógica acá con un desplazamiento que además puede fallar.
+    const posAttr = geometriaViva.getAttribute('position');
+    const tmpPos = new THREE.Vector3();
+    const leerPunto = (indice) => {
+      tmpPos.fromBufferAttribute(posAttr, indice);
+      // clone(): construirLineasParche mantiene una referencia "anterior"
+      // viva entre llamadas sucesivas (modo triángulos), así que cada
+      // punto debe ser un objeto independiente, no el mismo Vector3
+      // reutilizado.
+      return tmpPos.clone();
+    };
+
+    const vertices = [];
+    for (const parche of info.parches) {
+      construirLineasParche(parche, divU, divV, vertices, leerPunto);
+    }
+
+    // Wireframe de respaldo para los triángulos que quedaron fuera de todo
+    // parche paramétrico (p. ej. la columna de paraguas.js). Se dibujan
+    // sus aristas reales (una vez por arista, sin repetir la que comparten
+    // dos triángulos vecinos) para que esa porción no quede sin ninguna
+    // línea en modo Alambre.
+    if (info.indicesSobrantes) {
+      const bordesVistos = new Set();
+      const agregarBorde = (i1, i2) => {
+        const clave = i1 < i2 ? `${i1}_${i2}` : `${i2}_${i1}`;
+        if (bordesVistos.has(clave)) return;
+        bordesVistos.add(clave);
+        const p1 = leerPunto(i1);
+        const p2 = leerPunto(i2);
+        vertices.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+      };
+      const idx = info.indicesSobrantes;
+      for (let t = 0; t < idx.length; t += 3) {
+        const a = idx[t], b = idx[t + 1], c = idx[t + 2];
+        agregarBorde(a, b);
+        agregarBorde(b, c);
+        agregarBorde(c, a);
+      }
+    }
+
+    const geometriaLineas = new THREE.BufferGeometry();
+    geometriaLineas.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    return geometriaLineas;
+  }
+
+  // Reconstruye la geometría de líneas del overlay de aristas: cuadrícula
+  // Reconstruye la geometría de líneas del overlay de aristas: cuadrícula
+  // paramétrica (densidad automática según distancia real) si la
+  // geometría tiene una cuadrícula UV detectable, o el wireframe íntegro
+  // (todas las aristas reales de la malla) como red de seguridad
+  // automática si no la tiene — sin que esto sea una opción elegible por
+  // el usuario.
+  function reconstruirAristas() {
+    if (!objeto) return;
+    const aristas = objeto.userData.aristas;
+    const infoCuadricula = objeto.userData.infoCuadricula;
+    const geometriaBase = objeto.userData.geometriaBase;
+
+    const geometriaAnterior = aristas.geometry;
+
+    if (infoCuadricula) {
+      const { divU, divV } = calcularDivisionesAutomaticas(infoCuadricula, opciones.mallaDensidad);
+      aristas.geometry = construirLineasCuadricula(infoCuadricula, divU, divV, geometriaBase);
+    } else {
+      // geometriaBase es la MISMA geometría de la malla 3D (no una copia),
+      // así que si la pieza está deformada, WireframeGeometry ya lee las
+      // posiciones actuales y el wireframe sale deformado sin más cambios.
+      aristas.geometry = new THREE.WireframeGeometry(geometriaBase);
+    }
+
+    geometriaAnterior.dispose();
+  }
+
+  // Habilita/deshabilita el control de densidad según si la geometría
+  // actual tiene una cuadrícula UV detectada.
+  function actualizarControlesCuadricula() {
+    const info = objeto && objeto.userData.infoCuadricula;
+    ctrlDensidad.enable(!!info);
+  }
+
+  function mostrarGeometria(geometria) {
+    if (objeto) {
+      escena.remove(objeto);
+      objeto.traverse((hijo) => {
+        if (hijo.geometry) hijo.geometry.dispose();
+        if (hijo.material) hijo.material.dispose();
+      });
+    }
+
+    encuadrar(geometria);
+    geometria.computeVertexNormals();
+
+    const grupo = new THREE.Group();
+    const malla3d = new THREE.Mesh(geometria, construirMaterial());
+    grupo.add(malla3d);
+
+    const aristas = new THREE.LineSegments(
+      new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: OPACIDAD_ARISTAS_OVERLAY,
+        depthFunc: THREE.LessEqualDepth,
+        // Sin esto, las líneas del lado cercano a la cámara escriben en el
+        // depth buffer y tapan a las del lado lejano del mismo objeto (se
+        // ve como si hubiera backface culling en el wireframe, aunque las
+        // líneas no tienen caras). depthWrite:false hace que el wireframe
+        // no se oculte a sí mismo, mientras el depthTest sigue activo para
+        // que en modo Sólido/Normales el overlay se siga ocultando
+        // correctamente detrás de la superficie sólida cuando corresponde.
+        depthWrite: false,
+      })
+    );
+    grupo.add(aristas);
+
+    grupo.userData.malla3d = malla3d;
+    grupo.userData.aristas = aristas;
+    grupo.userData.geometriaBase = geometria;
+    grupo.userData.infoCuadricula = extraerCuadriculaUV(geometria);
+    // Copia de las posiciones originales de la malla, en el mismo orden que
+    // el atributo `position`. Es la referencia sobre la que se suman los
+    // desplazamientos simulados (o, a futuro, los de una segunda malla real
+    // con la misma topología).
+    grupo.userData.posicionesOriginales = Float32Array.from(geometria.getAttribute('position').array);
+    objeto = grupo;
+    escena.add(objeto);
+
+    reconstruirAristas();
+    actualizarControlesCuadricula();
+    malla3d.visible = opciones.material !== 'alambre';
+    actualizarAristasVisual();
+
+    // Cada geometría nueva tiene su propia topología: cualquier deformación
+    // simulada para la pieza anterior ya no aplica.
+    reiniciarEstadoFEA();
+  }
+
+  function actualizarMaterial() {
+    if (!objeto) return;
+    const malla3d = objeto.userData.malla3d;
+    malla3d.material.dispose();
+    malla3d.material = construirMaterial();
+    // "Alambre" no es un material propio: es la malla sólida OCULTA +
+    // el overlay de aristas/cuadrícula (el mismo con control de densidad)
+    // mostrado a opacidad alta. Así deja de existir un segundo wireframe
+    // separado del paramétrico.
+    malla3d.visible = opciones.material !== 'alambre';
+    actualizarAristasVisual();
+  }
+
+  // =========================================================================
+  // ---- "Análisis de Elementos Finitos" (simulado) ------------------------
+  // =========================================================================
+  //
+  // Nada de esto resuelve una ecuación estructural real. Lo único que hace
+  // es inventar, a partir de la geometría ya cargada, un campo de
+  // desplazamientos por vértice que se ve razonable (una viga que flecta, un
+  // cascarón que se infla, una torsión, o ruido). Ese campo tiene EXACTAMENTE
+  // la misma cantidad de vértices, en el mismo orden, que la malla original
+  // — que es justo la convención que se necesitaría para, más adelante,
+  // reemplazar `generarDeformacionSimulada()` por la carga de una segunda
+  // malla real ya deformada (con la misma topología) y calcular
+  // `desplazamiento = posicionDeformada - posicionOriginal` vértice a
+  // vértice.
+
+  // Ruido suave y determinista (mismo punto → mismo valor siempre), hecho
+  // sumando senos de distinta frecuencia. No es Perlin/Simplex "de verdad",
+  // pero para dar variación visual local sin instalar una librería aparte
+  // es suficiente y queda continuo (sin saltos entre vértices vecinos).
+  function ruidoSuave(x, y, z) {
+    let n = Math.sin(x * 1.7 + y * 0.9 - z * 1.3);
+    n += 0.5 * Math.sin(x * 3.1 - y * 2.2 + z * 0.7 + 1.7);
+    n += 0.25 * Math.sin(x * 5.3 + y * 4.1 + z * 2.9 + 3.1);
+    return n / 1.75; // aprox. en [-1, 1]
+  }
+
+  // Colormap tipo "jet": azul → cian → verde → amarillo → rojo. t en [0,1].
+  function colorJet(t) {
+    t = THREE.MathUtils.clamp(t, 0, 1);
+    let r, g, b;
+    if (t < 0.25) { r = 0; g = 4 * t; b = 1; }
+    else if (t < 0.5) { r = 0; g = 1; b = 1 - 4 * (t - 0.25); }
+    else if (t < 0.75) { r = 4 * (t - 0.5); g = 1; b = 0; }
+    else { r = 1; g = 1 - 4 * (t - 0.75); b = 0; }
+    return [r, g, b];
+  }
+
+  // Genera el campo de desplazamientos simulado para la geometría actual.
+  // Devuelve { displacements: Float32Array(n*3), magnitudes: Float32Array(n), maxMag }.
+  //
+  // Los dos casos de carga son deliberadamente solo de FLEXIÓN estructural
+  // (nada de torsión ni de inflado): la pieza se queda quieta donde está
+  // "apoyada" y se dobla hacia abajo donde queda libre, como se doblaría un
+  // techo, una losa o una viga reales bajo su propio peso.
+  function generarDeformacionSimulada(geometria, tipo, posicionesOriginales) {
+    geometria.computeBoundingBox();
+    const bbox = geometria.boundingBox;
+    const tam = new THREE.Vector3();
+    bbox.getSize(tam);
+    const radio = (geometria.boundingSphere && isFinite(geometria.boundingSphere.radius) && geometria.boundingSphere.radius > 0)
+      ? geometria.boundingSphere.radius
+      : Math.max(tam.x, tam.y, tam.z, 1e-6) / 2;
+
+    const n = posicionesOriginales.length / 3;
+    const desplazamientos = new Float32Array(n * 3);
+    const magnitudes = new Float32Array(n);
+    // Desplazamiento "unitario" modesto (fracción del tamaño de la pieza).
+    // El factor de escala del panel exagera esto visualmente después, tal
+    // como hace cualquier post-proceso de EF real.
+    const amplitudBase = radio * 0.16;
+
+    let maxMag = 0;
+
+    if (tipo === 'boveda') {
+      // ---- Bóveda / cascarón bajo su propio peso ---------------------
+      //
+      // Idea estructural: los puntos MÁS BAJOS de la pieza (en Y, el eje
+      // vertical) son los que físicamente tocarían el suelo o se apoyarían
+      // en columnas/fundaciones — igual que las esquinas bajas de un hypar
+      // tipo "la-muela.js"; los puntos MÁS ALTOS son los bordes/crestas que
+      // quedan "volando" y son los que más flectan. El desplazamiento es
+      // siempre vertical hacia abajo (gravedad), nunca lateral ni radial:
+      // así el edificio se hunde/flecta pero no se tuerce ni se infla.
+      const yMin = bbox.min.y, yMax = bbox.max.y;
+      const alturaTotal = Math.max(yMax - yMin, 1e-6);
+
+      for (let i = 0; i < n; i++) {
+        const ix = i * 3;
+        const px = posicionesOriginales[ix], py = posicionesOriginales[ix + 1], pz = posicionesOriginales[ix + 2];
+        const s = THREE.MathUtils.clamp((py - yMin) / alturaTotal, 0, 1); // 0 = apoyo, 1 = borde libre
+
+        // Perfil de flexión: 0 en el apoyo, con pendiente 0 ahí también
+        // (como un empotramiento/apoyo continuo), creciendo hacia el borde
+        // libre — el mismo tipo de curva que describe una losa o un techo
+        // en voladizo flectando bajo su propio peso.
+        const forma = (3 * s * s - s * s * s) / 2; // 0..1
+        // Textura local suave (irregularidades de rigidez/espesor reales),
+        // discreta para no parecer ruido aleatorio ni inflado.
+        const ruido = 1 + 0.08 * ruidoSuave(px / radio * 2.5, py / radio * 2.5, pz / radio * 2.5);
+        const mag = amplitudBase * forma * ruido;
+
+        const dx = 0, dy = -mag, dz = 0; // siempre hacia abajo
+        desplazamientos[ix] = dx; desplazamientos[ix + 1] = dy; desplazamientos[ix + 2] = dz;
+        const m = Math.abs(mag);
+        magnitudes[i] = m;
+        if (m > maxMag) maxMag = m;
+      }
+    } else if (tipo === 'voladizo') {
+      // ---- Viga en voladizo genérica ----------------------------------
+      //
+      // Para piezas alargadas (una viga, una columna, un brazo) en vez de
+      // un cascarón: se flecta a lo largo de su eje más largo, empotrada
+      // en un extremo y libre en el otro.
+      const ext = [tam.x, tam.y, tam.z];
+      let eje = 0;
+      if (ext[1] > ext[eje]) eje = 1;
+      if (ext[2] > ext[eje]) eje = 2;
+      const min = bbox.min.getComponent(eje);
+      const max = bbox.max.getComponent(eje);
+      const largo = Math.max(max - min, 1e-6);
+
+      // Dirección de flexión: siempre gravedad (hacia abajo), salvo que el
+      // propio eje largo YA sea el vertical (una torre/columna), en cuyo
+      // caso se usa un empuje lateral moderado — la gravedad no puede
+      // flectar algo a lo largo de su propio eje.
+      const dirCarga = (eje !== 1)
+        ? new THREE.Vector3(0, -1, 0)
+        : new THREE.Vector3(1, 0, 0.35).normalize();
+
+      for (let i = 0; i < n; i++) {
+        const ix = i * 3;
+        const px = posicionesOriginales[ix], py = posicionesOriginales[ix + 1], pz = posicionesOriginales[ix + 2];
+        const comp = [px, py, pz];
+        const s = THREE.MathUtils.clamp((comp[eje] - min) / largo, 0, 1);
+
+        const forma = (3 * s * s - s * s * s) / 2; // 0..1, empotrado→libre
+        const ruido = 1 + 0.1 * ruidoSuave(px / radio * 3, py / radio * 3, pz / radio * 3);
+        const mag = amplitudBase * forma * ruido;
+
+        const dx = dirCarga.x * mag, dy = dirCarga.y * mag, dz = dirCarga.z * mag;
+        desplazamientos[ix] = dx; desplazamientos[ix + 1] = dy; desplazamientos[ix + 2] = dz;
+        const m = Math.hypot(dx, dy, dz);
+        magnitudes[i] = m;
+        if (m > maxMag) maxMag = m;
+      }
+    } else {
+      // ---- Aleatorio (ruido) — solo para explorar, no es estructural ---
+      for (let i = 0; i < n; i++) {
+        const ix = i * 3;
+        const px = posicionesOriginales[ix], py = posicionesOriginales[ix + 1], pz = posicionesOriginales[ix + 2];
+        let rx = px, ry = py, rz = pz;
+        const len = Math.hypot(rx, ry, rz) || 1;
+        rx /= len; ry /= len; rz /= len;
+        const ruido = ruidoSuave(px / radio * 2.5, py / radio * 2.5, pz / radio * 2.5);
+        const mag = amplitudBase * 0.9 * ruido;
+        const dx = rx * mag, dy = ry * mag, dz = rz * mag;
+        desplazamientos[ix] = dx; desplazamientos[ix + 1] = dy; desplazamientos[ix + 2] = dz;
+        const m = Math.hypot(dx, dy, dz);
+        magnitudes[i] = m;
+        if (m > maxMag) maxMag = m;
+      }
+    }
+
+    return { displacements: desplazamientos, magnitudes, maxMag: maxMag || 1e-6 };
+  }
+
+  function calcularColoresCalor(magnitudes, maxMag) {
+    const n = magnitudes.length;
+    const colores = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const t = maxMag > 0 ? magnitudes[i] / maxMag : 0;
+      const [r, g, b] = colorJet(t);
+      colores[i * 3] = r; colores[i * 3 + 1] = g; colores[i * 3 + 2] = b;
+    }
+    return colores;
+  }
+
+  // Aplica el estado actual (interpolación, factor de escala, mapa de
+  // calor) a la malla: mueve cada vértice desde su posición original hacia
+  // la deformada, y mezcla el color base con el color de calor según `t`.
+  function aplicarDeformacion() {
+    if (!objeto || !estadoFEA.displacements) return;
+    const malla3d = objeto.userData.malla3d;
+    const geometria = malla3d.geometry;
+    const posAttr = geometria.getAttribute('position');
+    const original = objeto.userData.posicionesOriginales;
+    const desp = estadoFEA.displacements;
+    const t = estadoFEA.interpolacion;
+    const f = estadoFEA.factorEscala;
+
+    for (let i = 0; i < posAttr.count; i++) {
+      const ix = i * 3;
+      posAttr.array[ix] = original[ix] + desp[ix] * f * t;
+      posAttr.array[ix + 1] = original[ix + 1] + desp[ix + 1] * f * t;
+      posAttr.array[ix + 2] = original[ix + 2] + desp[ix + 2] * f * t;
+    }
+    posAttr.needsUpdate = true;
+    geometria.computeVertexNormals();
+    geometria.computeBoundingSphere();
+
+    if (mapaCalorActivo()) {
+      let colorAttr = geometria.getAttribute('color');
+      if (!colorAttr) {
+        colorAttr = new THREE.Float32BufferAttribute(new Float32Array(posAttr.count * 3), 3);
+        geometria.setAttribute('color', colorAttr);
+      }
+      const base = new THREE.Color(COLOR_RELLENO);
+      const heat = estadoFEA.heatColors;
+      for (let i = 0; i < posAttr.count; i++) {
+        const ix = i * 3;
+        colorAttr.array[ix] = base.r + (heat[ix] - base.r) * t;
+        colorAttr.array[ix + 1] = base.g + (heat[ix + 1] - base.g) * t;
+        colorAttr.array[ix + 2] = base.b + (heat[ix + 2] - base.b) * t;
+      }
+      colorAttr.needsUpdate = true;
+    }
+
+    // Las aristas/cuadrícula se releen desde la geometría de la malla
+    // (posAttr/normAttr ya actualizados arriba), así que reconstruir el
+    // overlay en cada paso lo hace seguir la deformación en vez de quedar
+    // pegado a la forma original.
+    reconstruirAristas();
+    actualizarAristasVisual();
+  }
+
+  // Anima `estadoFEA.interpolacion` suavemente hacia `destino` (0 ó 1).
+  function animarInterpolacionEF(destino, duracionMs = 1400) {
+    if (animacionEFId) cancelAnimationFrame(animacionEFId);
+    const inicio = estadoFEA.interpolacion;
+    const t0 = performance.now();
+    estadoFEA.animando = true;
+    actualizarBotonAnimarEF();
+
+    function paso(ahora) {
+      const t = Math.min(1, (ahora - t0) / duracionMs);
+      const suavizado = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; // ease-in-out cúbico
+      estadoFEA.interpolacion = inicio + (destino - inicio) * suavizado;
+      if (ctrlInterpolacionEF) ctrlInterpolacionEF.updateDisplay();
+      aplicarDeformacion();
+      if (t < 1) {
+        animacionEFId = requestAnimationFrame(paso);
+      } else {
+        estadoFEA.interpolacion = destino;
+        if (ctrlInterpolacionEF) ctrlInterpolacionEF.updateDisplay();
+        aplicarDeformacion();
+        estadoFEA.animando = false;
+        animacionEFId = null;
+        actualizarBotonAnimarEF();
+      }
+    }
+    animacionEFId = requestAnimationFrame(paso);
+  }
+
+  function accionAnimarEF() {
+    if (!estadoFEA.displacements) return;
+    if (animacionEFId) {
+      cancelAnimationFrame(animacionEFId);
+      animacionEFId = null;
+      estadoFEA.animando = false;
+      actualizarBotonAnimarEF();
+      return;
+    }
+    const destino = estadoFEA.interpolacion < 0.5 ? 1 : 0;
+    animarInterpolacionEF(destino);
+  }
+
+  function actualizarBotonAnimarEF() {
+    if (!ctrlAnimarEF) return;
+    if (estadoFEA.animando) {
+      ctrlAnimarEF.name('⏸ Detener');
+    } else {
+      ctrlAnimarEF.name(estadoFEA.interpolacion < 0.5 ? '▶ Ver deformado' : '◀ Ver original');
+    }
+  }
+
+  function actualizarLeyendaEF() {
+    const visible = mapaCalorActivo();
+    leyendaEF.classList.toggle('leyenda-ef--visible', visible);
+    if (visible) {
+      const maxReal = estadoFEA.maxMag; // magnitud "real" (no exagerada por el factor de escala)
+      dibujarLeyendaEF(maxReal);
+    }
+  }
+
+  // Dibuja el colorbar vertical de la leyenda EF en <canvas>, replicando
+  // la misma rampa (colorJet) que colorea la malla deformada, con marcas
+  // y valores como un colorbar de matplotlib.
+  function dibujarLeyendaEF(maxReal) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const barW = 16;      // ancho de la barra
+    const barH = 190;     // alto de la barra
+    const padTop = 4;
+    const padBottom = 4;
+    const padRight = 40;  // espacio para marcas + números
+
+    const W = barW + padRight;
+    const H = barH + padTop + padBottom;
+
+    leyendaEFCanvas.width = Math.round(W * dpr);
+    leyendaEFCanvas.height = Math.round(H * dpr);
+    leyendaEFCanvas.style.width = W + 'px';
+    leyendaEFCanvas.style.height = H + 'px';
+
+    const ctx = leyendaEFCanvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    const bx = 0;
+    const by = padTop;
+
+    // Rampa continua: t=0 abajo (igual que en la malla), t=1 arriba.
+    const pasos = 128;
+    for (let i = 0; i < pasos; i++) {
+      const t0 = i / pasos;
+      const t1 = (i + 1) / pasos;
+      const tMedio = (t0 + t1) / 2;
+      const [r, g, b] = colorJet(tMedio);
+      ctx.fillStyle = `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)})`;
+      const y0 = by + barH - t1 * barH;
+      const segH = barH / pasos;
+      ctx.fillRect(bx, y0, barW, segH + 0.6);
+    }
+
+    // Colores tomados de las variables del sitio (no hardcodeados), así
+    // la leyenda queda consistente con el tema claro/oscuro activo —
+    // mismas variables que ya usa el resto de galeria.css.
+    const estilos = getComputedStyle(document.documentElement);
+    const colorTexto = estilos.getPropertyValue('--color-texto').trim() || '#e8e6e1';
+    const colorTextoSuave = estilos.getPropertyValue('--color-texto-suave').trim() || '#9a9fab';
+    const colorNegro = estilos.getPropertyValue('--color-negro').trim(); // triplete "r,g,b"
+    const colorBordeBarra = colorNegro ? `rgb(${colorNegro})` : '#0b0d10';
+
+    // Borde de la barra
+    ctx.strokeStyle = colorBordeBarra;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx + 0.5, by + 0.5, barW - 1, barH - 1);
+
+    // Marcas y valores, en los cuartos de la rampa (0, 25, 50, 75, 100%)
+    ctx.font = "10px " + (estilos.getPropertyValue('--fuente-datos').trim() || 'monospace');
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.strokeStyle = colorTextoSuave;
+    ctx.fillStyle = colorTexto;
+
+    [0, 0.25, 0.5, 0.75, 1].forEach((frac) => {
+      const y = by + barH - frac * barH;
+      ctx.beginPath();
+      ctx.moveTo(bx + barW, y);
+      ctx.lineTo(bx + barW + 5, y);
+      ctx.stroke();
+      const valor = frac * maxReal;
+      ctx.fillText(valor.toFixed(3), bx + barW + 8, y);
+    });
+  }
+
+  function habilitarControlesFEA(activo) {
+    [ctrlInterpolacionEF, ctrlMapaCalor, ctrlAnimarEF].forEach((c) => c && c.enable(activo));
+  }
+
+  function reiniciarEstadoFEA() {
+    if (animacionEFId) { cancelAnimationFrame(animacionEFId); animacionEFId = null; }
+    estadoFEA.displacements = null;
+    estadoFEA.magnitudes = null;
+    estadoFEA.heatColors = null;
+    estadoFEA.maxMag = 0;
+    estadoFEA.interpolacion = 0;
+    estadoFEA.animando = false;
+    if (ctrlInterpolacionEF) ctrlInterpolacionEF.updateDisplay();
+    estadoInfoFEA.maxDesplazamiento = '—';
+    if (ctrlInfoMaxDesplazamiento) ctrlInfoMaxDesplazamiento.updateDisplay();
+    habilitarControlesFEA(false);
+    actualizarBotonAnimarEF();
+    actualizarLeyendaEF();
+  }
+
+  function simularDeformacion() {
+    if (!objeto) return;
+    const malla3d = objeto.userData.malla3d;
+    const geometria = malla3d.geometry;
+    const original = objeto.userData.posicionesOriginales;
+
+    const resultado = generarDeformacionSimulada(geometria, estadoFEA.tipoCarga, original);
+    estadoFEA.displacements = resultado.displacements;
+    estadoFEA.magnitudes = resultado.magnitudes;
+    estadoFEA.maxMag = resultado.maxMag;
+    estadoFEA.heatColors = calcularColoresCalor(resultado.magnitudes, resultado.maxMag);
+    estadoFEA.interpolacion = 0;
+
+    estadoInfoFEA.maxDesplazamiento = `${resultado.maxMag.toFixed(3)} u (factor visual ×${estadoFEA.factorEscala})`;
+    if (ctrlInfoMaxDesplazamiento) ctrlInfoMaxDesplazamiento.updateDisplay();
+
+    habilitarControlesFEA(true);
+    if (ctrlInterpolacionEF) ctrlInterpolacionEF.updateDisplay();
+    actualizarMaterial();
+    actualizarLeyendaEF();
+    animarInterpolacionEF(1);
+  }
+
+  // ---- Carga de módulos arrastrados --------------------------------------
+  function limpiarBlobAnterior() {
+    if (urlBlobActual) {
+      URL.revokeObjectURL(urlBlobActual);
+      urlBlobActual = null;
+    }
+  }
+
+  function mostrarError(mensaje) {
+    panelError.textContent = mensaje;
+    panelError.hidden = false;
+  }
+  function ocultarError() {
+    panelError.hidden = true;
+    panelError.textContent = '';
+  }
+
+  // Busca, entre las exportaciones del módulo, la función de geometría
+  // siguiendo la misma convención de nombres que cono-sinusoidal.js.
+  function geometriaDesdeModulo(modulo) {
+    const entradas = Object.entries(modulo);
+
+    const constructor = entradas.find(
+      ([nombre, valor]) => typeof valor === 'function' && /^crearGeometria/i.test(nombre)
+    );
+    if (constructor) {
+      const [nombre, fn] = constructor;
+      const geometria = fn();
+      if (!(geometria && geometria.isBufferGeometry)) {
+        throw new Error(`"${nombre}" no devolvió un THREE.BufferGeometry.`);
+      }
+      return geometria;
+    }
+
+    const superficie = entradas.find(
+      ([nombre, valor]) => typeof valor === 'function' && /^superficie/i.test(nombre)
+    );
+    if (superficie) {
+      const [, fn] = superficie;
+      const geometria = new ParametricGeometry((u, v, destino) => fn(u, v, destino, {}), 120, 120);
+      return geometria;
+    }
+
+    const nombresDisponibles = entradas
+      .filter(([, valor]) => typeof valor === 'function')
+      .map(([nombre]) => nombre);
+
+    throw new Error(
+      'El archivo no exporta ninguna función "crearGeometria*" ni "superficie*".\n' +
+      (nombresDisponibles.length
+        ? `Funciones exportadas encontradas: ${nombresDisponibles.join(', ')}`
+        : 'No se encontraron funciones exportadas.')
+    );
+  }
+
+  async function cargarArchivo(archivo) {
+    ocultarError();
+    if (!/\.m?js$/i.test(archivo.name)) {
+      mostrarError(`"${archivo.name}" no parece un archivo .js.`);
+      return;
+    }
+    try {
+      const codigo = await archivo.text();
+      limpiarBlobAnterior();
+      const blob = new Blob([codigo], { type: 'text/javascript' });
+      urlBlobActual = URL.createObjectURL(blob);
+
+      const modulo = await import(/* webpackIgnore: true */ urlBlobActual);
+      const geometria = geometriaDesdeModulo(modulo);
+
+      mostrarGeometria(geometria);
+      nombreArchivoEl.textContent = archivo.name;
+      barraArchivo.hidden = false;
+      zonaSoltar.classList.remove('zona-soltar--visible');
+    } catch (err) {
+      console.error(err);
+      mostrarError(`No se pudo cargar "${archivo.name}":\n${err.message}`);
+      zonaSoltar.classList.add('zona-soltar--visible');
+    }
+  }
+
+  // ---- Arrastrar y soltar -------------------------------------------------
+  ['dragenter', 'dragover'].forEach((evento) => {
+    window.addEventListener(evento, (e) => {
+      e.preventDefault();
+      zonaSoltar.classList.add('zona-soltar--visible', 'zona-soltar--activa');
+    });
+  });
+  window.addEventListener('dragleave', (e) => {
+    if (e.relatedTarget === null) zonaSoltar.classList.remove('zona-soltar--activa');
+  });
+  window.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zonaSoltar.classList.remove('zona-soltar--activa');
+    const archivo = e.dataTransfer.files[0];
+    if (archivo) cargarArchivo(archivo);
+  });
+
+  botonElegir.addEventListener('click', () => entradaArchivo.click());
+  botonCambiar.addEventListener('click', () => {
+    zonaSoltar.classList.add('zona-soltar--visible');
+    entradaArchivo.click();
+  });
+  entradaArchivo.addEventListener('change', () => {
+    const archivo = entradaArchivo.files[0];
+    if (archivo) cargarArchivo(archivo);
+    entradaArchivo.value = '';
+  });
+
+  // ---- Panel de control (lil-gui) -----------------------------------------
+  const gui = new GUI({ title: 'Visor' });
+  gui.add(opciones, 'material', { Sólido: 'solido', Alambre: 'alambre', Normales: 'normales' })
+    .name('material')
+    .onChange(() => {
+      // En modo Alambre el overlay de aristas/cuadrícula pasa a ser la
+      // única geometría visible, así que se fuerza "mostrar" a encendido
+      // y se deshabilita el checkbox (apagarlo dejaría la pantalla vacía).
+      // En los demás modos el checkbox vuelve a controlar el overlay
+      // normalmente. (ctrlMalla se define más abajo, pero para cuando este
+      // onChange se dispare por interacción del usuario ya está asignado.)
+      const esAlambre = opciones.material === 'alambre';
+      if (esAlambre && !opciones.malla) {
+        opciones.malla = true;
+        ctrlMalla.updateDisplay();
+      }
+      ctrlMalla.enable(!esAlambre);
+      actualizarMaterial();
+      actualizarLeyendaEF();
+    });
+  const carpetaMalla = gui.addFolder('aristas / cuadrícula');
+  const ctrlMalla = carpetaMalla.add(opciones, 'malla').name('mostrar').onChange(() => {
+    actualizarAristasVisual();
+  });
+  const ctrlDensidad = carpetaMalla
+    .add(opciones, 'mallaDensidad', 4, 150, 1)
+    .name('densidad')
+    .onChange(() => {
+      reconstruirAristas();
+      actualizarControlesCuadricula();
+    });
+  gui.add(opciones, 'rejilla').name('rejilla / ejes').onChange((v) => {
+    rejilla.visible = v;
+    ejes.visible = v;
+  });
+
+  // ---- Panel de EF (simulado) ---------------------------------------------
+  const estadoInfoFEA = { maxDesplazamiento: '—' };
+  const carpetaFEA = gui.addFolder('Elementos finitos (simulado)');
+  carpetaFEA.add(estadoFEA, 'tipoCarga', {
+    'Bóveda / cascarón (peso propio)': 'boveda',
+    'Voladizo (flexión)': 'voladizo',
+    'Aleatorio (exploración)': 'aleatorio',
+  }).name('caso estructural');
+  carpetaFEA.add({ simular: simularDeformacion }, 'simular').name('▶ Simular deformación');
+  const ctrlInterpolacionEF = carpetaFEA
+    .add(estadoFEA, 'interpolacion', 0, 1, 0.01)
+    .name('interpolación')
+    .onChange(() => {
+      if (animacionEFId) { cancelAnimationFrame(animacionEFId); animacionEFId = null; estadoFEA.animando = false; actualizarBotonAnimarEF(); }
+      aplicarDeformacion();
+    })
+    .disable();
+  const ctrlAnimarEF = carpetaFEA.add({ animar: accionAnimarEF }, 'animar').name('▶ Ver deformado').disable();
+  carpetaFEA.add(estadoFEA, 'factorEscala', 0.1, 5, 0.1).name('factor de escala').onChange(aplicarDeformacion);
+  const ctrlMapaCalor = carpetaFEA.add(estadoFEA, 'mapaCalor').name('mapa de calor').disable().onChange(() => {
+    actualizarMaterial();
+    aplicarDeformacion();
+    actualizarLeyendaEF();
+  });
+  const ctrlInfoMaxDesplazamiento = carpetaFEA.add(estadoInfoFEA, 'maxDesplazamiento').name('desplaz. máx.').disable();
+  carpetaFEA.open();
+
+  // ---- Resize y animación --------------------------------------------------
+  window.addEventListener('resize', () => {
+    camara.aspect = window.innerWidth / window.innerHeight;
+    camara.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  function animar() {
+    controles.update();
+    renderer.render(escena, camara);
+    requestAnimationFrame(animar);
+  }
+  animar();
+</script>
+</body>
+</html>
