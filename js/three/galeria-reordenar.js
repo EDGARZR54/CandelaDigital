@@ -8,33 +8,24 @@
    anima la transición con anti-colisión por niveles
    (ver assignLayers en galeria-utils.js).
 
-   Este módulo es también la fuente de verdad de
-   "order" para el resto de la app: galeria-revelado.js
-   y galeria-carrusel.js lo consultan vía getOrder().
-   Desde este cambio, es TAMBIÉN la fuente de verdad de
-   "positions" (ver getPositions() más abajo) — no solo
-   de "order" — por la misma razón: el layout físico de
-   la fila (dónde cae cada slot en X) depende de QUÉ
-   elemento ocupa cada slot, así que no puede fijarse
-   una sola vez al armar la escena (ver el comentario
-   grande de computeRowPositions en galeria-escena.js
-   para el detalle del bug que esto corrige — separación
-   pareja entre CENTROS pero no entre CARAS de bounding
-   box, porque el layout crudo de galeria-escena.js
-   estaba dimensionado para el orden crudo del GeoJSON,
-   no para el orden cronológico con el que arranca la
-   fila).
+   Este módulo es la fuente de verdad de "order" para
+   el resto de la app: galeria-revelado.js y
+   galeria-carrusel.js lo consultan vía getOrder().
+   También es fuente de verdad de "positions" (ver
+   getPositions()): el layout físico de la fila (dónde
+   cae cada slot en X) depende de QUÉ elemento ocupa
+   cada slot, así que no puede fijarse una sola vez al
+   armar la escena (ver computeRowPositions en
+   galeria-escena.js).
 
-   El "order" INICIAL (antes de que el visitante toque
-   el GUI) ya NO es el orden crudo del GeoJSON: se
-   arranca directamente ordenado por config.sortOptions[0]
-   ("anio"/Cronológico — ver galeria-config.js), que es
-   el criterio que además queda marcado activo por
-   defecto en el GUI (ver renderSortButtons() en
-   galeria.js). "originalOrder" se conserva solo como
-   respaldo interno de getSortedOrder() (por si algún
-   sortOption pidiera volver al orden crudo), ya no
-   como estado inicial visible.
+   El "order" INICIAL ya NO es el orden crudo del
+   GeoJSON: arranca ordenado por config.sortOptions[0]
+   ("anio"/Cronológico — ver galeria-config.js), el
+   mismo criterio que queda marcado activo por defecto
+   en el GUI (ver renderSortButtons() en galeria.js).
+   "originalOrder" se conserva solo como respaldo
+   interno de getSortedOrder(), no como estado inicial
+   visible.
 ================================================== */
 
 import {
@@ -49,89 +40,128 @@ export function createReorderController(
     {
         cones, computeRowPositions, elementos, restY,
         computeLookAtX, setLookAtX, actualizarCajasDebug,
-        actualizarHiddenDrop
+        actualizarHiddenDrop,
+        // Bounding box real en mundo por elemento (mismo
+        // dato que ya usa galeria-carrusel.js). Opcional
+        // por compatibilidad hacia atrás: si no se pasa,
+        // se cae al cálculo viejo (constante fija) — ver
+        // más abajo.
+        bboxesPorIndice
     }
 ) {
 
     /*
-        Separación vertical entre "niveles" del arco
-        de reordenamiento (ver assignLayers). Antes
-        se derivaba de config.geometry.radius (el
-        radio del cono simple); ahora que cada
-        elemento tiene su propia geometría/tamaño, se
-        deriva del espaciado horizontal de la fila,
-        que sigue siendo la referencia de escala de
-        toda la escena.
-    */
+        Separación entre "niveles" del arco de
+        reordenamiento (ver assignLayers en
+        galeria-utils.js).
 
+        NO puede ser un valor fijo derivado de
+        config.row.spacing: ese número describe el
+        espaciado HORIZONTAL de la fila, no tiene
+        relación con cuánto ocupa una geometría en Z, y
+        assignLayers reparte niveles únicamente en base a
+        superposición en X — nunca mira la profundidad
+        real de lo que está moviendo. Si un elemento es
+        más "profundo" en Z que ese valor fijo, dos
+        niveles que assignLayers considera "separados"
+        pueden terminar solapándose en Z de todos modos.
+
+        El hueco real entre niveles NO es uniforme: con
+        layer=±1 y layerMagnitude=floor(level/2)+1 (ver
+        assignLayers), los offsets en unidades de
+        levelSeparation son -1,+1,-2,+2,-3,+3... para los
+        niveles 0,1,2,3,4,5... — el hueco mínimo entre dos
+        niveles que pueden estar activos a la vez (X
+        superpuesto) es de 1× levelSeparation (p.ej. nivel
+        0 vs nivel 2: -1 vs -2), no 2× como asume una
+        lectura ingenua de "niveles alternados". Y un
+        "slid" (mismo slot, sin arco — ver step()) reserva
+        carril en assignLayers pero su Z real quedó
+        siempre en offset 0 (plano): contra un "moved" en
+        nivel 0 o 1 (±1) el hueco real efectivo también
+        puede ser de apenas 1×.
+
+        Por eso la cota tiene que salir de la geometría:
+        para que dos elementos cualesquiera —en el peor
+        caso, los dos más profundos de la fila— no se
+        toquen aun con un hueco de 1×, alcanza y hace
+        falta que levelSeparation sea al menos la
+        profundidad Z máxima (max.z - min.z) de cualquier
+        elemento que pueda estar en movimiento
+        (halfDepthA + halfDepthB ≤ levelSeparation, peor
+        caso con A=B=el más profundo, da depthMax).
+        levelSeparationFactor pasa a ser un margen de
+        seguridad multiplicativo sobre esa cota (>= 1),
+        no un factor sobre el spacing de la fila.
+    */
     const levelSeparation =
-        config.row.spacing *
-        config.reorder.levelSeparationFactor;
+        bboxesPorIndice
+            ? Math.max(
+                  ...elementos.map(el => {
+
+                      const bbox =
+                          bboxesPorIndice[el.indice];
+
+                      return bbox
+                          ? bbox.max.z - bbox.min.z
+                          : 0;
+
+                  })
+              ) * config.reorder.levelSeparationFactor
+            // Sin bboxesPorIndice (dependencia opcional):
+            // se cae al cálculo viejo, para no romper a
+            // quien todavía no actualizó el call site.
+            : config.row.spacing *
+              config.reorder.levelSeparationFactor;
 
 
     const originalOrder =
         elementos.map(el => el.indice);
 
-    /*
-        Arranca ordenado por el primer criterio de
-        config.sortOptions ("anio"/Cronológico), no
-        por el orden crudo del GeoJSON — mismo
-        criterio que queda marcado activo por defecto
-        en el GUI (ver renderSortButtons() en
-        galeria.js). getSortedOrder() está definida
-        más abajo en este mismo archivo, pero al ser
-        function declaration queda "hoisteada": se
-        puede llamar acá arriba sin problema.
-    */
+    // Arranca ordenado por el primer criterio de
+    // config.sortOptions ("anio"/Cronológico), no por el
+    // orden crudo del GeoJSON — mismo criterio marcado
+    // activo por defecto en el GUI (ver
+    // renderSortButtons() en galeria.js). getSortedOrder()
+    // está definida más abajo pero, al ser function
+    // declaration, queda hoisteada.
     let order =
         getSortedOrder(
             config.sortOptions[0].key
         );
 
-    /*
-        "positions" ya NO es un array fijo recibido de
-        afuera: es el layout real para "order" (arriba),
-        recalculado con computeRowPositions() — misma
-        función que ya se usaba para centrar la cámara,
-        ahora también fuente de la posición física de
-        cada elemento (ver comentario de cabecera). Se
-        recalcula de nuevo en cada animateTo(), y se
-        promueve a estado vigente en step() cuando la
-        animación termina (mismo momento en que "order"
-        se promueve).
-    */
+    // "positions" es el layout real para "order" (arriba),
+    // vía computeRowPositions() — misma función que centra
+    // la cámara, ahora también fuente de la posición física
+    // de cada elemento. Se recalcula en cada animateTo(), y
+    // se promueve a estado vigente en step() cuando la
+    // animación termina (mismo momento en que "order" se
+    // promueve).
     let positions =
         computeRowPositions(order);
 
     /*
-        La escena (galeria-escena.js) centra la cámara
-        al armarse usando el orden CRUDO de "elementos"
-        (no tiene por qué saber de sortOptions ni de
-        cuál es el criterio default). Como acá arriba
-        el "order" inicial ya es el cronológico, no el
-        crudo, hay que recalcular y aplicar el lookAtX
-        real apenas se conoce ese order — si no, la fila
-        arranca descentrada desde el primer frame, antes
-        de que el visitante toque nada del GUI.
+        La escena (galeria-escena.js) centra la cámara al
+        armarse usando el orden CRUDO de "elementos" (no
+        sabe de sortOptions). Como acá el "order" inicial
+        ya es el cronológico, hay que recalcular y aplicar
+        el lookAtX real apenas se conoce ese order — si no,
+        la fila arranca descentrada antes de que el
+        visitante toque el GUI.
 
-        Acá SÍ se aplica de un salto (sin animar): todavía
-        no se pintó ni un frame, así que no hay nada que
-        "disimular" — a diferencia de animateTo()/step()
-        más abajo, donde el salto sería visible.
+        Se aplica de un salto (sin animar): todavía no se
+        pintó ni un frame, así que no hay nada que
+        disimular — a diferencia de animateTo()/step() más
+        abajo.
 
-        "lookAtX" queda guardado como estado propio del
-        controller (mismo criterio que "order") solo para
-        el caso sin computeLookAtX y como valor que
-        step() promueve al terminar cada animación — YA
-        NO es de acá de donde animateTo() saca su
-        "fromLookAtX" (ver el fix ahí, más abajo: ese
-        valor se recalcula fresco en cada llamada, porque
-        la cámara puede haberse movido por fuera de este
-        módulo desde la última vez que este "lookAtX" se
-        actualizó — bug real que esto corrigió: el primer
-        reordenamiento de la sesión saltaba de golpe toda
-        la escena, ver el comentario grande en
-        animateTo()).
+        "lookAtX" se guarda como estado propio del
+        controller solo para el caso sin computeLookAtX y
+        como valor que step() promueve al terminar cada
+        animación — NO es de acá de donde animateTo() saca
+        su "fromLookAtX" (ver ese comentario, más abajo:
+        se recalcula fresco en cada llamada, porque la
+        cámara puede haberse movido por fuera de este
+        módulo).
     */
     let lookAtX =
         computeLookAtX
@@ -151,20 +181,15 @@ export function createReorderController(
     }
 
     /*
-        FIX: el "order" inicial ya es el cronológico
+        El "order" inicial ya es el cronológico
         (config.sortOptions[0]), no el crudo con el que
         galeria-escena.js armó hiddenDropActual/
         filaBottomNdcYActual la primera vez — sin este
-        llamado, el primer paint (antes de que el
-        visitante toque el GUI) podía arrancar con un
-        hiddenDrop calculado para el order equivocado,
-        el mismo bug que motivó este fix, pero desde el
-        arranque en vez de recién al reordenar. Se aplica
-        de un salto (sin animar), mismo criterio que
-        lookAtX unas líneas más arriba: todavía no se
-        pintó ni un frame.
+        llamado, el primer paint podía arrancar con un
+        hiddenDrop calculado para el order equivocado. Se
+        aplica de un salto (sin animar), mismo criterio
+        que lookAtX unas líneas más arriba.
     */
-
     if (actualizarHiddenDrop) {
 
         actualizarHiddenDrop(order);
@@ -190,14 +215,11 @@ export function createReorderController(
     }
 
 
-    /*
-        Devuelve un nuevo array de "indice" en el
-        orden que corresponde al criterio "type",
-        usando config.sortOptions. No sabe nada del
-        dominio: solo llama a option.getValue(el)
-        para obtener el valor a comparar.
-    */
-
+    // Devuelve un nuevo array de "indice" en el orden que
+    // corresponde al criterio "type", usando
+    // config.sortOptions. No sabe nada del dominio: solo
+    // llama a option.getValue(el) para obtener el valor a
+    // comparar.
     function getSortedOrder(type) {
 
         if (type === "original") {
@@ -229,11 +251,8 @@ export function createReorderController(
 
             }
 
-            /*
-                Números: los nulos/indefinidos van
-                al final, sin importar el criterio.
-            */
-
+            // Números: los nulos/indefinidos van al final,
+            // sin importar el criterio.
             const na =
                 va === null || va === undefined
                     ? Infinity
@@ -273,16 +292,12 @@ export function createReorderController(
         busy = true;
 
 
-        /*
-            Layout destino para newOrder — recalculado
-            del mismo modo que el "positions" inicial de
-            arriba (ver comentario ahí y en
-            computeRowPositions, en galeria-escena.js).
-            "positions" (todavía el viejo acá, no se
-            reemplaza hasta que termine la animación, ver
-            step()) sigue siendo el layout correcto para
-            "order" (el vigente, previo a este cambio).
-        */
+        // Layout destino para newOrder (mismo criterio que
+        // el "positions" inicial de arriba). "positions"
+        // (todavía el viejo, no se reemplaza hasta que
+        // termine la animación, ver step()) sigue siendo el
+        // layout correcto para "order" (el vigente, previo
+        // a este cambio).
         const newPositions =
             computeRowPositions(newOrder);
 
@@ -301,82 +316,87 @@ export function createReorderController(
             const oldPosition =
                 order.indexOf(cupID);
 
+            const from = positions[oldPosition];
+            const to = newPositions[newPosition];
+
+            // "moved" (cambió de slot): necesita el arco
+            // anti-colisión de assignLayers, porque puede
+            // cruzarse en Z con otro elemento en tránsito.
+            const slotChanged =
+                oldPosition !== newPosition;
+
+            // Mismo slot, pero coordenada real distinta
+            // (computeRowPositions recalculó el layout por
+            // los bboxes de los elementos vecinos). No hay
+            // colisión posible (nadie más ocupa este slot a
+            // la vez), así que alcanza con un slide lineal,
+            // sin arco/lift/scale.
+            const slid =
+                !slotChanged &&
+                (from.x !== to.x || from.z !== to.z);
+
             movements.push({
 
                 cone: cones[cupID],
 
-                from: positions[oldPosition],
-                to: newPositions[newPosition],
+                from,
+                to,
 
-                moved:
-                    oldPosition !== newPosition
+                moved: slotChanged,
+                slid
 
             });
 
         }
 
 
+        // Los "slid" (mismo slot, coordenada distinta) no
+        // arquean —siguen planos en step()—, pero SÍ hay
+        // que pasarlos por assignLayers: su tramo de X
+        // sigue "ocupado" mientras se desliza, y es
+        // justamente ese tramo el que assignLayers usa para
+        // decidir si un "moved" puede compartir plano Z o
+        // necesita un carril propio. Excluirlos de acá deja
+        // a los "moved" sin ver ese tramo, y pueden terminar
+        // cruzándose en Z con un "slid" que se quedó plano.
         assignLayers(movements);
 
 
         /*
-            fromLookAtX: NO se reusa el "lookAtX" que este
-            controller tiene guardado como estado propio —
-            se recalcula FRESCO acá, contra el "order"
-            vigente (todavía sin cambiar) y la posición
-            ACTUAL de la cámara, con la misma
-            computeLookAtX() que ya usa setCameraLado() por
-            dentro (galeria-escena.js).
+            fromLookAtX: NO se reusa el "lookAtX" guardado
+            como estado propio del controller — se
+            recalcula FRESCO acá, contra el "order" vigente
+            (todavía sin cambiar) y la posición ACTUAL de
+            la cámara, con la misma computeLookAtX() que
+            usa setCameraLado() por dentro.
 
-            Por qué hace falta esto: entre una llamada a
+            Hace falta porque, entre una llamada a
             animateTo() y la siguiente, la cámara se sigue
-            moviendo SOLA por fuera de este módulo —
-            setCameraLado(t), que galeria.js llama en cada
-            frame de "hero"/"proyecto"/"revelado", recalcula
-            y aplica un camera.lookAt() nuevo cada vez que
-            la cámara avanza por el arco. Ese movimiento
-            nunca actualiza el "lookAtX" que este módulo
-            guardó al construirse (ver más arriba) — así
-            que, para el PRIMER animateTo() de toda la
-            sesión (el único que ocurre recién después de
-            que "revelado" movió la cámara de punta a punta
-            del arco sin que este módulo se enterara), ese
-            "lookAtX" guardado quedaba stale: apuntando a
-            donde miraba la cámara al construirse (arranque
-            de "hero"), no a donde mira en verdad ahora
-            ("orden", cámara ya asentada en el extremo
-            izquierdo). step() interpolaba entonces DESDE
-            ese valor viejo — el primer frame de la
-            animación saltaba de golpe desde el lookAt real
-            hacia ese valor stale, antes de recién ahí
-            empezar a viajar hacia el destino. Como es la
-            CÁMARA la que salta (no los conos, que están
-            bien ubicados todo el tiempo), se veía como si
-            TODA la escena —conos y sus bounding boxes por
-            igual— se moviera de golpe. En reordenamientos
-            posteriores no pasaba porque step() ya había
-            promovido "lookAtX" al valor correcto al
-            terminar el primero (ver el final de step(), más
-            abajo) — de ahí que el bug desapareciera "solo"
-            después del primer uso, sin relación con qué
-            criterio se haya elegido.
+            moviendo SOLA por fuera de este módulo:
+            setCameraLado(t) (que galeria.js llama en cada
+            frame de "hero"/"proyecto"/"revelado") aplica
+            un camera.lookAt() nuevo sin nunca actualizar
+            el "lookAtX" que este módulo guardó al
+            construirse. Si se reusara ese valor guardado,
+            el PRIMER animateTo() de la sesión interpolaría
+            desde un punto stale (el lookAt de "hero"), y
+            la cámara —no los conos, que están bien
+            ubicados— saltaría de golpe al arrancar la
+            animación. En reordenamientos posteriores no
+            se nota porque step() ya promovió "lookAtX" al
+            valor correcto al terminar el anterior.
 
-            Si no hay computeLookAtX (dependencia opcional),
-            se cae al "lookAtX" guardado como antes — sin
-            este dependency no hay forma de saber el valor
-            real vigente, así que no hay mejora posible ahí.
+            Si no hay computeLookAtX (dependencia
+            opcional), se cae al "lookAtX" guardado como
+            respaldo.
         */
         const fromLookAtX =
             computeLookAtX
                 ? computeLookAtX(order)
                 : lookAtX;
 
-        /*
-            lookAtX destino para este newOrder — mismo
-            cálculo de siempre, ahora simplemente
-            renombrado junto a "fromLookAtX" de arriba
-            para que se lea como el par que en verdad son.
-        */
+        // lookAtX destino para este newOrder — mismo
+        // cálculo que fromLookAtX, contra newOrder.
         const toLookAtX =
             computeLookAtX
                 ? computeLookAtX(newOrder)
@@ -396,11 +416,8 @@ export function createReorderController(
     }
 
 
-    /*
-        Devuelve true si había una animación en
-        curso (y la hizo avanzar un frame).
-    */
-
+    // Devuelve true si había una animación en curso (y la
+    // hizo avanzar un frame).
     function step(now) {
 
         if (!animState) return false;
@@ -422,17 +439,36 @@ export function createReorderController(
                 from,
                 to,
                 moved,
+                slid,
                 layer,
                 layerMagnitude
             } = movement;
 
 
-            if (!moved) {
+            if (!moved && !slid) {
 
                 cone.position.set(
                     to.x, restY, to.z
                 );
 
+                cone.scale.setScalar(1);
+
+                return;
+
+            }
+
+
+            if (slid) {
+
+                // Mismo slot, solo cambia la coordenada:
+                // slide lineal derecho, sin arco de nivel
+                // ni bump de escala (eso es exclusivo del
+                // anti-colisión entre elementos que se
+                // cruzan de slot).
+                const x = from.x + (to.x - from.x) * e;
+                const z = from.z + (to.z - from.z) * e;
+
+                cone.position.set(x, restY, z);
                 cone.scale.setScalar(1);
 
                 return;
@@ -458,13 +494,10 @@ export function createReorderController(
         });
 
 
-        /*
-            Mismo "e" que ya mueve los conos: el punto
-            de mira viaja disimulado, a la par de la
-            fila, en vez de saltar de golpe al terminar
-            (ver "fromLookAtX"/"toLookAtX" en
-            animateTo()).
-        */
+        // Mismo "e" que ya mueve los conos: el punto de
+        // mira viaja disimulado, a la par de la fila, en
+        // vez de saltar de golpe al terminar (ver
+        // "fromLookAtX"/"toLookAtX" en animateTo()).
         if (
             setLookAtX &&
             animState.fromLookAtX !== null &&
@@ -496,19 +529,16 @@ export function createReorderController(
             }
 
             /*
-                FIX: acá es donde se corregía el bug
-                reportado — "order" recién se promovió
-                arriba al valor nuevo, así que este es el
-                momento exacto en que hiddenDropActual/
-                filaBottomNdcYActual (en galeria-escena.js)
-                quedaban desincronizados del order vigente
-                hasta el próximo resize/setCameraLado. Se
-                llama en el mismo punto que
-                actualizarCajasDebug(order), por la misma
-                razón: es el único lugar donde "order"
-                cambia de verdad fuera del armado inicial.
+                "order" recién se promovió arriba al valor
+                nuevo: este es el momento exacto en que
+                hiddenDropActual/filaBottomNdcYActual (en
+                galeria-escena.js) quedarían desincronizados
+                del order vigente hasta el próximo resize/
+                setCameraLado si no se recalculan acá. Mismo
+                punto que actualizarCajasDebug(order): es el
+                único lugar donde "order" cambia de verdad
+                fuera del armado inicial.
             */
-
             if (actualizarHiddenDrop) {
 
                 actualizarHiddenDrop(order);

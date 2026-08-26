@@ -134,4 +134,29 @@
   .nav[data-abierto="true"] .nav__enlaces { transform: translateX(0); }
 
   .nav__acciones { display: flex; align-items: center; gap: 0.6rem; }
+
+  /*
+      Si ya se venía scrolleando antes de abrir el menú,
+      ".nav--fija" (arriba, fuera de este media query)
+      trae "backdrop-filter", y CUALQUIER elemento con
+      backdrop-filter/filter distinto de "none" pasa a
+      ser containing block de sus descendientes
+      "position: fixed" — mismo efecto que "transform".
+      ".nav__enlaces" es "position: fixed; inset: 0" y
+      depende de posicionarse contra el VIEWPORT, no
+      contra la caja angosta de ".nav" (solo el alto del
+      header). Con backdrop-filter activo en ".nav", el
+      menú terminaba encajado dentro de esa caja angosta
+      en vez de ocupar la pantalla completa — corrido
+      hacia arriba, "no pantalla completa".
+
+      Se anula acá (no hace falta en ".nav--fija" a
+      secas, sólo mientras el menú mobile está abierto):
+      no se pierde nada visualmente porque ".nav__enlaces"
+      ya trae su propio fondo sólido (var(--color-fondo))
+      que tapa igual la franja superior del header.
+  */
+  .nav.nav--fija[data-abierto="true"] {
+    backdrop-filter: none;
+  }
 }

@@ -1,8 +1,8 @@
 /* ==================================================
    galeria-panel-material.js
 
-   Panel de controles NATIVO (select + switch + slider,
-   mismas clases ".ficha__select"/".ficha__switch"/
+   Panel de controles (droplist propio + switch + slider
+   nativo, mismas clases ".ficha__droplist"/".ficha__switch"/
    ".ficha__slider" que el resto de la ficha) GLOBAL, no
    atado a ningún elemento en particular: tipo de material
    (sólido / estado / normales / ninguno) y si se
@@ -113,6 +113,190 @@ const OPACIDAD_ARISTAS_OVERLAY = 0.22;
 const OPACIDAD_ARISTAS_SIN_SUPERFICIE = 0.9;
 
 
+/*
+    DROPLIST EDITORIAL — reemplaza al <select> nativo de
+    "Tipo de material" (ver ".ficha__droplist" en galeria.css
+    para el porqué: tipografía inconsistente entre
+    navegadores + parpadeo blanco al abrir en modo oscuro,
+    ambos problemas de un popup que dibuja el navegador, no
+    este CSS).
+
+    Envuelve "#ficha-material-tipo" (el <ul role="listbox">)
+    para que se comporte como el <select> que reemplaza:
+    expone ".value" (string) y dispara un Event("change")
+    real cada vez que cambia — así el resto de este archivo
+    (estado.tipo, el addEventListener("change", ...) de más
+    abajo) no tuvo que tocarse, solo el wiring inicial.
+
+    Devuelve el mismo <ul> recibido (con ".value" ya
+    agregado), o null si no existe — mismo criterio de guard
+    que el resto del archivo.
+*/
+function crearDroplist(lista) {
+
+    if (!lista) return null;
+
+    const contenedor = lista.closest(".ficha__droplist");
+    const boton = contenedor.querySelector(".ficha__droplist-boton");
+    const valorSpan = boton.querySelector("[data-droplist-valor]");
+    const opciones = Array.from(
+        lista.querySelectorAll('[role="option"]')
+    );
+
+    opciones.forEach(li => { li.tabIndex = -1; });
+
+    const inicial =
+        opciones.find(li => li.getAttribute("aria-selected") === "true")
+        || opciones[0];
+
+    lista.value = inicial ? inicial.dataset.value : "";
+    if (inicial) valorSpan.textContent = inicial.textContent.trim();
+
+    /*
+        Se saca la lista de "#panel-material" y se cuelga
+        directo de <body>: adentro quedaba atrapada por el
+        "overflow:hidden" de ".ficha__seccion-contenido-inner"
+        (necesario para la animación de colapso) y por el
+        scroll de ".ficha__panel-cuerpo" — cualquiera de los
+        dos la recortaba apenas se acercaba al borde. Movida
+        a <body> con "position:fixed" calculada a mano (ver
+        posicionar()), nada la recorta y nada la mueve sola.
+
+        Los ids/aria-* siguen funcionando igual sin importar
+        dónde cuelgue en el DOM.
+    */
+    document.body.appendChild(lista);
+    lista.style.position = "fixed";
+
+    /*
+        Ancla la lista al botón en coordenadas de viewport.
+        Si no entra debajo (botón pegado al fondo de la
+        ventana), la abre hacia arriba en su lugar — mismo
+        criterio que cualquier <select> nativo.
+    */
+    function posicionar() {
+
+        const rectBoton = boton.getBoundingClientRect();
+        const margen = 6;
+
+        lista.style.left = rectBoton.left + "px";
+        lista.style.width = rectBoton.width + "px";
+
+        const alturaLista = lista.offsetHeight;
+        const espacioAbajo = window.innerHeight - rectBoton.bottom;
+        const entraAbajo =
+            espacioAbajo >= alturaLista + margen
+            || rectBoton.top < alturaLista + margen;
+
+        if (entraAbajo) {
+            lista.style.bottom = "";
+            lista.style.top = (rectBoton.bottom + margen) + "px";
+        } else {
+            lista.style.top = "";
+            lista.style.bottom =
+                (window.innerHeight - rectBoton.top + margen) + "px";
+        }
+
+    }
+
+    function cerrar() {
+        lista.hidden = true;
+        boton.setAttribute("aria-expanded", "false");
+
+        window.removeEventListener("scroll", posicionar, true);
+        window.removeEventListener("resize", posicionar);
+    }
+
+    function abrir() {
+        lista.hidden = false;
+        posicionar();
+        boton.setAttribute("aria-expanded", "true");
+
+        /*
+            "true" en el tercer argumento de scroll: captura
+            el scroll de CUALQUIER ancestro (p. ej.
+            ".ficha__panel-cuerpo"), no solo el de window —
+            el scroll normal no burbujea.
+        */
+        window.addEventListener("scroll", posicionar, true);
+        window.addEventListener("resize", posicionar);
+
+        const activa =
+            opciones.find(li => li.dataset.value === lista.value);
+
+        /*
+            "preventScroll": ya no hace falta como red de
+            seguridad (la lista dejó de estar adentro del
+            contenedor que scrolleaba), pero se deja puesto
+            por las dudas — enfocar nunca debería mover nada
+            de la página por su cuenta.
+        */
+        (activa || opciones[0])?.focus({ preventScroll: true });
+    }
+
+    function elegir(li) {
+
+        opciones.forEach(o =>
+            o.setAttribute("aria-selected", String(o === li))
+        );
+
+        valorSpan.textContent = li.textContent.trim();
+
+        if (lista.value !== li.dataset.value) {
+            lista.value = li.dataset.value;
+            lista.dispatchEvent(new Event("change"));
+        }
+
+        cerrar();
+        boton.focus();
+
+    }
+
+    boton.addEventListener("click", () => {
+        lista.hidden ? abrir() : cerrar();
+    });
+
+    opciones.forEach((li, indice) => {
+
+        li.addEventListener("click", () => elegir(li));
+
+        li.addEventListener("keydown", (evento) => {
+
+            if (evento.key === "ArrowDown") {
+                evento.preventDefault();
+                (opciones[indice + 1] || opciones[0]).focus();
+            } else if (evento.key === "ArrowUp") {
+                evento.preventDefault();
+                (opciones[indice - 1] || opciones[opciones.length - 1]).focus();
+            } else if (evento.key === "Enter" || evento.key === " ") {
+                evento.preventDefault();
+                elegir(li);
+            } else if (evento.key === "Escape") {
+                evento.preventDefault();
+                cerrar();
+                boton.focus();
+            } else if (evento.key === "Home") {
+                evento.preventDefault();
+                opciones[0].focus();
+            } else if (evento.key === "End") {
+                evento.preventDefault();
+                opciones[opciones.length - 1].focus();
+            }
+
+        });
+
+    });
+
+    // Clic afuera del droplist: cierra, mismo criterio que un <select> nativo
+    document.addEventListener("click", (evento) => {
+        if (!lista.hidden && !contenedor.contains(evento.target)) cerrar();
+    });
+
+    return lista;
+
+}
+
+
 export function createMaterialPanel(container, cones) {
 
     /*
@@ -131,7 +315,9 @@ export function createMaterialPanel(container, cones) {
     if (!container) return { actualizarAristasDeGrupo() {} };
 
     const selectTipo =
-        container.querySelector("#ficha-material-tipo");
+        crearDroplist(
+            container.querySelector("#ficha-material-tipo")
+        );
 
     const botonMostrarMalla =
         container.querySelector("#boton-mostrar-malla");
@@ -805,8 +991,21 @@ export function createMaterialPanel(container, cones) {
         galeria.html), hay que aplicar ese tipo ahora
         mismo o la escena arrancaría mostrando colores de
         estado aunque el select diga "Normales".
+
+        Mismo motivo aplica al overlay de malla:
+        "estado.mostrarMalla" ya se lee del "aria-checked"
+        del switch más arriba, pero eso solo actualiza la
+        variable en JS — el overlay en sí (uno por cono)
+        recién se crea/actualiza dentro de
+        "actualizarMallaDeTodos", que hasta ahora SOLO se
+        llamaba desde el listener de click del switch. Sin
+        este llamado acá, un HTML que arranca con
+        aria-checked="true" dejaba el switch marcado pero
+        ningún overlay puesto, hasta que el visitante lo
+        apagaba y prendía a mano.
     */
     actualizarTodosLosMateriales();
+    actualizarMallaDeTodos(estado.mostrarMalla);
 
     return { actualizarAristasDeGrupo };
 

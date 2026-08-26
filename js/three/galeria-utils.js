@@ -4,6 +4,14 @@
    Funciones puras, sin dependencias de Three.js ni
    del DOM. Se usan desde los distintos controladores
    de fase y desde galeria-escena.js.
+
+   Única excepción: fijarOpacidadPanel, al final del
+   archivo — sí escribe sobre el DOM, pero solo sobre
+   elementos que recibe por parámetro (nunca los busca
+   ella misma). Vive acá porque no pertenece a ninguna
+   fase en particular: la usan hero, proyecto, revelado
+   y fichas por igual, así que un módulo de fase
+   cualquiera sería un dueño arbitrario.
 ================================================== */
 
 
@@ -761,5 +769,40 @@ export function findHiddenDrop(
 
 
     return (lo + hi) / 2;
+
+}
+
+
+/* ==================================================
+   fijarOpacidadPanel(panel, elementoInteractivo, opacidad)
+
+   hero/proyecto quedan "clavados" (position: absolute)
+   sobre TODA la ventana, en un z-index (4) por encima
+   de "#scene" — su opacidad llega a 0 en cuanto se sale
+   de su fase, pero opacity:0 NO apaga pointer-events: el
+   bloque de texto reactivado (heroTexto/proyectoContenedor,
+   ver galeria-dom.js) seguía robándole el clic al canvas
+   de más abajo en TODAS las demás fases, "fichas"
+   incluida — el arrastre para rotar la geometría en foco
+   (ver galeria-interaccion-ficha.js) nunca le llegaba al
+   raycaster porque el pointerdown se quedaba en este
+   bloque invisible antes de tocar el <canvas> (bug
+   reportado: "no me deja rotar").
+
+   Esta única función reemplaza toda asignación directa
+   de "<panel>.style.opacity" en galeria.js, así opacidad
+   y pointer-events viajan siempre juntos y no puede
+   repetirse el mismo bug en otro lado si se agrega una
+   fase nueva.
+================================================== */
+
+export function fijarOpacidadPanel(
+    panel, elementoInteractivo, opacidad
+) {
+
+    panel.style.opacity = opacidad;
+
+    elementoInteractivo.style.pointerEvents =
+        opacidad > 0 ? "auto" : "none";
 
 }

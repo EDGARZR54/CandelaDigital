@@ -111,252 +111,65 @@ import { createCorteControles } from "./three/galeria-corte-controles.js";
 import { createCorteInterseccion } from "./three/galeria-corte-interseccion.js";
 import { createPlanoCorte } from "./three/galeria-plano-corte.js";
 import { createPaginationController } from "./three/galeria-paginacion.js";
+import { capturarDOM } from "./galeria-dom.js";
+import { createGuiController } from "./galeria-gui.js";
+import { fijarOpacidadPanel } from "./three/galeria-utils.js";
 
 
 async function initGaleria() {
 
-    const galeriaFija =
-        document.getElementById(
-            "galeria-escena-fija"
-        );
-
-    const spacer =
-        document.getElementById(
-            "galeria-spacer"
-        );
-
-    const sceneContainer =
-        document.getElementById("scene");
-
-    const hero =
-        document.getElementById("hero");
-
     /*
-        ".hero__texto" es quien reactiva
-        pointer-events:auto en galeria.css (para que el
-        título/descripción sea seleccionable durante la
-        fase "hero") — "#hero" mismo se queda en "none".
-        Por eso apagar el pointer-events real cuando el
-        hero se oculta hay que hacerlo ACÁ, no en "hero"
-        (ver fijarOpacidadPanel más abajo): un
-        pointer-events puesto en el contenedor no pisa
-        la regla explícita del hijo.
+        Todas las referencias a elementos fijos del
+        markup se capturan en un solo lugar (ver
+        galeria-dom.js) — acá solo se desestructuran con
+        los mismos nombres de siempre, así el resto de
+        este archivo no cambia.
     */
-    const heroTexto =
-        hero.querySelector(".hero__texto");
-
-    const proyectoPanel =
-        document.getElementById("proyecto");
-
-    /*
-        Mismo caso que "heroTexto": "#proyecto
-        .contenedor" es quien reactiva pointer-events,
-        no "#proyecto" mismo.
-    */
-    const proyectoContenedor =
-        proyectoPanel.querySelector(".contenedor");
-
-    /*
-        hero/proyecto quedan "clavados" (position:
-        absolute) sobre TODA la ventana, en un z-index
-        (4) por encima de "#scene" — su opacidad llega a
-        0 en cuanto se sale de su fase, pero
-        opacity:0 NO apaga pointer-events: el bloque de
-        texto reactivado (heroTexto/proyectoContenedor,
-        ver arriba) seguía robándole el clic al canvas
-        de más abajo en TODAS las demás fases, "fichas"
-        incluida — el arrastre para rotar la geometría en
-        foco (ver galeria-interaccion-ficha.js) nunca le
-        llegaba al raycaster porque el pointerdown se
-        quedaba en este bloque invisible antes de tocar
-        el <canvas> (bug reportado: "no me deja rotar").
-
-        Esta única función reemplaza toda asignación
-        directa de "<panel>.style.opacity" de acá en
-        adelante, así opacidad y pointer-events viajan
-        siempre juntos y no puede repetirse el mismo bug
-        en otro lado si se agrega una fase nueva.
-    */
-    function fijarOpacidadPanel(
-        panel, elementoInteractivo, opacidad
-    ) {
-
-        panel.style.opacity = opacidad;
-
-        elementoInteractivo.style.pointerEvents =
-            opacidad > 0 ? "auto" : "none";
-
-    }
-
-    const proyectoCifraCascarones =
-        document.getElementById(
-            "proyecto-cifra-cascarones"
-        );
-
-    const gui =
-        document.getElementById("gui");
-
-    const carouselPanel =
-        document.getElementById("carousel-panel");
+    const {
+        galeriaFija,
+        spacer,
+        sceneContainer,
+        hero,
+        heroTexto,
+        proyectoPanel,
+        proyectoContenedor,
+        proyectoCifraCascarones,
+        gui,
+        carouselPanel,
+        panelIndex,
+        panelNombre,
+        panelSubtitulo,
+        panelFicha,
+        panelDerechoSpecs,
+        panelDerechoCuadro,
+        panelDerecho,
+        fichaSheetTirador,
+        botonAutorotar,
+        botonMostrarInterseccion,
+        botonMostrarPlanoCorte,
+        fichaControlesContainer,
+        panelParametrosContainer,
+        panelMaterialContainer,
+        panelFotosContainer,
+        formulaGeometriaContainer,
+        scrollHint,
+        paginacionContainer
+    } = capturarDOM();
 
     /*
-        FIX ("la primer ficha se ve a opacidad plena
-        mucho antes de que la geometría termine de
-        centrarse", bug reportado): la clase "visible"
-        en galeria.css dispara una transición CSS de
-        opacidad de duración fija, en tiempo real, sin
-        relación ninguna con cuánto tarda la geometría en
-        cerrar el círculo y asentarse en su meseta (ver
-        galeria-carrusel.js, "opacityFinal"). Se
-        reemplaza ese fade por tiempo por un fade por
-        SCROLL: cada frame de la fase "fichas" fija
-        "carouselPanel.style.opacity" directamente, al
-        mismo "panelOpacity" que devuelve
-        carousel.update() — el mismo número que ya rige
-        "cone.material.opacity" del elemento en foco, así
-        que ambos llegan a 1 en el EXACTO mismo instante,
-        sin posibilidad de desincronizarse.
-
-        Para que esa asignación cuadro a cuadro no quede
-        ella misma amortiguada por la transición CSS
-        existente (que seguiría aplicando incluso a
-        cambios de "style.opacity" hechos por JS, sólo
-        que ahora produciría un lag en vez de un salto —
-        mismo problema, disfrazado), se anula acá esa
-        transición para este elemento en particular, sin
-        tocar transition en el resto del CSS de
-        "#carousel-panel.visible" (por si esa regla sigue
-        gobernando algo más que opacidad, p.ej. transform
-        o visibility).
+        La transición CSS de opacidad de "#carousel-panel.visible"
+        (galeria.css) es por tiempo fijo, sin relación con
+        cuánto tarda la geometría en asentarse (ver
+        "opacityFinal" en galeria-carrusel.js). Por eso el
+        fade de esta ficha se maneja por SCROLL: cada frame
+        de "fichas" fija "carouselPanel.style.opacity"
+        directo, al mismo "panelOpacity" que ya rige la
+        opacidad del cono en foco (ver tick(), más abajo).
+        Se anula acá la transición para que esa asignación
+        cuadro a cuadro no quede amortiguada por el CSS.
     */
     carouselPanel.style.transitionProperty = "opacity";
     carouselPanel.style.transitionDuration = "0s";
-
-    const panelIndex =
-        document.getElementById("panel-index");
-
-    const panelNombre =
-        document.getElementById("panel-nombre");
-
-    const panelSubtitulo =
-        document.getElementById("panel-subtitulo");
-
-    const panelFicha =
-        document.getElementById("panel-ficha");
-
-    /*
-        Panel derecho de la ficha (coordenadas +
-        ubicación desglosada, ver "#ficha-panel-marco" en
-        galeria.css / "panelDerecho" en galeria-config.js).
-        Mismo patrón de medición que "panelFicha" —ver
-        "dimensionesPanelDerecho" más abajo— pero con las
-        funciones GENÉRICAS de galeria-ficha.js
-        (calcularDimensionesCampos/renderizarCampos), ya
-        que este panel no tiene nombre/subtítulo propios,
-        solo la lista de campos.
-    */
-    const panelDerechoSpecs =
-        document.getElementById(
-            "panel-derecho-specs"
-        );
-
-    /*
-        El cuadrado vacío arriba de "panelDerechoSpecs"
-        (ver "#panel-derecho-cuadro" en galeria.html,
-        placeholder hasta ahora) — acá adentro se monta el
-        mapa, ver "mapa" más abajo y galeria-mapa.js.
-    */
-    const panelDerechoCuadro =
-        document.getElementById(
-            "panel-derecho-cuadro"
-        );
-
-    /*
-        Panel derecho completo (mapa + specs + controles +
-        fotos) y su tirador — solo hacen algo en mobile,
-        donde este panel pasa a ser un bottom sheet en vez
-        de la columna fija de siempre (ver el media query de
-        780px en galeria.css y galeria-panel-derecho.js). En
-        escritorio createPanelDerechoSheet() igual se llama
-        sin condicional: el tirador está oculto ahí (display:
-        none), así que sus listeners nunca disparan.
-    */
-    const panelDerecho =
-        document.getElementById("panel-derecho");
-
-    const fichaSheetTirador =
-        document.getElementById(
-            "ficha-sheet-tirador"
-        );
-
-    /*
-        Switch "Autorotado" — ver galeria-autorotar.js.
-        Vive dentro de "#ficha-controles" (sección
-        "Opciones de visualización", ex "Corte", del panel
-        derecho), no de "panelDerecho" en sí, pero se busca
-        acá junto a los otros elementos DOM fijos de la
-        ficha por el mismo criterio de siempre: reunir
-        todas las referencias en un solo lugar.
-    */
-    const botonAutorotar =
-        document.getElementById("boton-autorotar");
-
-    /*
-        Switch "Mostrar intersección" — ver
-        galeria-corte-interseccion.js. Mismo criterio que
-        "botonAutorotar" de acá arriba: se busca junto al
-        resto de los elementos DOM fijos de la ficha.
-    */
-    const botonMostrarInterseccion =
-        document.getElementById("boton-mostrar-interseccion");
-
-    /*
-        Switch "Mostrar plano de corte" — ver
-        galeria-plano-corte.js. Mismo criterio que los dos de
-        acá arriba.
-    */
-    const botonMostrarPlanoCorte =
-        document.getElementById("boton-mostrar-plano-corte");
-
-    /*
-        Contenedor de los sliders/botones de invertir de
-        "Opciones de visualización" (ex "Corte") — ver
-        galeria-corte-controles.js, que busca sus propios
-        elementos ADENTRO de este (mismo patrón que
-        createSeccionesColapsables con "panelDerecho").
-    */
-    const fichaControlesContainer =
-        document.getElementById("ficha-controles");
-
-    const panelParametrosContainer =
-        document.getElementById("panel-parametros");
-
-    const panelMaterialContainer =
-        document.getElementById("panel-material");
-
-    /*
-        Contenedor de las miniaturas de "Fotografías" —
-        ver galeria-panel-fotos.js, mismo patrón que
-        panelParametrosContainer: arranca vacío en el
-        HTML, este módulo lo arma en runtime.
-    */
-    const panelFotosContainer =
-        document.getElementById("ficha-fotos-miniaturas");
-
-    /*
-        Fórmula fija de la sección "Geometría" — ver el
-        comentario junto a "renderMathInElement" más abajo
-        para el porqué de que se renderice acá y no en un
-        módulo aparte.
-    */
-    const formulaGeometriaContainer =
-        document.getElementById("formula-geometria");
-
-    const scrollHint =
-        document.getElementById("scroll-hint");
-
-    const paginacionContainer =
-        document.getElementById("galeria-paginacion");
 
 
     let elementos;
@@ -417,61 +230,19 @@ async function initGaleria() {
 
 
     /*
-        Se mide al cargar, con los elementos reales,
-        cuál es el ancho/alto máximo que necesita cada
-        campo de la ficha entre todos ellos. El panel
-        todavía está con opacidad 0 (recién arrancamos
-        en la fase A), así que esto no se alcanza a ver.
+        Se mide al cargar, con los elementos reales, el
+        ancho/alto máximo que necesita cada campo de la
+        ficha entre todos ellos (panel en opacidad 0
+        todavía, no se alcanza a ver).
 
-        "let", no "const": esta medida queda atada al
-        tamaño de fuente vigente en ESE momento (el
-        nombre usa clamp(...vw...), así que su ancho
-        natural depende del viewport al medir). Si el
-        visitante rota el celular después, el tamaño de
-        fuente cambia pero el ancho fijo quedaba
-        desactualizado — la ficha terminaba necesitando
-        más líneas de las previstas y, por lo tanto, más
-        alto del que en verdad hace falta (de ahí el
-        scroll que apareció en horizontal). remedirFicha()
-        (más abajo, se llama en cada resize) vuelve a
-        calcular esto para el viewport ACTUAL, así el
-        ancho fijo y el tamaño de fuente renderizado
-        nunca quedan desalineados — la ficha entra sin
-        necesitar scroll en cualquier orientación, igual
-        que en la carga original.
+        "let", no "const": el nombre usa clamp(...vw...),
+        así que esta medida depende del viewport al
+        momento de medir. remedirFicha() (más abajo, en
+        cada resize) la recalcula para el viewport actual,
+        así ancho fijo y tipografía renderizada nunca
+        quedan desalineados.
     */
 
-    /*
-        Tope de ancho por campo de specs (superficie,
-        altura, estado, etc.), pensado para el viewport
-        ACTUAL — no el default fijo de 260px que usa
-        galeria-ficha.js el resto del tiempo.
-
-        En retrato (o cualquier pantalla con alto de
-        sobra) no hace falta tocar nada: hay lugar de
-        sobra para que las specs envuelvan en varias
-        filas con su ancho natural, así que se devuelve
-        "undefined" y calcularDimensionesFicha usa su
-        propio default.
-
-        En horizontal de celular el alto es el recurso
-        escaso (ver el media query de #carousel-panel en
-        galeria.css): ahí SÍ hace falta que las specs
-        entren en una sola fila, así que el tope de cada
-        columna se calcula para que TODAS quepan lado a
-        lado en el ancho disponible — en vez de dejar que
-        cada una pida el ancho que quiera y que el
-        sobrante envuelva a una fila que después
-        max-height recorta.
-
-        GAP/MARGEN_LATERAL acá abajo replican los valores
-        reales que usa el CSS en ese mismo breakpoint
-        (gap de #carousel-panel .specs, y el padding
-        inline aproximado de .contenedor) — si alguno de
-        esos cambia en galeria.css, conviene actualizar
-        acá también para que el cálculo siga siendo
-        preciso.
-    */
 
     const GAP_SPECS_HORIZONTAL = 22;
     const ANCHO_MINIMO_CAMPO = 64;
@@ -479,50 +250,29 @@ async function initGaleria() {
 
     /*
         Tope de ancho por campo de specs (superficie,
-        altura, estado, etc.), basado en el ancho REAL
-        disponible — no en un default fijo de 260px.
+        altura, estado, etc.), medido contra el ancho
+        REAL disponible en vez de un default fijo de
+        260px (el que usa galeria-ficha.js el resto del
+        tiempo).
 
-        ANTES esto solo se activaba en el breakpoint de
-        horizontal bajo (celular acostado), usando
-        "window.innerWidth - ESPACIO_LATERAL_FICHA" como
-        aproximación del ancho disponible — un número que
-        SOLO era razonable ahí porque en ese breakpoint
-        "#ficha-panel-marco" (el panel derecho) está oculto
-        (ver ese "display:none" en galeria.css) y
-        "#carousel-panel .contenedor" vuelve su padding-right
-        al valor normal, chico, de siempre.
+        En retrato hay alto de sobra, así que no hace
+        falta forzar nada: se devuelve "undefined" y
+        calcularDimensionesFicha cae a su propio default.
 
-        Fuera de ese breakpoint (o sea: la MAYORÍA del
-        tiempo), la función devolvía "undefined" sin más, y
-        "calcularDimensionesFicha" (galeria-ficha.js) caía a
-        su propio default fijo de 260px por campo — un
-        número que NUNCA tuvo en cuenta cuánto ancho le
-        queda de verdad a "#panel-ficha" después de que
-        "#carousel-panel .contenedor" le resta espacio a la
-        derecha para "#ficha-panel-marco" (ver ese
-        "padding-right" en galeria.css). Con contenido largo
-        (autores con varios nombres, tipologías largas), la
-        grilla de datos podía terminar más ancha que el
-        espacio real disponible e invadir visualmente el
-        panel derecho.
+        En horizontal de celular (ver el media query de
+        #carousel-panel en galeria.css) el alto es el
+        recurso escaso: ahí sí hace falta que las specs
+        entren en una sola fila, así que se calcula el
+        ancho por columna para que todas quepan lado a
+        lado.
 
-        Ahora se mide el ancho REAL de ".ficha__fila"
-        (padre directo de "#panel-ficha") con
-        "getBoundingClientRect()" — ESE número ya viene con
-        la reserva del panel derecho descontada (porque
-        ".ficha__fila" es un hijo normal, sin ancho propio
-        fijo, dentro de ".contenedor": su ancho disponible
-        YA es "ancho de .contenedor menos su padding", sin
-        que haga falta repetir esa resta acá a mano) — mismo
-        criterio de "medir el DOM real en vez de aproximar
-        con un número fijo" que ya usa "anchoContenidoDisponible()"
-        en galeria-ficha.js para el título. Al medir en vivo,
-        esto además sigue funcionando bien SIN cambios en el
-        breakpoint de horizontal bajo: ahí ".ficha__fila" ya
-        mide más ancho automáticamente, porque a esa altura
-        "#ficha-panel-marco" está oculto y el padding-right
-        vuelve a ser chico — se refleja solo en la medición,
-        sin necesitar una rama de código aparte para eso.
+        Se mide el ancho real de ".ficha__fila" (padre de
+        "#panel-ficha") con getBoundingClientRect() — ya
+        viene con el espacio del panel derecho descontado,
+        sin necesidad de aproximarlo a mano. GAP_SPECS_HORIZONTAL
+        replica el gap real de "#carousel-panel .specs" en
+        ese breakpoint; si cambia en galeria.css, actualizar
+        acá también.
     */
     function calcularAnchoMaximoCampo() {
 
@@ -534,23 +284,12 @@ async function initGaleria() {
             fila.getBoundingClientRect().width;
 
         /*
-            NO se divide por "numCampos" (7): la grilla
-            real es "grid-template-columns: repeat(4, auto)"
-            (2 filas x 4 columnas, ver "#carousel-panel
-            .specs" en galeria.css, sin ninguna excepción en
-            ningún breakpoint) — nunca hay 7 campos uno al
-            lado del otro en la misma fila, siempre 4 como
-            mucho. Dividir por 7 angostaba cada campo mucho
-            más de lo necesario.
-
-            Se LEE la cantidad real de columnas desde el CSS
-            computado (en vez de escribir "4" a mano acá) —
-            mismo criterio de "medir el DOM/CSS real" que ya
-            usa el resto de este módulo: si el
-            "grid-template-columns" de ".specs" cambia
-            alguna vez, este cálculo lo sigue automático sin
-            que haga falta acordarse de actualizar un
-            segundo lugar.
+            La grilla real es 4 columnas fijas
+            ("grid-template-columns: repeat(4, auto)",
+            ver "#carousel-panel .specs" en galeria.css) —
+            se lee del CSS computado en vez de escribir
+            "4" a mano, para que este cálculo siga
+            automático si ese valor cambia algún día.
         */
         const columnasGrid =
             getComputedStyle(panelFicha)
@@ -580,29 +319,14 @@ async function initGaleria() {
         );
 
     /*
-        Mismo criterio que "dimensionesFicha" (ver el
-        comentario grande de arriba), pero con la versión
-        GENÉRICA: "panelDerecho" no tiene nombre/subtítulo
-        propios, así que calcularDimensionesCampos() solo
-        necesita el array de campos + UN contenedor de
-        medición.
-
-        Se mide contra "panelDerechoSpecs" mismo (no un
-        contenedor descartable aparte): es el mismo truco
-        que ya usa "panelFicha" arriba — funciona porque el
-        panel entero está en opacidad 0 en este punto de la
-        carga (todavía en la fase "hero"), así que pintar y
-        borrar contenido "de paso" ahí no se alcanza a ver.
-
-        Sin "anchoMaximoCampo" propio a propósito:
-        calcularAnchoMaximoCampo() (arriba) mide el ancho
-        de ".ficha__fila" — el contenedor de "panelFicha",
-        no el de este panel. "#ficha-panel-marco" (donde
-        vive "panelDerechoSpecs") tiene su propio ancho fijo
-        via "--ficha-panel-ancho" (ver galeria.css); pasarle
-        acá el ancho medido para OTRO contenedor daría un
-        tope sin relación real con el espacio que este panel
-        en verdad tiene disponible.
+        Versión GENÉRICA de "dimensionesFicha": panelDerecho
+        no tiene nombre/subtítulo propios, solo campos. Se
+        mide contra "panelDerechoSpecs" (opacidad 0 en este
+        punto de la carga, no se ve). Sin "anchoMaximoCampo"
+        propio a propósito: ese ancho es el de ".ficha__fila"
+        (panelFicha) — "#ficha-panel-marco" (donde vive este
+        panel) tiene su propio ancho fijo vía
+        "--ficha-panel-ancho" en galeria.css.
     */
     let dimensionesPanelDerecho =
         calcularDimensionesCampos(
@@ -612,40 +336,15 @@ async function initGaleria() {
         );
 
     /*
-        calcularAnchoMaximoCampo() (arriba) sólo mira el
-        ANCHO: angosta cada columna de specs para que
-        entren todas en una fila. Pero angostar una
-        columna puede hacer que un valor con texto largo
-        (el JSON no garantiza cuántas líneas/párrafos
-        tiene cada campo) necesite MÁS líneas para entrar
-        en ese ancho — es decir, más alto.
-
-        Esta función se apoya en algo que YA hace
-        renderizarFicha() (galeria-ficha.js): aplica
-        minHeight con el PEOR CASO —el contenido MÁS
-        LARGO entre TODOS los elementos del GeoJSON, no
-        solo el que está activo ahora— a cada campo. Eso
-        significa que, apenas se pinta cualquier elemento,
-        el panel YA está ocupando el alto máximo real que
-        vaya a necesitar en toda la sesión, sin importar
-        cuál esté a la vista.
-
-        Por eso, en vez de sumar a mano paddings/márgenes
-        estimados (frágil: cualquier ajuste de CSS futuro
-        rompe la cuenta en silencio), se mide directo del
-        DOM ya renderizado: carouselPanel.scrollHeight es
-        el alto real total del contenido, ya con todos los
-        márgenes/paddings tal cual el navegador los aplicó
-        — scrollHeight además ignora cualquier recorte por
-        overflow/max-height ya aplicado, así que da el
-        mismo número exista o no un límite vigente.
-
-        Se llama tanto desde remedirFicha() (cubre
-        resize/rotación) como al final de updatePanel()
-        (cubre entrar a la fase "fichas" por primera vez
-        SIN pasar por un resize) — así siempre hay una
-        medición real y actualizada antes de fijar
-        max-height.
+        calcularAnchoMaximoCampo() solo mira el ancho; una
+        columna angosta puede necesitar más líneas (más
+        alto). Se apoya en que renderizarFicha() ya aplica
+        minHeight con el peor caso a cada campo (ver
+        galeria-ficha.js), así que carouselPanel.scrollHeight
+        —medido directo del DOM en vez de estimar paddings a
+        mano— ya refleja el alto máximo real. Se llama desde
+        remedirFicha() (resize) y al final de updatePanel()
+        (primera entrada a "fichas" sin resize de por medio).
     */
 
     const ALTO_MAXIMO_FICHA_VH_BASE = 58;
@@ -699,14 +398,10 @@ async function initGaleria() {
     ajustarAltoFichaSegunContenido();
 
     /*
-        Elemento actualmente mostrado en la ficha (o
-        null si todavía no se mostró ninguno): lo
-        necesita remedirFicha() para poder re-pintar el
-        contenido real después de recalcular
-        dimensionesFicha en un resize — sin esto, tras
-        rotar el celular la ficha quedaría con las
-        medidas nuevas pero mostrando el contenido de
-        measurement leftover, o directamente en blanco.
+        Elemento actualmente mostrado en la ficha (o null
+        si todavía no se mostró ninguno) — remedirFicha()
+        lo necesita para re-pintar el contenido real tras
+        recalcular dimensionesFicha en un resize.
     */
 
     let elementoIdActual = null;
@@ -749,26 +444,14 @@ async function initGaleria() {
 
     /*
         Aplica el presupuesto de scroll (las 5 fases) como
-        alto real de #galeria-spacer — eso es lo que
-        empuja al <footer> hasta el final del
-        recorrido. Antes esto era
-        "document.body.style.height = ...", puesto a
-        mano; ahora surge solo del flujo normal del
-        documento (espaciador + footer).
-
-        Se le suma UN alto de ventana extra: cuando
-        #galeria-escena-fija se libera (fase D, ver
-        más abajo) queda "parada" en top = total de
-        de las 5 fases, pero al ser position:absolute ya NO
-        empuja al <footer> en el flujo — si el
-        espaciador terminara justo ahí, el footer
-        aparecería sobrepuesto al último cascarón en
-        vez de dejarlo terminar de deslizarse fuera de
-        vista. Este viewport extra es exactamente el
-        tramo de scroll que le toma a la escena
-        liberada (alta 100vh) desaparecer del todo
-        antes de que el footer, que empieza justo
-        después de este espaciador, entre en pantalla.
+        alto real de #galeria-spacer, que empuja al
+        <footer> hasta el final del recorrido. Se le suma
+        un alto de ventana extra: al llegar a la fase
+        "final", #galeria-escena-fija pasa a
+        position:absolute y deja de empujar el flujo — ese
+        viewport extra es el tramo de scroll que tarda la
+        escena liberada en desaparecer antes de que el
+        footer entre en pantalla.
     */
 
     function ajustarAltoScroll() {
@@ -787,26 +470,15 @@ async function initGaleria() {
 
 
     /*
-        Si el visitante alterna el tema (botón del
-        navbar, ver js/navbar.js) mientras está en
-        esta página, el fondo/niebla/mesa de la
-        escena 3D se recalculan en vivo — mismo
-        patrón que usa js/fondo-3d.js en index.html
-        para su fondo decorativo.
-
-        El mismo cambio de "data-tema" también dispara
-        "mapa.actualizarTema()" (ver galeria-mapa.js), que
-        alterna el basemap MapStyle.json/MapStyleDark.json
-        — "mapa" todavía no está declarado en este punto
-        del archivo (se crea más abajo, después de
-        "reorder"), pero como este callback recién corre
-        ante un cambio real de atributo -es decir, después
-        de que toda esta inicialización síncrona ya
-        terminó-, para cuando se ejecuta "mapa" ya existe.
-        actualizarTema() además es un no-op mientras el
-        mapa no esté cargado, así que tampoco hay problema
-        si el visitante cambia de tema antes de llegar a
-        la fase "orden".
+        Si el visitante alterna el tema (navbar, ver
+        js/navbar.js), el fondo/niebla/mesa de la escena
+        3D se recalculan en vivo — mismo patrón que
+        js/fondo-3d.js en index.html. También dispara
+        mapa.actualizarTema() (alterna el basemap claro/
+        oscuro): "mapa" se crea más abajo, pero el
+        callback solo corre ante un cambio real de
+        atributo, cuando la inicialización síncrona ya
+        terminó, así que para entonces ya existe.
     */
 
     const observadorTema =
@@ -831,35 +503,35 @@ async function initGaleria() {
                 computeLookAtX, setLookAtX,
                 actualizarCajasDebug,
                 /*
-                    FIX: sin esto, hiddenDropActual/
+                    Sin esto, hiddenDropActual/
                     filaBottomNdcYActual (galeria-escena.js)
-                    quedaban calculados para el order CRUDO
-                    para siempre, sin importar qué tan seguido
-                    se reordenara — ver el comentario grande
-                    junto a computePuntosSuperioresFila en
-                    galeria-escena.js.
+                    quedarían calculados para el order
+                    crudo sin actualizarse al reordenar —
+                    ver computePuntosSuperioresFila ahí.
                 */
-                actualizarHiddenDrop: actualizarHiddenDropParaOrden
+                actualizarHiddenDrop: actualizarHiddenDropParaOrden,
+                /*
+                    Mismo bbox real en mundo por elemento
+                    que ya recibe createCarouselController
+                    (ver más abajo) — acá lo usa
+                    levelSeparation para calcular la
+                    separación de niveles del arco de
+                    reordenamiento a partir de la
+                    profundidad Z real de cada geometría,
+                    en vez de una constante fija (ver
+                    comentario de levelSeparation en
+                    galeria-reordenar.js).
+                */
+                bboxesPorIndice
             }
         );
 
     /*
-        "elementos" ya viene garantizado no-vacío acá
-        arriba (el early return de "elementos.length === 0"
-        pasó hace rato) — así que no hace falta que
-        galeria-paginacion.js contemple el caso de 0
-        fichas al dividir budget.fichas / elementos.length
-        en irAFicha().
-
-        Se construye ACÁ, después de "reorder" (y no más
-        arriba, junto al resto de los controladores "de
-        entrada"), justo por lo mismo que ya justifica por
-        qué "mapa" se crea en este mismo punto del archivo:
-        necesita "reorder.getOrder" para poder etiquetar
-        cada dot de ficha con el elemento que REALMENTE
-        ocupa ese slot, no con el orden crudo del GeoJSON
-        (bug reportado: "los nombres de los dots de fichas
-        no consideran el ordenamiento").
+        "elementos" ya viene garantizado no-vacío. Se
+        construye acá, después de "reorder", porque
+        necesita "reorder.getOrder" para etiquetar cada
+        dot de ficha con el elemento que ocupa ese slot
+        REALMENTE (no el orden crudo del GeoJSON).
     */
     const paginacion =
         createPaginationController(
@@ -1103,6 +775,33 @@ async function initGaleria() {
     }
 
     /*
+        Sincronización inicial: mismo motivo que
+        "Sincronización inicial" en
+        galeria-panel-material.js (mostrarMalla) —
+        "corteInterseccion" nace con su "activo" interno en
+        false (ver createCorteInterseccion), sin leer el
+        HTML por su cuenta, así que si "#boton-mostrar-
+        interseccion" arranca en aria-checked="true" hay que
+        empujar ese estado a mano ACÁ, una sola vez, o el
+        switch queda visualmente prendido sin que las curvas
+        se hayan dibujado nunca.
+    */
+    if (
+        botonMostrarInterseccion &&
+        botonMostrarInterseccion.getAttribute(
+            "aria-checked"
+        ) === "true"
+    ) {
+
+        corteInterseccion.setActivo(true);
+
+        corteInterseccion.actualizar(
+            corte.obtenerEstadoActivo()
+        );
+
+    }
+
+    /*
         Switch "Mostrar plano de corte": mismo patrón que el
         de "Mostrar intersección" de acá arriba.
     */
@@ -1207,42 +906,14 @@ async function initGaleria() {
         );
 
     /*
-        Mismo criterio que reveal: "getPositions" en
-        vez de "positions" crudo, para que el layout
-        que usa el carrusel sea el mismo (recalculado
-        por orden real) con el que reorder.js dejó
-        parada la fila al salir de la fase "orden" — si
-        no, se ve un salto horizontal al entrar acá
-        (bug reportado y corregido en
-        galeria-carrusel.js).
-
-        Ya NO recibe "getHiddenDrop": la versión
-        línea->círculo no esconde nada fuera de cuadro,
-        todo queda siempre visible sobre el círculo a
-        "restY" constante. En cambio necesita
-        "bboxesPorIndice" para calcular, por elemento,
-        el offset entre su punto de anclaje frontal/base
-        y el centro real de su bbox (ver comentario de
-        cabecera de galeria-carrusel.js).
-    */
-    /*
         Rotación manual (arrastre) del elemento en foco
-        durante "fichas" — ver
-        galeria-interaccion-ficha.js. Se crea ANTES que
-        "carousel" porque este último necesita su
-        getOffset (pasado como getManualOffset) para
-        sumarlo a rotationY en el único lugar que escribe
-        cone.rotation.y en esa fase.
-
-        "obtenerMallasExtra": planoCorte YA existe acá
-        arriba (se construye antes, junto a
-        corteInterseccion) — se le pasa su
-        obtenerMallasHitTest tal cual, sin envolverlo: los
-        planos de corte visibles pasan a ser también
-        agarrables para rotar, misma subescena que la
-        geometría real (ver la cabecera de
-        galeria-plano-corte.js y el comentario junto a
-        "obtenerMallasExtra" en galeria-interaccion-ficha.js).
+        durante "fichas" (ver galeria-interaccion-ficha.js).
+        Se crea antes que "carousel" porque este último
+        necesita su getOffset (getManualOffset) para sumarlo
+        a rotationY. "obtenerMallasExtra" reusa
+        planoCorte.obtenerMallasHitTest tal cual: los planos
+        de corte visibles también quedan agarrables para
+        rotar.
     */
     const interaccionFicha =
         createInteraccionFicha(
@@ -1254,6 +925,17 @@ async function initGaleria() {
             }
         );
 
+    /*
+        "getPositions" (no "positions" crudo) para que el
+        layout coincida con el que reorder.js dejó parado
+        al salir de "orden", sin salto horizontal. No
+        recibe "getHiddenDrop" (la versión línea->círculo
+        no esconde nada, todo queda visible sobre el
+        círculo); en cambio necesita "bboxesPorIndice" para
+        el offset entre el anclaje de cada elemento y el
+        centro real de su bbox (ver cabecera de
+        galeria-carrusel.js).
+    */
     const carousel =
         createCarouselController(
             CONFIG,
@@ -1267,6 +949,7 @@ async function initGaleria() {
                 getManualOffset: interaccionFicha.getOffset
             }
         );
+
 
     /*
         Dolly de cámara sobre el objeto 3D en foco (ver
@@ -1296,19 +979,14 @@ async function initGaleria() {
         );
 
     /*
-        Panel de material: se crea UNA sola vez, ya
-        con "cones" completo, y queda visible desde
-        el arranque (no depende de fase ni de foco —
-        ver el CSS de #panel-material en galeria.css
-        y galeria-panel-material.js). Se construye ANTES
-        que "paramPanel" (más abajo), a diferencia de
-        antes: ahora paramPanel necesita
-        materialPanel.actualizarAristasDeGrupo para
-        mantener sincronizado el overlay de malla cuando
-        reconstruye la geometría de un elemento (ver
-        "callbacks.actualizarAristasDeGrupo" en
-        galeria-panel-parametros.js) — no puede recibir
-        algo que todavía no existe.
+        Panel de material: se crea una sola vez, ya con
+        "cones" completo, y queda visible desde el
+        arranque (no depende de fase ni de foco — ver el
+        CSS de #panel-material en galeria.css). Se
+        construye antes que "paramPanel" porque este
+        necesita materialPanel.actualizarAristasDeGrupo
+        para mantener sincronizado el overlay de malla al
+        reconstruir geometría.
     */
     const materialPanel =
         createMaterialPanel(
@@ -1317,39 +995,23 @@ async function initGaleria() {
 
     /*
         "bboxesPorIndice" (misma referencia que ya reciben
-        carousel/corte, arriba): sin pasarla acá, el panel
-        seguía reconstruyendo bien la geometría y el
-        pivote de rotación (ver galeria-panel-parametros.js
-        y galeria-escena.js), pero la entrada
-        correspondiente en bboxesPorIndice quedaba con el
-        bbox VIEJO — así, aunque el objeto ya rotara bien
-        sobre su propio centro, galeria-carrusel.js seguía
-        centrando su offset (pivotX/Y/Z, ver ese archivo)
-        contra el tamaño ANTERIOR.
+        carousel/corte): sin pasarla, el bbox cacheado de
+        un elemento reconstruido quedaría viejo, y
+        galeria-carrusel.js seguiría centrando su offset
+        contra el tamaño anterior.
 
-        "onGeometriaReconstruida": mismo par de llamadas que
-        ya se hace tras onCambioEje/onInvertirEje/
-        onElementoCambiado más arriba — corte.js ya invalidó
-        su bbox cacheado por su cuenta (invalidarBboxCono(),
-        llamado desde adentro del panel), así que el corte
-        REAL (clippingPlanes) ya está al día; falta avisarle
-        a los dos overlays visuales (curva de intersección,
-        cuadrado del plano) para que se redibujen contra el
-        bbox nuevo — si no, quedarían mostrando el corte
-        VIEJO hasta el próximo evento de "Corte" genuino.
+        "onGeometriaReconstruida" avisa a los dos overlays
+        visuales de corte (intersección, plano) que se
+        redibujen contra el bbox nuevo — corte.js ya
+        invalidó su propio bbox cacheado por su cuenta.
         Cubre tanto un slider individual como "Restaurar
-        predeterminados" (los dos casos pasan por la misma
-        reconstruirGeometria(), ver ese archivo).
+        predeterminados".
 
-        "actualizarAristasDeGrupo": materialPanel ya existe
-        acá arriba (ver el comentario de su construcción) —
-        se le pasa su propio actualizarAristasDeGrupo tal
-        cual, sin envolverlo: el overlay de malla (cuadrícula
-        UV + densidad, ver galeria-malla-cuadricula.js) de
-        un elemento con "Mostrar malla" ya activado pasa a
-        seguir cualquier reconstrucción de su geometría
-        desde la carpeta "Forma", no sólo desde el slider de
-        densidad o el switch global.
+        "actualizarAristasDeGrupo" (de materialPanel, ya
+        creado arriba) hace que el overlay de malla de un
+        elemento con "Mostrar malla" activo siga cualquier
+        reconstrucción de su geometría, no solo el slider
+        de densidad.
     */
     const paramPanel =
         createParamPanel(
@@ -1376,37 +1038,21 @@ async function initGaleria() {
 
 
     /*
-        Miniaturas de "Fotografías": se crea UNA sola
-        vez (igual que paramPanel arriba), y se repuebla
-        en cada cambio de foco vía fotosPanel.mostrar()
-        más abajo, con elemento.fotos del elemento recién
-        enfocado.
+        Miniaturas de "Fotografías": se crea una sola vez
+        y se repuebla en cada cambio de foco vía
+        fotosPanel.mostrar() (más abajo).
     */
     const fotosPanel =
         createFotosPanel(panelFotosContainer);
 
 
     /*
-        Fórmula de "Geometría" (#formula-geometria, ver
-        galeria.html/galeria.css): se renderiza UNA sola
-        vez acá, igual que createMaterialPanel arriba —
-        de momento es fija, no cambia según el elemento
-        enfocado (ver el comentario de esa sección en
-        galeria.html). Si el día de mañana pasa a variar
-        por generador, este llamado se movería adentro de
-        paramPanel.mostrar() (más abajo), la única otra
-        cosa en esta página que ya sabe qué elemento está
-        enfocado — no hace falta tocar nada más de acá.
-
+        Fórmula de "Geometría" (#formula-geometria): se
+        renderiza una sola vez, fija (no cambia según el
+        elemento enfocado — ver galeria.html).
         "renderMathInElement" la expone auto-render.min.js
-        (cargado "defer" en el <head>, antes que este mismo
-        módulo — ver el comentario ahí sobre el orden de
-        ejecución) como global; el guard cubre el caso de
-        que el HTML no tenga el contenedor todavía (página
-        vieja) o que el script de KaTeX no haya llegado a
-        cargar (CDN caído): sin el guard, cualquiera de los
-        dos casos tiraría abajo TODO initGaleria() antes de
-        llegar al resto de la escena.
+        como global; el guard cubre HTML viejo sin el
+        contenedor, o KaTeX sin cargar (CDN caído).
     */
     if (
         formulaGeometriaContainer &&
@@ -1424,18 +1070,12 @@ async function initGaleria() {
 
     /*
         Render "de medición": #panel-ficha necesita
-        contenido real (con las medidas fijas de
-        dimensionesFicha ya aplicadas) para que
-        #carousel-panel tenga su alto DEFINITIVO — así
-        posicionarGui() (ver más abajo) puede medirlo.
-        Da igual qué elemento se use acá: el alto es el
-        mismo sin importar cuál, esa es justamente la
-        gracia de dimensionesFicha (ver
-        galeria-ficha.js). La fase "fichas" más
-        adelante vuelve a llamar a renderizarFicha()
-        con el elemento real que corresponda —este
-        primer render es descartable, solo sirve para
-        poder medir.
+        contenido real para que #carousel-panel tenga su
+        alto definitivo, así posicionarGui() puede medirlo.
+        Cualquier elemento sirve (el alto es el mismo para
+        todos, ver dimensionesFicha) — este primer render
+        es descartable, la fase "fichas" lo repinta con el
+        elemento real.
     */
 
     renderizarFicha(
@@ -1446,112 +1086,27 @@ async function initGaleria() {
 
 
     /*
-        Coloca #gui a la misma altura en la que
-        arranca la ficha (fase C, ver #carousel-panel
-        en galeria.css): así, al pasar de la pausa
-        "orden" a "fichas", el nombre/subtítulo que
-        aparece ocupa visualmente el mismo lugar en el
-        que estaban las pestañas de orden, sin salto —
-        una refuerza la posición de la otra en vez de
-        competir por atención en dos alturas distintas
-        de la pantalla.
-
-        #carousel-panel está anclado por ABAJO
-        (bottom:0), así que su borde superior no es un
-        valor fijo: depende del alto del contenido, que
-        a su vez depende de dimensionesFicha Y del
-        ancho de la ventana (clamp() en la tipografía
-        del nombre, wrap de los .spec). No hay forma de
-        expresar "la altura en la que empieza la ficha"
-        solo con CSS —se mide el DOM real.
-
-        panelIndex (el contador "1 / 6") es el primer
-        elemento visible de la ficha de arriba hacia
-        abajo, así que su borde superior ES esa altura.
-        Se descarta cualquier medición en 0 o negativa
-        (p. ej. si esto llegara a correr antes de que
-        el layout esté listo): más vale quedarse con el
-        valor anterior (o el top:6rem de respaldo del
-        CSS) que clavar el GUI en un lugar sin sentido.
-
-        GUI_TOP_MINIMO: piso de seguridad por navbar.
-        En celular horizontal el viewport es tan bajo
-        que, aunque la ficha ya esté acotada por CSS
-        (ver #carousel-panel en galeria.css), su borde
-        superior puede caer igual muy cerca del techo
-        de la pantalla. Mismo despeje que ya usa
-        #panel-material (top: 5.5rem, ver galeria.css)
-        para el navbar, convertido a píxeles según el
-        tamaño de fuente real de la raíz (por si el
-        visitante tiene el zoom del navegador o el
-        tamaño de fuente del sistema cambiados).
-
-        getRowBottomScreenY(): piso de seguridad por
-        GEOMETRÍA (distinto del piso de arriba, que sólo
-        cuida el navbar). Sin esto, en celular horizontal
-        el "topFicha" de más abajo podía caer a mitad de
-        la fila de conos —la ficha todavía no está
-        pensada para eso, sólo evita que quede pegada al
-        navbar— y las pestañas de reordenar quedaban
-        superpuestas sobre la geometría 3D en vez de
-        debajo. getRowBottomScreenY() (galeria-escena.js)
-        devuelve, en vivo, el punto más bajo de la fila
-        TAL CUAL se ve con la cámara/lookAt vigentes
-        (proyección real, no un valor fijo), así que
-        sigue siendo correcto sin importar el ángulo o
-        encuadre de cámara en cada tamaño de pantalla.
+        GUI de reordenar (botones + posicionamiento del
+        "top" de #gui) — ver galeria-gui.js para el porqué
+        de cada pieza (panelNombre.bottom, GUI_TOP_MINIMO,
+        getRowBottomScreenY). Se instancia acá porque recién
+        acá están disponibles reorder, phases y
+        getRowBottomScreenY (de la escena).
     */
+    const guiController = createGuiController({
+        gui,
+        panelNombre,
+        reorder,
+        phases,
+        sortOptions: CONFIG.sortOptions,
+        getRowBottomScreenY
+    });
 
-    function remAPx(rem) {
-
-        const raiz =
-            parseFloat(
-                getComputedStyle(
-                    document.documentElement
-                ).fontSize
-            ) || 16;
-
-        return rem * raiz;
-
-    }
-
-    const GUI_TOP_MINIMO = remAPx(5.5);
-    const GUI_MARGEN_SOBRE_GEOMETRIA = 16;
-
-
-    function posicionarGui() {
-
-        if (!panelNombre) return;
-
-        /*
-            Antes se usaba panelIndex.top (el numerito
-            "01/06" arriba del nombre) — eso dejaba a #gui
-            más alto de lo pedido. Se cambia a
-            panelNombre.bottom: el borde INFERIOR del
-            título de la ficha, para que las pestañas de
-            reordenar coincidan con esa línea en vez de con
-            el borde superior del índice.
-        */
-        const topFicha =
-            panelNombre.getBoundingClientRect().bottom;
-
-        if (topFicha <= 0) return;
-
-
-        const topPorGeometria =
-            getRowBottomScreenY
-                ? getRowBottomScreenY() +
-                  GUI_MARGEN_SOBRE_GEOMETRIA
-                : 0;
-
-        gui.style.top =
-            Math.max(
-                topFicha,
-                topPorGeometria,
-                GUI_TOP_MINIMO
-            ) + "px";
-
-    }
+    const {
+        posicionarGui,
+        renderSortButtons,
+        wireSortButtons
+    } = guiController;
 
     posicionarGui();
 
@@ -1621,28 +1176,15 @@ async function initGaleria() {
         if (phase === "final") {
 
             /*
-                Ya pasamos el total de scroll de las
-                5 fases: soltamos el contenedor
-                clavado (si todavía no lo estaba). El
-                <footer> real, debajo de
-                #galeria-spacer, ya está entrando en
-                pantalla — pero la escena liberada
-                (position:absolute) todavía tarda
-                exactamente UN alto de ventana más en
-                terminar de deslizarse fuera de vista
-                (ver el comentario de
-                ajustarAltoScroll() más arriba, que es
-                justo quien le agregó ese viewport
-                extra al spacer). Mientras dure ese
-                tramo, la escena SIGUE siendo visible
-                —el footer no tapa toda la ventana de
-                entrada— así que no tiene sentido
-                congelarla a mitad de giro: se sigue
-                renderizando y el último cono (el que
-                quedó destacado al llegar acá, ver
-                "fichas" más abajo) sigue rotando.
-                Recién cuando ya no queda nada de la
-                escena en pantalla se corta del todo.
+                Ya pasamos el total de scroll de las 5
+                fases: soltamos el contenedor clavado (si
+                todavía no lo estaba). La escena liberada
+                (position:absolute) tarda un alto de
+                ventana más en salir de vista del todo (ver
+                ajustarAltoScroll más arriba) — mientras
+                dure ese tramo sigue siendo visible, así que
+                se sigue renderizando y el último cono
+                sigue rotando.
             */
 
             if (
@@ -1678,47 +1220,19 @@ async function initGaleria() {
                 );
 
                 /*
-                    FIX ("no me deja rotar la ficha si me
-                    paso un poco de scroll y ya se ve el
-                    footer"): el <canvas> sigue recibiendo
-                    pointerdown/pointermove acá sin
-                    problema (los listeners de
-                    galeria-interaccion-ficha.js están
-                    puestos una sola vez, sin condicionar
-                    por fase) y "elementoActivoId" ahí
-                    adentro sigue apuntando al último cono
-                    (nunca se llama a reset() al entrar a
-                    "final" — ver más arriba), así que el
-                    arrastre en sí SÍ se registra y
-                    offsetYaw/offsetPitch SÍ cambian. Lo
-                    que faltaba es quien los use: sólo
-                    carousel.update() compone ese offset
-                    (vía getManualOffset) dentro del
-                    quaternion que se ve en pantalla (ver
-                    ORIENTACIÓN en galeria-carrusel.js), y
-                    esa llamada se cortaba en seco al
-                    entrar acá — el offset quedaba
-                    acumulado puertas adentro, sin efecto
-                    visual ninguno.
-
-                    Se llama con t=1 fijo (no con el "t" de
-                    arriba de tick(), que en esta rama no
-                    corresponde a la fase "fichas") porque
-                    la fase "fichas" ya terminó del todo:
-                    el círculo quedó cerrado (theta=2π) y
-                    el foco en el último elemento
-                    (rotateT=1) — es exactamente el mismo
-                    estado con el que se llega acá, así
-                    que recalcularlo no mueve nada más que
-                    la orientación con el offset nuevo (no
-                    hace falta revisar "changed": el foco
-                    no puede cambiar con t constante).
-
-                    interaccionFicha.update(now) mantiene
-                    vivo, también acá, el reset gradual del
-                    offset si el visitante retoma el
-                    scroll (mismo criterio que ya corre
-                    durante "fichas", ver ese archivo).
+                    El <canvas> sigue recibiendo el
+                    arrastre manual acá (los listeners de
+                    galeria-interaccion-ficha.js no se
+                    condicionan por fase), así que hay que
+                    seguir componiendo ese offset en el
+                    render: se llama carousel.update(1) con
+                    t fijo (mismo estado final de "fichas":
+                    círculo cerrado, foco en el último
+                    elemento) para que el offset de rotación
+                    manual se vea reflejado.
+                    interaccionFicha.update(now) mantiene el
+                    reset gradual si el visitante retoma el
+                    scroll.
                 */
                 interaccionFicha.update(now);
                 carousel.update(1);
@@ -1806,11 +1320,7 @@ async function initGaleria() {
                 "visible"
             );
 
-            /*
-                Ver el fix junto a la definición de
-                "carouselPanel": limpia el override inline
-                de opacidad que deja "fichas".
-            */
+            /* Limpia el override inline que deja "fichas" (ver carouselPanel arriba). */
             carouselPanel.style.opacity = "";
 
             carousel.reset();
@@ -1895,15 +1405,7 @@ async function initGaleria() {
                 "visible"
             );
 
-            /*
-                Limpia el override inline que "fichas" deja
-                en style.opacity (ver el fix junto a la
-                definición de "carouselPanel") — si no, ese
-                inline pisa para siempre cualquier opacidad
-                que el CSS de esta fase quiera aplicar,
-                porque un estilo inline gana por
-                especificidad sobre una regla de clase.
-            */
+            /* Limpia el override inline que deja "fichas" (ver carouselPanel arriba). */
             carouselPanel.style.opacity = "";
 
             carousel.reset();
@@ -1983,11 +1485,7 @@ async function initGaleria() {
                 "visible"
             );
 
-            /*
-                Ver el fix junto a la definición de
-                "carouselPanel": limpia el override inline
-                de opacidad que deja "fichas".
-            */
+            /* Limpia el override inline que deja "fichas" (ver carouselPanel arriba). */
             carouselPanel.style.opacity = "";
 
             carousel.reset();
@@ -2026,30 +1524,16 @@ async function initGaleria() {
             fotosPanel.limpiar();
 
             /*
-                FIX (bug reportado: "el mapa de la primera
-                ficha a veces no aparece centrado en su
-                posición"): antes esto arrancaba recién en
-                "orden" (ver esa rama, más abajo) — "una
-                fase antes de que el cuadrado sea visible",
-                que en teoría alcanza, pero si el visitante
-                scrollea rápido puede cruzar TODA "orden" y
-                llegar a "fichas" antes de que la promesa de
-                cargar() (MapLibre ~200kb + Turf + fetch del
-                estilo) termine de resolver — ver el
-                comentario grande junto a update() en
-                galeria-mapa.js para el detalle completo de
-                qué pasa en ese caso ("reengancha" ya con el
-                focoContinuo vigente, que puede estar bien
-                lejos de 0: el mapa nunca llega a mostrarse
-                asentado sobre el primer pin).
-
-                Arrancar acá, una fase entera antes, le da
-                ese margen extra sin cambiar nada del
-                comportamiento normal — cargar() sigue
-                siendo idempotente (no hace nada si ya está
-                en curso o lista, ver esa función), así que
-                llamarla en cada frame de "revelado" es
-                igual de seguro que ya lo era en "orden".
+                Arranca acá (una fase antes de que el
+                cuadrado del mapa sea visible) para darle
+                margen a la carga de MapLibre + Turf +
+                estilo (ver update() en galeria-mapa.js): si
+                el visitante scrollea rápido y cruza toda
+                "orden" antes de que resuelva, el mapa
+                "reengancha" con el focoContinuo vigente en
+                vez de asentarse sobre el primer pin.
+                cargar() es idempotente, así que llamarla en
+                cada frame es seguro.
             */
             mapa.cargar();
 
@@ -2090,11 +1574,7 @@ async function initGaleria() {
                 "visible"
             );
 
-            /*
-                Ver el fix junto a la definición de
-                "carouselPanel": limpia el override inline
-                de opacidad que deja "fichas".
-            */
+            /* Limpia el override inline que deja "fichas" (ver carouselPanel arriba). */
             carouselPanel.style.opacity = "";
 
             carousel.reset();
@@ -2127,20 +1607,10 @@ async function initGaleria() {
             }
 
             /*
-                Red de seguridad: la carga diferida del
-                mapa ya arrancó una fase antes, en
-                "revelado" (ver el fix ahí, y la cabecera
-                de galeria-mapa.js) — así llega con más
-                margen a "fichas" incluso si el visitante
-                scrollea rápido. Se sigue llamando también
-                acá por si se entrara a esta página con el
-                scroll ya restaurado a mitad de "orden"
-                (recarga, #hash, back/forward del
-                navegador) sin haber pasado frame a frame
-                por "revelado". Llamarla en cada frame de
-                esta fase sigue siendo seguro: cargar() es
-                idempotente (no hace nada mientras ya está
-                cargando o lista).
+                mapa.cargar() ya arrancó en "revelado"; se
+                sigue llamando acá (idempotente) por si se
+                entra con el scroll restaurado a mitad de
+                "orden" sin haber pasado por esa fase.
             */
             mapa.cargar();
 
@@ -2190,14 +1660,11 @@ async function initGaleria() {
             gui.classList.remove("visible");
 
             /*
-                "visible" queda como marca de estado para
-                el resto del CSS de este panel (si "visible"
-                gobierna algo más que opacidad, p.ej.
-                pointer-events o layout) — pero la OPACIDAD
-                en sí ya no sale de esta clase: se fija más
-                abajo, cuadro a cuadro, con "panelOpacity"
-                (ver el fix junto a la definición de
-                "carouselPanel" más arriba).
+                "visible" sigue gobernando el resto del CSS
+                del panel (pointer-events, layout), pero la
+                opacidad en sí se fija más abajo, cuadro a
+                cuadro, con "panelOpacity" (ver carouselPanel
+                arriba).
             */
             carouselPanel.classList.add(
                 "visible"
@@ -2208,15 +1675,10 @@ async function initGaleria() {
 
 
             /*
-                Va ANTES de carousel.update(): si hay un
-                reset de rotación manual en curso (el
-                scroll se volvió a mover, ver
-                galeria-interaccion-ficha.js), este paso
-                avanza un frame de suavizado exponencial
-                — así el offset que carousel.update() lee
-                más abajo (vía getManualOffset, pasado en
-                su construcción) ya es el de ESTE frame,
-                no el del anterior.
+                Antes de carousel.update(): si hay un reset
+                de rotación manual en curso, avanza un frame
+                de suavizado para que carousel.update() lea
+                el offset de ESTE frame, no el anterior.
             */
             interaccionFicha.update(now);
 
@@ -2224,123 +1686,60 @@ async function initGaleria() {
                 carousel.update(t);
 
             /*
-                FIX: opacidad del panel atada al mismo
-                número que ya anima la geometría del
-                elemento en foco (ver "panelOpacity" en
-                galeria-carrusel.js) — no un fade por
-                tiempo fijo vía CSS. Se fija ACÁ, recién
-                después de tener "result" (así "t=0" de
-                esta fase ya entra con el "panelOpacity"
-                real de ese instante, típicamente
-                cfg.minOpacity, no 1 de entrada como pasaba
-                con la transición de la clase "visible" —
-                ver el fix junto a la definición de
-                "carouselPanel").
+                Opacidad atada a "panelOpacity" (mismo
+                número que anima la geometría del elemento
+                en foco, ver galeria-carrusel.js), fijada
+                después de tener "result" para que t=0 ya
+                entre con el valor real (típicamente
+                cfg.minOpacity, no 1).
             */
             carouselPanel.style.opacity =
                 result.panelOpacity;
 
             /*
-                Mapa dentro del cuadrado (ver
-                galeria-mapa.js): "mostrar()" remide el
-                contenedor (por si el cuadrado recién se
-                volvió visible este frame — barato, no
-                hace nada si no cambió de tamaño).
-
-                FIX (bug reportado: el mapa se adelantaba
-                al segundo punto apenas la primera
-                geometría terminaba de centrarse):
-                "update()" ya NO recibe "t" crudo — recibe
-                "result.focoContinuo", el mismo número que
-                "result" ya trae de carousel.update(t) de
-                arriba y que llega a cada entero
-                EXACTAMENTE cuando ese elemento se centra
-                en la geometría 3D (misma meseta/
-                transición que ya gobierna phi ahí — ver
-                "focoContinuo" en galeria-carrusel.js).
-                "t" crudo incluía el tramo "formar" del
-                arranque de "fichas", durante el cual la
-                geometría ya está con el primer elemento
-                centrado y quieto pero "t" seguía avanzando
-                parejo — eso adelantaba el vuelo del mapa
-                antes de tiempo.
+                mapa.mostrar() remide el contenedor (no-op
+                si no cambió de tamaño). mapa.update() recibe
+                "result.focoContinuo" (no "t" crudo): llega a
+                cada entero exactamente cuando el elemento se
+                centra en la geometría 3D — "t" crudo incluía
+                el tramo "formar" del arranque de "fichas" y
+                adelantaba el vuelo del mapa antes de tiempo.
             */
             mapa.mostrar();
             mapa.update(result.focoContinuo, now);
 
             /*
-                Recién acá se sabe el foco vigente de este
-                frame. VA PRIMERO de las 3 llamadas de
-                "setElementoActivo/setObjetoActivo" de
-                acá abajo (antes vivía última, sin ninguna
-                razón técnica para ese orden — ver más
-                abajo): "setElementoActivo" es un no-op
-                barato si el foco no cambió (ver
-                galeria-corte.js), pero si SÍ cambió,
-                dispara —vía su callback interno
-                onElementoCambiado— planoCorte.actualizar(),
-                que reparenta los 3 planos al mallaFrontal
-                del cono NUEVO. interaccionFicha y zoom (
-                debajo) leen planoCorte.obtenerMallasHitTest()
-                este mismo frame para armar su lista de
-                mallas hit-testables — si corte.
-                setElementoActivo() corriera después, esa
-                lectura llegaría un frame tarde, apuntando
-                todavía al mallaFrontal del cono ANTERIOR
-                (mismo tipo de desfase de un frame que ya
-                se corrigió para "sincronizarMundo()" más
-                abajo, sólo que ahí la corrección fue mover
-                esa llamada DESPUÉS de rotation.update();
-                acá es mover ÉSTA antes de las otras dos).
-
-                "sincronizarMundo()" (SIEMPRE, haya
-                cambiado el foco o no) recalcula los 3
-                planos de MUNDO del cono activo contra su
-                transform de ESTE frame (ver la cabecera de
-                galeria-corte.js, "por qué hay dos
-                representaciones") — sigue llamándose por
-                separado, más abajo, después de
-                rotation.update(), sin cambios: ese es el
-                otro desfase ya documentado, distinto de
-                éste.
+                Va primero de las 3 llamadas de
+                setElementoActivo/setObjetoActivo de acá
+                abajo: si el foco cambió, dispara
+                planoCorte.actualizar() (reparenta los 3
+                planos al cono nuevo) — interaccionFicha y
+                zoom leen esas mallas hit-testables este
+                mismo frame, así que necesitan que ya estén
+                al día. sincronizarMundo() (siempre, cambie o
+                no el foco) sigue llamándose por separado más
+                abajo, después de rotation.update(): recalcula
+                los 3 planos de mundo contra la transform de
+                ESTE frame (ver cabecera de galeria-corte.js).
             */
             corte.setElementoActivo(result.elementoId);
 
             /*
-                Si cambió el foco respecto del anterior,
-                deja arrastrable al nuevo elemento (sin
-                heredar el offset del que se acaba de
-                perder de foco — ver setElementoActivo en
-                galeria-interaccion-ficha.js).
-
-                "obtenerMallasExtra" (inyectado en la
-                construcción, más arriba) ya lee
-                planoCorte.obtenerMallasHitTest() al vuelo
-                en cada hit-test (pointerdown) — no hace
-                falta pasarle nada extra acá, sólo el id.
+                Si cambió el foco, deja arrastrable al nuevo
+                elemento sin heredar el offset del anterior.
+                "obtenerMallasExtra" ya lee
+                planoCorte.obtenerMallasHitTest() al vuelo en
+                cada hit-test.
             */
             interaccionFicha.setElementoActivo(
                 result.elementoId
             );
 
             /*
-                Mismas mallas que ya usa el hit-test del
-                drag manual (ver
-                galeria-interaccion-ficha.js) — el wheel-
-                zoom testea contra el MISMO objeto en
-                foco, no contra uno propio. El día que
-                exista la nube Potree, quien decida "se
-                está mostrando la nube, no el cono" pasa
-                acá sus mallas en vez de las de
-                cones[...] — galeria-zoom.js no cambia.
-
-                + planoCorte.obtenerMallasHitTest(): mismo
-                agregado que ya recibió el drag manual —
-                los planos de corte visibles también valen
-                para hacer zoom, no sólo para rotar. Ya
-                refleja el cono NUEVO en este mismo frame
-                gracias al reorden de arriba (corte.
-                setElementoActivo antes que esta llamada).
+                Mismas mallas que usa el hit-test del drag
+                manual, más planoCorte.obtenerMallasHitTest():
+                el wheel-zoom testea contra el mismo objeto
+                en foco, planos de corte incluidos.
             */
             zoom.setObjetoActivo(
                 cones[result.elementoId]
@@ -2365,22 +1764,15 @@ async function initGaleria() {
             );
 
             /*
-                Mismo "emphasis" que ya decide
-                posición/escala/opacidad: el
-                destacado gira a peso pleno, el resto
-                desacelera a medida que el foco se
-                aleja — ver galeria-carrusel.js.
-
-                Switch "Autorotado" (ver
-                galeria-autorotar.js): apagado, se pisa a 0
-                SOLO el peso del elemento en foco — los
-                vecinos que recién perdieron el foco siguen
-                su desaceleración normal, sin cortarse en
-                seco (ver la cabecera de galeria-autorotar.js
-                para el porqué). Copia nueva del objeto, no
-                se muta "result.rotationWeights": ese mismo
-                objeto podría tener otro uso más abajo en
-                este mismo frame.
+                Emphasis de posición/escala/opacidad de
+                galeria-carrusel.js: el destacado gira a
+                peso pleno, el resto desacelera con la
+                distancia al foco. Con "Autorotado" apagado
+                se pisa a 0 solo el peso del elemento en
+                foco (los vecinos siguen desacelerando
+                normal, ver galeria-autorotar.js). Copia
+                nueva del objeto: "result.rotationWeights"
+                se reusa más abajo en este mismo frame.
             */
             const pesosRotacion =
                 autorotar.activo()
@@ -2393,35 +1785,18 @@ async function initGaleria() {
             rotation.update(pesosRotacion, now);
 
             /*
-                FIX (plano de corte desalineado de la
-                geometría con "Autorotado" prendido, bug
-                reportado): "sincronizarMundo()" (ver la
-                cabecera de galeria-corte.js) tiene que
-                leer "mallaFrontal.matrixWorld" DESPUÉS de
-                que TODO lo que puede tocar la transform
-                del cono este frame ya corrió — y
-                "rotation.update()" (arriba) es exactamente
-                eso: escribe "pivote.rotation.y" cada
-                frame para el autorotado. Antes esta línea
-                vivía junto a "corte.setElementoActivo()",
-                ANTES de "rotation.update()" — sincronizaba
-                los planos de MUNDO contra el ángulo de
-                rotación del frame ANTERIOR, un frame
-                desfasado del que finalmente usa
-                "renderer.render()" más abajo. Con el
-                pivote centrado en el bbox real (no en el
-                anclaje), ese desfase de un frame no es una
-                traslación pura — deja un residuo
-                proporcional a cuánto giró el cono ese
-                frame, chico en términos angulares pero muy
-                amplificado en el PlaneHelper (que mide
-                ~1.4x la diagonal del bbox, ver
-                galeria-plano-corte.js) — de ahí que se
-                viera como el plano completo corrido hacia
-                un costado, mientras el recorte real
-                (ceñido a la superficie) apenas temblaba.
+                sincronizarMundo() tiene que leer
+                mallaFrontal.matrixWorld después de
+                rotation.update() (que recién escribió
+                pivote.rotation.y para el autorotado de este
+                frame) — si corriera antes, los planos de
+                corte quedarían sincronizados contra el
+                ángulo del frame anterior, visible como el
+                plano temblando/desalineado con "Autorotado"
+                prendido.
             */
             corte.sincronizarMundo();
+
 
             if (result.changed) {
 
@@ -2436,46 +1811,19 @@ async function initGaleria() {
 
 
         /*
-            Se llaman SIEMPRE (no sólo dentro del bloque
-            "fichas" de arriba), mismo motivo para las
-            dos:
-
-              - zoom.update(now): si el visitante hizo
-                zoom y ahora vuelve a mover el scroll de
-                página (incluso ya fuera de "fichas", p.
-                ej. mientras la fase todavía está
-                terminando de salir), tiene que poder
-                arrancar/seguir el reset gradual del
-                offset — ver el mecanismo completo,
-                mismo que ya usa
-                galeria-interaccion-ficha.js para
-                yaw/pitch, en galeria-zoom.js.
-
-              - zoom.aplicarOffset(): si el visitante hace
-                zoom y el scroll avanza a otra fase sin
-                que el offset llegara a resetearse todavía
-                (no debería pasar — zoom.reset() se llama
-                en los mismos 4 puntos donde ya se
-                resetean carousel/interaccionFicha, ver
-                más arriba—, pero dejarlo acá es más
-                robusto que asumirlo).
-
-            Sin offset acumulado (caso normal, fuera de
-            "fichas"), ambas son no-ops baratos (guards
-            internos en galeria-zoom.js: update() sale
-            apenas "resetPendiente" es false, y
-            aplicarOffset() sale apenas offset ===
-            offsetAplicado).
+            Se llaman siempre, no solo dentro de "fichas":
+            si el visitante hizo zoom y retoma el scroll
+            (incluso ya en otra fase), zoom.update() sigue
+            el reset gradual del offset, y
+            zoom.aplicarOffset() lo aplica si todavía no
+            terminó de resetearse. Sin offset acumulado
+            ambas son no-ops baratos (guards internos en
+            galeria-zoom.js).
         */
         zoom.update(now);
         zoom.aplicarOffset();
 
-        /*
-            Mismo par, mismo motivo, para el paneo (ver
-            galeria-paneo.js) — hermano directo del dolly
-            de arriba, ambas llamadas son no-ops baratos
-            sin offset acumulado.
-        */
+        /* Mismo par, mismo motivo, para el paneo (ver galeria-paneo.js). */
         paneo.update(now);
         paneo.aplicarOffset();
 
@@ -2498,18 +1846,10 @@ async function initGaleria() {
         resize();
 
         /*
-            resize() (galeria-escena.js) reescribe
-            camera.position de forma incondicional, sin
-            el guard "sinCambios" que sí tiene
-            setCameraLado — así que cualquier offset
-            acumulado por wheel-zoom o por paneo con botón
-            derecho quedaría corrupto (ver galeria-zoom.js
-            / galeria-paneo.js) si no se limpia acá. Se
-            opta por la opción "simple" que quedaba
-            abierta en zoom3dScroll.md para el zoom, y se
-            aplica igual acá para el paneo: los dos se
-            resetean a 0 en cada resize, en vez de
-            reaplicarse sobre la nueva posición base.
+            resize() reescribe camera.position sin el
+            guard que sí tiene setCameraLado, así que
+            cualquier offset de wheel-zoom/paneo quedaría
+            corrupto si no se resetea acá.
         */
         zoom.reset();
         paneo.reset();
@@ -2517,23 +1857,10 @@ async function initGaleria() {
         ajustarAltoScroll();
 
         /*
-            Vuelve a medir dimensionesFicha para el
-            viewport ACTUAL (ver comentario junto a su
-            declaración, más arriba) y repinta el
-            elemento que estuviera activo con las medidas
-            nuevas. Se hace ANTES de posicionarGui(): el
-            alto de la ficha (del que depende dónde cae
-            panelIndex) tiene que estar ya actualizado
-            cuando se lo mide ahí abajo.
-
-            Nada de esto se llega a ver: calcularDimensionesFicha
-            + renderizarFicha corren en el mismo tick de
-            JS, de un tirón — el navegador recién pinta
-            de nuevo cuando termina el handler completo,
-            así que el contenido "de paso" que se usa
-            para medir cada campo nunca queda pintado en
-            pantalla, sea cual sea el estado (visible u
-            oculto) de #carousel-panel en ese momento.
+            Remide dimensionesFicha para el viewport actual
+            y repinta el elemento activo. Antes de
+            posicionarGui(): el alto de la ficha tiene que
+            estar actualizado cuando se mide ahí abajo.
         */
 
         remedirFicha();
@@ -2541,13 +1868,9 @@ async function initGaleria() {
         posicionarGui();
 
         /*
-            Rotación de pantalla incluida: el breakpoint de
-            780px puede cruzarse en cualquier dirección acá
-            (por ejemplo, un celular pasando de vertical a
-            horizontal deja de calificar como "mobile" a
-            mitad de sesión), y el alto real del tirador
-            puede cambiar con el ancho disponible — se
-            remide siempre, es barato si no cambió nada.
+            Se remide siempre (barato si no cambió nada):
+            el breakpoint de 780px puede cruzarse en
+            cualquier dirección con la rotación de pantalla.
         */
         panelDerechoSheet.actualizarPosicion();
 
@@ -2557,100 +1880,10 @@ async function initGaleria() {
     /*
         ==============================
         HELPERS DE DOM
-        (arman/actualizan el markup a
-        partir de CONFIG)
+        (renderSortButtons/wireSortButtons quedaron en
+        galeria-gui.js — acá arriba, en "guiController")
         ==============================
     */
-
-    function renderSortButtons() {
-
-        gui.innerHTML = "";
-
-        CONFIG.sortOptions.forEach(
-            (option, i) => {
-
-                const button =
-                    document.createElement(
-                        "button"
-                    );
-
-                button.textContent =
-                    option.label;
-
-                button.dataset.sort =
-                    option.key;
-
-                /*
-                    Primer botón = primer criterio de
-                    CONFIG.sortOptions ("anio"/
-                    Cronológico) = mismo criterio con
-                    el que arranca "order" en
-                    galeria-reordenar.js. Si se
-                    reordena sortOptions, este botón
-                    activo por defecto y el "order"
-                    inicial se mueven juntos, sin
-                    tocar nada acá.
-                */
-                if (i === 0) {
-
-                    button.classList.add(
-                        "active"
-                    );
-
-                }
-
-                gui.appendChild(button);
-
-            }
-        );
-
-    }
-
-
-    function wireSortButtons() {
-
-        gui.querySelectorAll("button")
-            .forEach(button => {
-
-                button.addEventListener(
-                    "click",
-                    () => {
-
-                        if (
-                            reorder.isBusy() ||
-                            phases.getPhase()
-                                .phase !== "orden"
-                        ) return;
-
-
-                        gui.querySelectorAll(
-                            "button"
-                        ).forEach(
-                            b =>
-                                b.classList
-                                 .remove("active")
-                        );
-
-                        button.classList.add(
-                            "active"
-                        );
-
-
-                        const newOrder =
-                            reorder.getSortedOrder(
-                                button.dataset.sort
-                            );
-
-                        reorder.animateTo(
-                            newOrder
-                        );
-
-                    }
-                );
-
-            });
-
-    }
 
 
     function remedirFicha() {
@@ -2666,12 +1899,10 @@ async function initGaleria() {
             );
 
         /*
-            Mismo motivo que en la medición inicial (ver su
-            comentario, más arriba): "panelDerechoSpecs" vive
-            en un contenedor distinto ("#ficha-panel-marco",
-            ancho fijo propio), no en ".ficha__fila" — el
-            ancho que calcularAnchoMaximoCampo() mide no
-            aplica acá.
+            "panelDerechoSpecs" vive en un contenedor
+            distinto ("#ficha-panel-marco", ancho fijo
+            propio), no en ".ficha__fila" — el ancho de
+            calcularAnchoMaximoCampo() no aplica acá.
         */
         dimensionesPanelDerecho =
             calcularDimensionesCampos(
@@ -2685,10 +1916,9 @@ async function initGaleria() {
             /*
                 updatePanel() ya llama a
                 ajustarAltoFichaSegunContenido() al final,
-                DESPUÉS de re-renderizar con las medidas
-                nuevas — no hace falta (ni conviene) medir
-                acá antes: en este punto el DOM todavía
-                tiene el contenido/anchos VIEJOS.
+                después de re-renderizar con las medidas
+                nuevas — medir acá antes sería contra el
+                contenido/anchos viejos.
             */
             updatePanel(
                 elementoIdActual,
@@ -2699,12 +1929,9 @@ async function initGaleria() {
 
             /*
                 Todavía no se mostró ningún elemento (p.
-                ej. un resize durante la fase "hero"): no
-                hay updatePanel() que dispare la medición,
-                así que se limpia acá cualquier max-height
-                que hubiera quedado de antes. Se va a medir
-                bien la primera vez que updatePanel() sí
-                corra.
+                ej. resize durante "hero"): se limpia el
+                max-height que hubiera quedado, se mide
+                bien la primera vez que updatePanel() corra.
             */
             ajustarAltoFichaSegunContenido();
 
@@ -2725,26 +1952,13 @@ async function initGaleria() {
         displayIndexActual = displayIndex;
 
         /*
-            A PROPÓSITO no se llama acá a "autorotar.reset()":
-            el switch "Autorotado" es GLOBAL dentro de
-            "fichas", no por ficha — si el visitante lo apaga
-            mirando una geometría, tiene que seguir apagado al
-            scrollear/arrastrar a la siguiente (result.changed,
-            que es lo que dispara este updatePanel()). Antes
-            había un reset() acá que lo volvía a prender en
-            cada cambio de foco; se sacó para que "apagado"
-            sea una preferencia que persiste mientras el
-            visitante siga recorriendo fichas.
-
-            El reset SÍ sigue viviendo en los 4 puntos donde
-            galeria.js sale de "fichas" del todo (ver
-            autorotar.reset() en esas 4 ramas de fase) — ahí
-            corresponde arrancar de nuevo encendido, porque es
-            una sesión nueva de "fichas", no un cambio de foco
-            dentro de la misma. Ver también la cabecera de
-            galeria-autorotar.js, que documenta este mismo
-            criterio (nunca decía que había que resetear acá;
-            este FIX lo contradecía).
+            A propósito no se llama acá a autorotar.reset():
+            el switch "Autorotado" es global dentro de
+            "fichas", no por ficha — si el visitante lo
+            apaga mirando una geometría, sigue apagado al
+            pasar a la siguiente. El reset sí vive en los 4
+            puntos donde galeria.js sale de "fichas" del
+            todo, porque ahí sí es una sesión nueva.
         */
 
 
@@ -2773,27 +1987,19 @@ async function initGaleria() {
         );
 
         /*
-            Recién ACÁ, después de renderizarFicha(), el
-            DOM ya tiene aplicado el minHeight de peor
-            caso en cada campo — es el momento correcto
-            para medir (ver el comentario grande junto a
-            ajustarAltoFichaSegunContenido()). Cubre el
-            caso de entrar a la fase "fichas" por primera
-            vez sin haber pasado por ningún resize.
+            Después de renderizarFicha(), el DOM ya tiene
+            aplicado el minHeight de peor caso en cada campo
+            — es el momento correcto para medir. Cubre
+            entrar a "fichas" la primera vez sin resize.
         */
-
         ajustarAltoFichaSegunContenido();
 
 
         /*
-            Panel de parámetros: apunta al Group del
-            elemento recién enfocado (ver
-            galeria-panel-parametros.js). Se llama
-            siempre que cambia el foco, incluso si
-            el elemento no expone parámetros (en ese
-            caso simplemente no arma controles).
+            Apunta al Group del elemento recién enfocado.
+            Se llama siempre, incluso si el elemento no
+            expone parámetros (no arma controles en ese caso).
         */
-
         paramPanel.mostrar(
             elementoId,
             cones[elementoId]
@@ -2801,24 +2007,16 @@ async function initGaleria() {
 
 
         /*
-            Miniaturas de "Fotografías": mismo momento
-            que paramPanel arriba (cambia junto con el
-            resto del panel derecho al cambiar de foco).
-            "elemento.fotos" ya viene armado por
-            normalizarElemento() en galeria-config.js —
-            este módulo no necesita saber nada del
-            GeoJSON.
+            Mismo momento que paramPanel: "elemento.fotos"
+            ya viene armado por normalizarElemento() en
+            galeria-config.js.
         */
-
         fotosPanel.mostrar(elemento.fotos);
 
 
-        /*
-            Pequeño fundido al cambiar de
-            elemento.
-        */
-
+        /* Pequeño fundido al cambiar de elemento. */
         [
+
             panelNombre,
             panelSubtitulo,
             panelFicha,

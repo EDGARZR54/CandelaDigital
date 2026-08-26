@@ -40,7 +40,9 @@
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/navbar.css">
 <link rel="stylesheet" href="css/footer.css">
+<link rel="stylesheet" href="css/componentes.css">
 <link rel="stylesheet" href="css/footer-logos.css">
+<link rel="stylesheet" href="css/pages/index.css">
 <link rel="stylesheet" href="css/pages/galeria.css">
 
 <!-- KaTeX: renderiza la fórmula fija de la sección "Geometría"
@@ -115,10 +117,9 @@
        de index.html — .eyebrow
        de css/base.css, .subrayado
        y el ancho de .hero__texto
-       replicados en
-       css/pages/galeria.css ya
-       que esta página no carga
-       css/componentes.css.
+       vienen de css/componentes.css
+       (esta página también la
+       carga, ver <head>).
        galeria.js ya NO escribe
        este texto: vive fijo acá,
        igual que en index.html —
@@ -130,7 +131,7 @@
       <div class="hero__texto">
         <p class="eyebrow">Geometría hecha estructura</p>
         <h1 class="titulo">Cascarones de <span class="subrayado">concreto</span></h1>
-        <p class="descripcion">
+        <p class="hero__parrafo">
           Documentación digital y análisis geométrico de seis cascarones de concreto del
           movimiento moderno en México, ubicados en Ciudad de México, Estado de México y Morelos.
           Mediante fotogrametría y escaneo LiDAR se generan nubes de puntos y modelos
@@ -148,12 +149,10 @@
        cascada: mismo texto y
        mismas cifras que la
        sección "El proyecto" de
-       index.html — ver
-       componentes.css/index.css,
-       replicadas acá en
-       css/pages/galeria.css ya
-       que esta página no carga
-       esas hojas. La opacidad
+       index.html — clases de
+       componentes.css/pages/index.css,
+       que esta página también
+       carga (ver <head>). La opacidad
        la controla galeria.js /
        galeria-proyecto.js según
        el scroll; el "6" de
@@ -166,7 +165,7 @@
   <div id="proyecto">
       <div class="contenedor">
 
-          <div class="proyecto__intro">
+          <div class="intro">
               <p class="eyebrow">El proyecto</p>
               <p>
                 Los cascarones de concreto del movimiento moderno mexicano representan una de las
@@ -179,7 +178,7 @@
               </p>
           </div>
 
-          <div class="proyecto__cifras">
+          <div class="cifras">
               <div>
                   <p class="cifra__numero" id="proyecto-cifra-cascarones">6</p>
                   <p class="cifra__etiqueta">Cascarones documentados</p>
@@ -564,7 +563,7 @@
                                   class="ficha__switch"
                                   id="boton-mostrar-interseccion"
                                   role="switch"
-                                  aria-checked="false"
+                                  aria-checked="true"
                               >
                                   <span class="ficha__campo-label">Mostrar intersección</span>
                                   <span class="ficha__switch-pista" aria-hidden="true">
@@ -602,31 +601,49 @@
                                normales + mostrar malla),
                                aplicado a TODOS los elementos —
                                ver galeria-panel-material.js.
-                               NATIVO (select + switch, mismas
-                               clases ".ficha__select"/
-                               ".ficha__switch" que el resto del
-                               panel): ya no es un lil-gui montado
-                               adentro de esta sección colapsable
-                               — el colapso/expandido ya lo
-                               resuelve la sección de afuera, no
-                               hacía falta un segundo panel con su
-                               propia tipografía adentro. Hermano
-                               de "#ficha-controles", NO adentro:
+                               El tipo usa un droplist propio
+                               (".ficha__droplist", sin <select>
+                               nativo: el popup del navegador no
+                               se puede tipografiar parejo entre
+                               navegadores y parpadea en blanco
+                               un frame al abrir en modo oscuro).
+                               El switch sigue siendo nativo
+                               (".ficha__switch"). Ya no es un
+                               lil-gui montado adentro de esta
+                               sección colapsable — el colapso/
+                               expandido ya lo resuelve la
+                               sección de afuera, no hacía falta
+                               un segundo panel con su propia
+                               tipografía adentro. Hermano de
+                               "#ficha-controles", NO adentro:
                                mismo motivo que antes (querySelector
                                de createCorteControles() no debe
                                alcanzar hasta acá). -->
                           <div id="panel-material">
 
                               <div class="ficha__campo">
-                                  <label class="ficha__campo-label" for="ficha-material-tipo">Tipo de material</label>
-                                  <span class="ficha__select-wrap">
-                                      <select class="ficha__select" id="ficha-material-tipo">
-                                          <option value="solido">Sólido (tema)</option>
-                                          <option value="estado">Estado de conservación</option>
-                                          <option value="normales" selected>Normales</option>
-                                          <option value="ninguno">Ninguno</option>
-                                      </select>
-                                  </span>
+                                  <span class="ficha__campo-label" id="ficha-material-tipo-label">Tipo de material</span>
+                                  <div class="ficha__droplist">
+                                      <button
+                                          type="button"
+                                          class="ficha__droplist-boton"
+                                          id="ficha-material-tipo-boton"
+                                          aria-haspopup="listbox"
+                                          aria-expanded="false"
+                                          aria-labelledby="ficha-material-tipo-label ficha-material-tipo-boton"
+                                      >
+                                          <span class="ficha__droplist-valor" data-droplist-valor>Normales</span>
+                                          <svg class="ficha__droplist-chevron" aria-hidden="true" viewBox="0 0 16 16" fill="none">
+                                              <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                                          </svg>
+                                      </button>
+                                      <ul class="ficha__droplist-lista" id="ficha-material-tipo" role="listbox" tabindex="-1" aria-labelledby="ficha-material-tipo-label" hidden>
+                                          <li class="ficha__droplist-opcion" role="option" data-value="solido">Sólido (tema)</li>
+                                          <li class="ficha__droplist-opcion" role="option" data-value="estado">Estado de conservación</li>
+                                          <li class="ficha__droplist-opcion" role="option" data-value="normales" aria-selected="true">Normales</li>
+                                          <li class="ficha__droplist-opcion" role="option" data-value="ninguno">Ninguno</li>
+                                      </ul>
+                                  </div>
                               </div>
 
                               <button
@@ -634,7 +651,7 @@
                                   class="ficha__switch"
                                   id="boton-mostrar-malla"
                                   role="switch"
-                                  aria-checked="false"
+                                  aria-checked="true"
                               >
                                   <span class="ficha__campo-label">Mostrar malla</span>
                                   <span class="ficha__switch-pista" aria-hidden="true">

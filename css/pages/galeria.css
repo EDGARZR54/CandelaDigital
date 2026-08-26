@@ -1,36 +1,32 @@
 /* ==================================================
    galeria.css
 
-   Estilos de la galeria. Los colores por elemento
-   (por estado de conservación) NO viven acá — esos
-   se controlan desde js/three/galeria-config.js.
-   Este archivo es solo layout/tipografía/UI.
+   Estilos de la galería. Los colores por elemento (por
+   estado de conservación) NO viven acá — se controlan
+   desde js/three/galeria-config.js. Este archivo es
+   solo layout/tipografía/UI.
 
-   El navbar y el footer de esta página siguen el
-   tema claro/oscuro que el visitante elija, igual que
-   el resto del sitio (reutilizan css/navbar.css y
-   css/footer.css tal cual, con las MISMAS variables de
-   css/variables.css). Acá solo se ajustan los
-   elementos propios de la galería que antes ocupaban
-   el borde superior/derecho de la ventana, para que no
-   queden debajo del navbar fijo (ver "#gui" más abajo
-   — "#panel-material" y "#panel-parametros" ya no
-   flotan sueltos: viven adentro del panel derecho, ver
-   las secciones colapsables "Opciones de visualización"/
-   "Geometría" en galeria.html).
+   El navbar y el footer siguen el tema claro/oscuro del
+   sitio, igual que el resto de las páginas (reutilizan
+   css/navbar.css y css/footer.css con las mismas
+   variables de css/variables.css). La escena 3D (lienzo,
+   hero, ficha, GUI) también sigue esas mismas variables
+   --color-*: el fondo/niebla/mesa del canvas de Three.js
+   se calculan en vivo a partir de ellas (ver
+   colorFondoEscena()/colorMesaEscena() en
+   galeria-escena.js) y se recalculan solos si cambia el
+   tema sin recargar (ver el MutationObserver en
+   galeria.js) — así que este archivo no declara ninguna
+   variable de color propia.
 
-   La escena 3D (lienzo, hero, ficha, GUI) TAMBIÉN
-   sigue el tema: usa las MISMAS variables --color-*
-   que el resto del sitio, igual que cualquier otra
-   página. El fondo/niebla/mesa del lienzo de Three.js
-   se calculan en vivo a partir de esas mismas
-   variables CSS (ver colorFondoEscena() /
-   colorMesaEscena() en galeria-escena.js) y se
-   recalculan solos si el visitante cambia el tema sin
-   recargar (ver el MutationObserver en galeria.js) —
-   así que este archivo no necesita declarar ninguna
-   variable de color propia: le alcanza con las de
-   variables.css, como a cualquier otra página.
+   galeria.html carga componentes.css y pages/index.css
+   (ver <head>), así que las clases de texto/tipografía
+   compartidas con index.html (.hero__texto, .subrayado,
+   .hero__parrafo, .intro, .cifras, .cifra__numero,
+   .cifra__etiqueta) NO se redeclaran acá — este archivo
+   solo aporta lo estructural exclusivo de la escena
+   (#hero, #proyecto como contenedores fijos/absolutos) y
+   los ajustes responsive propios de esta página.
 ================================================== */
 
 * {
@@ -42,16 +38,10 @@ html, body {
 
     /*
         Sin esto, cualquier elemento que se pase del
-        viewport (p. ej. #gui, antes de que su propio
-        overflow-x:auto entre a tallar) hace que la
-        PÁGINA ENTERA se pueda desplazar horizontalmente
-        — el efecto visible es que el scroll interno de
-        #gui (con su mask-image de degradé en los bordes)
-        nunca se nota, porque en cambio se corre el body
-        entero y el último botón queda cortado a lo bruto
-        contra el borde físico de la pantalla, sin
-        degradé. Con overflow-x: hidden acá, el único que
-        puede desbordar y scrollear es #gui mismo.
+        viewport (p. ej. #gui antes de que entre su propio
+        overflow-x) hace que la PÁGINA ENTERA scrollee en
+        horizontal — con overflow-x:hidden acá, el único
+        que puede desbordar y scrollear es #gui mismo.
     */
     overflow-x: hidden;
 
@@ -62,42 +52,22 @@ html, body {
 }
 
 /*
-    Scrollbar de LA PÁGINA (no la de ".ficha__panel-cuerpo",
-    esa es aparte — ver esa regla más abajo). Sin esto se ve
-    la barra gris/blanca por defecto del navegador, que no
-    combina con el resto del sitio (tema claro/oscuro,
-    glassmorphism del panel, etc.).
+    Scrollbar de la página (no la de ".ficha__panel-cuerpo",
+    ver esa regla más abajo). Se targetea "html" porque
+    "body" no tiene overflow propio — por spec es "html"
+    quien gobierna el scroll real del viewport.
 
-    Se targetea "html" y no "body": "body" no tiene ningún
-    "overflow" propio (solo "margin:0"), así que por spec es
-    "html" —que sí lo tiene, "overflow-x:hidden" arriba mismo—
-    el que gobierna el scroll real del viewport, no "body".
-
-    Reactiva al tema SOLA, sin necesidad de un bloque
-    "[data-tema=\"claro\"]" acá abajo (a diferencia de la
-    scrollbar de ".ficha__panel-cuerpo", que si necesita uno):
-    "--color-fondo"/"--color-texto-suave" ya son variables que
-    cambian de valor solas con "[data-tema]" en variables.css
-    — esta regla solo las consume, no las duplica.
-    "color-mix()" para la opacidad del thumb, mismo recurso
-    que ya usa ".paginacion__dot" más abajo en este archivo
-    para mezclar un color "final" (no una tripleta r,g,b) con
-    transparencia.
+    --scroll-thumb/--scroll-thumb-hover: mismo par de
+    colores usado en las 5 reglas de esta scrollbar
+    (thumb, hover, botones), definido acá una sola vez.
 */
 html {
-    /*
-        FIX (reportado: "el scroll es algo delgado"): antes
-        "thin" acá — en Firefox eso fuerza un ancho angosto
-        fijo sin posibilidad de ajustarlo en px (solo
-        auto/thin/none); "auto" deja el ancho nativo normal
-        del navegador, más cerca visualmente de los 14px que
-        se piden abajo para Chromium/Safari vía
-        "::-webkit-scrollbar".
-    */
+    --scroll-thumb: color-mix(in srgb, var(--color-texto-suave) 40%, transparent);
+    --scroll-thumb-hover: color-mix(in srgb, var(--color-texto-suave) 60%, transparent);
+
+    /* "auto", no "thin": Firefox fuerza un ancho angosto fijo con "thin", sin poder ajustarlo en px */
     scrollbar-width: auto;
-    scrollbar-color:
-        color-mix(in srgb, var(--color-texto-suave) 40%, transparent)
-        var(--color-fondo);
+    scrollbar-color: var(--scroll-thumb) var(--color-fondo);
 }
 
 html::-webkit-scrollbar {
@@ -109,38 +79,29 @@ html::-webkit-scrollbar-track {
 }
 
 html::-webkit-scrollbar-thumb {
-    background:
-        color-mix(in srgb, var(--color-texto-suave) 40%, transparent);
+    background: var(--scroll-thumb);
     border-radius: 999px;
 }
 
 html::-webkit-scrollbar-thumb:hover {
-    background:
-        color-mix(in srgb, var(--color-texto-suave) 60%, transparent);
+    background: var(--scroll-thumb-hover);
 }
 
 /*
-    Flechas arriba/abajo (reportado: "el principal no las
-    tiene"): al declarar ::-webkit-scrollbar-track/-thumb más
-    arriba, el navegador deja de dibujar los botones nativos
-    de toda la vida — hay que redibujarlos a mano. Un triángulo
-    vía clip-path adentro del propio botón, en vez de un
-    ::before (los pseudo-elementos de scrollbar no admiten
-    pseudo-elementos propios).
-
-    SOLO CHROMIUM/EDGE: Firefox y Safari, con el modelo
-    estándar "scrollbar-color"/"scrollbar-width" que ya usa
-    esta regla, no exponen ::-webkit-scrollbar-button (ni
-    ningún equivalente) — ahí nunca hubo flechas con este
-    modelo, no hay forma de traerlas de vuelta sin resignar
-    color/grosor propios. Progressive enhancement, no rompe
-    nada donde no aplica.
+    Flechas arriba/abajo: al declarar los pseudo-elementos
+    de scrollbar de arriba, el navegador deja de dibujar
+    los botones nativos — se redibujan a mano con
+    clip-path (un triángulo) adentro del propio botón.
+    SOLO Chromium/Edge: Firefox/Safari con el modelo
+    estándar scrollbar-color/width no exponen
+    ::-webkit-scrollbar-button — ahí nunca hay flechas con
+    este modelo. Progressive enhancement, no rompe nada
+    donde no aplica.
 */
 html::-webkit-scrollbar-button {
     display: block;
     height: 14px;
-    background-color:
-        color-mix(in srgb, var(--color-texto-suave) 40%, transparent);
+    background-color: var(--scroll-thumb);
 }
 
 html::-webkit-scrollbar-button:vertical:start {
@@ -152,17 +113,14 @@ html::-webkit-scrollbar-button:vertical:end {
 }
 
 html::-webkit-scrollbar-button:hover {
-    background-color:
-        color-mix(in srgb, var(--color-texto-suave) 60%, transparent);
+    background-color: var(--scroll-thumb-hover);
 }
 
 
 /* =========================
    CONTENEDOR "CLAVADO"
-   (fases hero/proyecto/revelado/orden/fichas: agrupa todo
-   lo que antes era
-   position:fixed cada uno
-   por su cuenta)
+   (fases hero/proyecto/revelado/orden/fichas: agrupa lo
+   que antes era position:fixed cada uno por su cuenta)
 ========================= */
 
 #galeria-escena-fija {
@@ -170,40 +128,35 @@ html::-webkit-scrollbar-button:hover {
     inset: 0;
 
     /*
-        Contexto de apilamiento propio: así, sin
-        importar qué tan alto sea el z-index de sus
-        hijos (los paneles llegan a 1000), el bloque
-        completo compite con el navbar (z-index: 100
-        en navbar.css) usando SOLO este valor — el
-        navbar siempre queda por encima de la escena.
+        Contexto de apilamiento propio: así, sin importar
+        el z-index de sus hijos (los paneles llegan a
+        1000), el bloque completo compite con el navbar
+        (z-index:100 en navbar.css) usando solo este valor
+        — el navbar siempre queda por encima de la escena.
     */
     z-index: 1;
 
     /*
-        Ancho del rectángulo de ".ficha__panel" y
-        separación respecto al texto de la ficha, en un
-        solo lugar: los usan TANTO "#ficha-panel-marco"
-        (el rectángulo en sí) COMO "#carousel-panel
-        .contenedor" (que necesita reservarles el mismo
-        espacio para que el texto no quede por debajo).
-        Si en algún momento cambia el tamaño del panel,
-        alcanza con tocar acá — texto y rectángulo no
-        pueden desincronizarse.
+        Ancho del rectángulo de ".ficha__panel" y separación
+        respecto al texto de la ficha, en un solo lugar: los
+        usan tanto "#ficha-panel-marco" como "#carousel-panel
+        .contenedor" (que reserva ese mismo espacio para que
+        el texto no quede debajo). Un solo punto de cambio,
+        texto y rectángulo no se desincronizan.
     */
     --ficha-panel-ancho: clamp(180px, 22vw, 280px);
     --ficha-panel-gap: clamp(1.5rem, 4vw, 3rem);
 }
 
 /*
-    Fase D (pie de página): galeria.js agrega esta
-    clase y fija un "top" en píxeles igual al total
-    de scroll de las 5 fases (ver
-    galeria-fases.js / galeria.js). El contenedor deja
-    de estar clavado a la ventana y pasa a vivir en
-    ese punto exacto del documento, así que se
-    desplaza hacia arriba junto con el resto de la
-    página — sin salto — dejando ver el <footer> real
-    que sigue después de #galeria-spacer.
+    Fase D (pie de página): galeria.js agrega esta clase y
+    fija un "top" en px igual al total de scroll de las 5
+    fases (ver galeria-fases.js/galeria.js). El contenedor
+    deja de estar clavado a la ventana y pasa a vivir en
+    ese punto exacto del documento — se desplaza hacia
+    arriba junto con el resto de la página, sin salto,
+    dejando ver el <footer> real que sigue después de
+    #galeria-spacer.
 */
 #galeria-escena-fija.liberada {
     position: absolute;
@@ -215,18 +168,11 @@ html::-webkit-scrollbar-button:hover {
 
 /* =========================
    ESPACIADOR
-   Su alto lo calcula
-   galeria.js: presupuesto de
-   scroll de las 5 fases
-   MÁS un alto de ventana
-   extra, para que
-   #galeria-escena-fija
-   termine de deslizarse fuera
-   de vista antes de que
-   aparezca el <footer> (ver
-   el comentario en
-   ajustarAltoScroll(), en
-   galeria.js).
+   Su alto lo calcula galeria.js: presupuesto de scroll de
+   las 5 fases MÁS un alto de ventana extra, para que
+   #galeria-escena-fija termine de deslizarse fuera de
+   vista antes de que aparezca el <footer> (ver
+   ajustarAltoScroll() en galeria.js).
 ========================= */
 
 #galeria-spacer {
@@ -235,10 +181,8 @@ html::-webkit-scrollbar-button:hover {
 
 
 /* =========================
-   ESCENA (dentro del
-   contenedor clavado; el
-   scroll ocurre "debajo" de
-   todas las fases con escena)
+   ESCENA (dentro del contenedor clavado; el scroll ocurre
+   "debajo" de todas las fases con escena)
 ========================= */
 
 #scene {
@@ -252,15 +196,12 @@ html::-webkit-scrollbar-button:hover {
     overflow: hidden;
 
     /*
-        var(--color-fondo): mismo tono que el fondo
-        de la página, y también el mismo que usa el
-        <canvas> de Three.js una vez que arranca (ver
-        colorFondoEscena() en galeria-escena.js, que
-        lee esta misma variable) — así, si el canvas
-        tarda un instante en aparecer, o si el
-        aspecto de la ventana deja un borde visible,
-        no se nota un "salto" de color, sin importar
-        el tema ni el momento.
+        var(--color-fondo): mismo tono que usa el <canvas>
+        de Three.js una vez que arranca (ver
+        colorFondoEscena() en galeria-escena.js, que lee
+        esta misma variable) — así, si el canvas tarda un
+        instante en aparecer, no se nota un "salto" de
+        color, sin importar el tema.
     */
     background: var(--color-fondo);
 
@@ -283,8 +224,7 @@ html::-webkit-scrollbar-button:hover {
 
 
 /* =========================
-   HERO (sección A: título +
-   descripción, solo al
+   HERO (sección A: título + descripción, solo al
    principio)
 ========================= */
 
@@ -292,18 +232,14 @@ html::-webkit-scrollbar-button:hover {
     position: absolute; /* antes: fixed */
     top: 0;
     left: 0;
-    right: 0; /* junto con "left:0" + max-width + margin-inline:auto, permite que el navegador centre la caja (ver más abajo) */
+    right: 0;
 
     /*
-        Reproduce EXACTAMENTE el comportamiento de
-        ".contenedor" (ver base.css): en vez de copiar
-        solo su padding-inline (eso fue lo que hice la
-        vez pasada, y por eso no coincidía en pantallas
-        anchas), acá también se limita el ancho máximo
-        y se centra igual que ".contenedor" — así el
-        texto queda alineado con el logo del navbar
-        pase lo que pase con el ancho de la ventana,
-        no solo en pantallas angostas.
+        Reproduce el comportamiento de ".contenedor" (ver
+        base.css): además del padding-inline, también se
+        limita el ancho máximo y se centra igual que
+        ".contenedor" — así el texto queda alineado con el
+        logo del navbar sin importar el ancho de la ventana.
     */
     max-width: var(--ancho-contenido);
     margin-inline: auto;
@@ -315,9 +251,8 @@ html::-webkit-scrollbar-button:hover {
     justify-content: center;
 
     /*
-        Un poco de aire arriba para que, en ventanas
-        bajas (celular en horizontal, notebooks
-        chicas), el título nunca quede pegado o
+        Aire arriba para que en ventanas bajas (celular
+        horizontal, notebooks chicas) el título no quede
         tapado por el navbar fijo. A los lados: mismo
         padding-inline que ".contenedor".
     */
@@ -326,15 +261,11 @@ html::-webkit-scrollbar-button:hover {
     z-index: 4;
 
     /*
-        El contenedor en sí sigue sin capturar clics
-        (para no bloquear el scroll/gestos con los que
-        se avanza por las fases con escena sobre TODO el
-        alto de la ventana) — pero ".hero__texto" de
-        abajo lo reactiva solo sobre el bloque real de
-        texto, para que sea seleccionable (ver también
-        index.html, donde el hero nunca tuvo este
-        problema porque nunca puso pointer-events:none
-        de entrada).
+        El contenedor no captura clics (para no bloquear el
+        scroll/gestos con los que se avanza por las fases
+        sobre todo el alto de la ventana) — ".hero__texto"
+        lo reactiva solo sobre el bloque real de texto, para
+        que sea seleccionable.
     */
     pointer-events: none;
 
@@ -342,92 +273,54 @@ html::-webkit-scrollbar-button:hover {
 }
 
 /*
-    Mismo ancho máximo que ".hero__texto" en
-    componentes.css (index.html) — de ahí sale el
-    "width limitado" del título/párrafo. Reactiva
-    pointer-events SOLO acá (no en todo #hero), así
-    el texto se puede seleccionar sin afectar el
-    scroll/gestos sobre el resto de la ventana.
+    ".hero__texto" (max-width: 640px) y ".titulo .subrayado"
+    (color/italic) ya vienen de componentes.css — acá solo
+    se reactiva pointer-events, apagado a nivel de todo
+    "#hero" más arriba.
 */
 #hero .hero__texto {
-    max-width: 640px;
     pointer-events: auto;
 }
 
 /*
-    Sin reglas propias de tamaño/peso/interlineado:
-    ".titulo" es un <h1> real y hereda tal cual las
-    reglas de base.css (h1 { font-size: var(--tam-h1);
-    font-weight: 500 }, más letter-spacing/line-height
-    del selector general "h1,h2,h3,h4") — mismas que
-    usa el <h1> de index.html, sin duplicar valores.
-    Solo el margen inferior es propio de este contexto
-    (mismo criterio que ".hero__texto h1" en
-    componentes.css).
+    El <h1 class="titulo"> hereda el margin-bottom:0.55em de
+    ".hero__texto h1" en componentes.css (selector por
+    etiqueta, no le importa la clase extra "titulo") y el
+    color/italic de ".subrayado" viene de ahí también. Este
+    selector ".titulo" solo sirve como gancho para el ajuste
+    de tamaño en el breakpoint landscape, más abajo.
 */
-#hero .titulo {
-    margin-bottom: 0.55em;
-}
 
 /*
-    Mismo tratamiento que ".hero__texto .subrayado" en
-    componentes.css (index.html): la parte resaltada
-    del título ("concreto") usa el color primario del
-    sitio en vez del color de texto normal — y por lo
-    tanto también sigue el tema claro/oscuro, igual
-    que allá.
+    ".hero__parrafo" trae color/max-width/font-size de
+    componentes.css — acá solo se pisa el margin-bottom,
+    que en index.html es 2.1rem y en esta fase debe ser 0
+    (no hay nada debajo del texto en el hero de la galería).
 */
-#hero .titulo .subrayado {
-    color: var(--color-primario);
-    font-style: italic;
-}
-
-/*
-    Mismos valores que ".hero__parrafo" en
-    componentes.css (index.html): tipografía de cuerpo
-    normal (NO la de "dato"/ficha técnica, que era más
-    chica y con menos peso), mismo tamaño fluido, mismo
-    color suave y mismo límite de ancho en caracteres.
-*/
-#hero .descripcion {
-    color: var(--color-texto-suave);
-
-    max-width: 46ch;
-
-    font-size: clamp(1rem, 0.4vw + 0.92rem, 1.2rem);
+#hero .hero__parrafo {
     margin-bottom: 0;
 }
 
 
 /* =========================
    PROYECTO
-   (fase intermedia: "El
-   proyecto" + cifras — mismos
-   estilos que la sección
-   homónima de index.html, ver
-   ".intro"/".cifras" en
-   componentes.css e index.css,
-   que esta página no carga.
+   (fase intermedia: "El proyecto" + cifras — mismos
+   estilos que la sección homónima de index.html: usa las
+   clases ".intro"/".cifras"/".cifra__numero"/".cifra__etiqueta"
+   de componentes.css/pages/index.css, que esta página
+   también carga (ver <head> de galeria.html). Acá solo
+   quedan los ajustes que en index.html iban inline o que
+   son exclusivos de esta fase.
 
-   A diferencia de "#hero" de
-   arriba (que reproduce
-   ".contenedor" a mano porque
-   necesita una sola columna
-   angosta, tipo hero__texto),
-   acá se USA ".contenedor" tal
-   cual — mismo patrón que
-   "#carousel-panel .contenedor"
-   más abajo — porque, igual que
-   en index.html, las cifras
-   ocupan TODO el ancho del
-   contenedor: solo el párrafo
-   de introducción se limita a
-   68ch, no el bloque entero.
+   A diferencia de "#hero" (que reproduce ".contenedor" a
+   mano porque necesita una sola columna angosta), acá SÍ
+   se usa ".contenedor" tal cual — mismo patrón que
+   "#carousel-panel .contenedor" más abajo — porque las
+   cifras ocupan todo el ancho del contenedor: solo el
+   párrafo de introducción se limita a 68ch.
 
-   galeria.js/galeria-proyecto.js
-   controlan la opacidad según
-   el scroll (subir/sostener/
-   bajar).
+   galeria.js/galeria-proyecto.js controlan la opacidad
+   según el scroll.
 ========================= */
 
 #proyecto {
@@ -442,14 +335,7 @@ html::-webkit-scrollbar-button:hover {
     flex-direction: column;
     justify-content: center;
 
-    /*
-        Solo el margen superior es propio de acá (para
-        despejar el navbar fijo, igual criterio que
-        "#hero"). El padding horizontal NO se repite:
-        ya lo aporta ".contenedor" (ver más abajo), así
-        que no queda doble padding ni un ancho distinto
-        al del resto del sitio.
-    */
+    /* despeja el navbar fijo, igual criterio que "#hero". El padding horizontal ya lo aporta ".contenedor" */
     padding-top: 5rem;
 
     z-index: 4;
@@ -459,117 +345,53 @@ html::-webkit-scrollbar-button:hover {
     opacity: 0; /* estado inicial: la fase "hero" es la primera en verse */
 }
 
-/*
-    Reactiva pointer-events SOLO sobre el bloque real
-    de contenido (mismo criterio que "#hero
-    .hero__texto"), no en todo "#proyecto".
-*/
+/* Reactiva pointer-events solo sobre el contenido real, no en todo "#proyecto" */
 #proyecto .contenedor {
     pointer-events: auto;
 }
 
-/* Mismo límite que ".intro" en index.css — SOLO el párrafo, no las cifras */
-#proyecto .proyecto__intro {
-    max-width: 68ch;
-}
-
-/* Mismos valores que ".intro p" en index.css */
-#proyecto .proyecto__intro p {
-    font-size: clamp(1.05rem, 0.4vw + 0.95rem, 1.3rem);
-    color: var(--color-texto-suave);
-}
-
 /*
-    Mismos valores que ".cifras" en componentes.css,
-    incluido el margin-top:3rem que en index.html va
-    como style inline sobre el propio elemento — acá
-    se integra directo a la regla en vez de repetirlo
-    en el HTML.
+    ".intro"/".intro p" (max-width, font-size, color) y
+    ".cifra__numero"/".cifra__etiqueta" ya vienen tal cual
+    de componentes.css/pages/index.css. Lo único que no
+    trae ".cifras" de componentes.css es este margin-top:
+    en index.html se aplica inline (style="margin-top:
+    3rem") porque esa página no lo necesita en ningún otro
+    lado; acá, al ser la única vez que se usa ".cifras" en
+    todo el sitio fuera de index.html, se declara como
+    regla en vez de repetir un inline en el markup.
 */
-#proyecto .proyecto__cifras {
+#proyecto .cifras {
     margin-top: 3rem;
-
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 2rem;
-    border-top: 1px solid var(--color-borde);
-    border-bottom: 1px solid var(--color-borde);
-    padding-block: 2.2rem;
-}
-
-/* Mismos valores que ".cifra__numero"/".cifra__etiqueta" en componentes.css */
-#proyecto .cifra__numero {
-    font-family: var(--fuente-display);
-    font-size: clamp(2rem, 3vw, 2.8rem);
-    color: var(--color-primario);
-    line-height: 1;
-    margin-bottom: 0.3rem;
-}
-
-#proyecto .cifra__etiqueta {
-    font-family: var(--fuente-datos);
-    font-weight: var(--peso-datos);
-    font-size: 0.8rem;
-    color: var(--color-texto-suave);
-    letter-spacing: 0.02em;
 }
 
 
 /*
     CELULAR HORIZONTAL (hero + proyecto)
     ---------------------------------------------------
-    Mismo diagnóstico que el que ya está documentado
-    más abajo para "#carousel-panel" (buscar
-    "max-height: 500px" en este archivo), y mismo
-    breakpoint — se reutiliza a propósito, así ambas
-    fases quedan definidas por el mismo criterio de
-    "viewport bajo" en vez de inventar un segundo
-    número arbitrario.
+    "#hero"/"#proyecto" están armados con height:100vh +
+    padding-top fijo, y su tipografía fue pensada para
+    celular vertical (sobra alto). En horizontal el ancho
+    es generoso pero el alto suele ser <400px reales — y
+    como el scroll lo controla galeria.js para avanzar de
+    fase, lo que no entra en el 100vh no es alcanzable con
+    ningún gesto: hay que comprimir el contenido, no
+    dejarlo desbordar.
 
-    El problema acá es el mismo: "#hero" y "#proyecto"
-    están armados con height:100vh + un padding-top fijo
-    para despejar el navbar, y su tipografía (el <h1> del
-    hero hereda --tam-h1 de base.css; el párrafo de
-    "El proyecto" y las cifras usan tamaños en rem/vw)
-    fue pensada para celular VERTICAL, donde sobra alto
-    de sobra. En horizontal el ancho es generoso (por
-    eso nunca hizo falta un breakpoint por max-width acá,
-    a diferencia de "#gui" más abajo) pero el alto suele
-    ser <400px reales — y como el scroll de la página
-    está tomado por galeria.js para controlar el avance
-    entre fases, lo que no entra en el 100vh no es
-    alcanzable con ningún gesto: hay que comprimir el
-    contenido, no dejarlo desbordar.
-
-    Estrategia, igual que en "#carousel-panel .nombre":
-    achicar el padding-top que despeja el navbar, atar la
-    tipografía a un rango en vh en vez de dejarla en rem/vw
-    fijos, y en el párrafo de introducción ensanchar la
-    columna (en vez de angostarla) para que el mismo texto
-    entre en menos renglones — acá el ancho sobra, así que
-    conviene gastarlo en reducir la altura del bloque.
+    Estrategia (mismo criterio que "#carousel-panel
+    .nombre" con este breakpoint): achicar el padding-top
+    del navbar, atar la tipografía a un rango en vh (no
+    rem/vw), y ensanchar la columna de texto para que
+    entre en menos renglones sin tocar el tamaño de letra.
 */
 @media (max-height: 500px) and (orientation: landscape) {
 
     #hero {
-        /*
-            Antes: 5rem. Alcanza con menos aire para
-            despejar el navbar cuando el alto total de
-            la ventana ya es escaso.
-        */
-        padding-top: 3rem;
+        padding-top: 3rem; /* antes: 5rem */
     }
 
     #hero .hero__texto {
-        /*
-            Antes: 640px fijo. En horizontal el ancho
-            disponible es amplio (nunca es el recurso
-            escaso acá) — ensanchar la columna hace que
-            la descripción entre en menos renglones sin
-            tocar el tamaño de letra, que es lo que en
-            definitiva ahorra alto.
-        */
-        max-width: min(78vw, 820px);
+        max-width: min(78vw, 820px); /* antes: 640px fijo — acá el ancho sobra */
     }
 
     #hero .eyebrow {
@@ -577,41 +399,22 @@ html::-webkit-scrollbar-button:hover {
     }
 
     #hero .titulo {
-        /*
-            Reemplaza el --tam-h1 heredado (pensado para
-            vertical) por un rango atado a la ALTURA del
-            viewport, no al ancho — mismo criterio que
-            "#carousel-panel .nombre" en la otra fase con
-            este mismo breakpoint.
-        */
+        /* rango atado a la ALTURA del viewport, no al ancho — reemplaza el --tam-h1 heredado */
         font-size: clamp(1.6rem, 8vh, 2.5rem);
         margin-bottom: 0.3em;
     }
 
-    #hero .descripcion {
+    #hero .hero__parrafo {
         font-size: clamp(0.85rem, 2.6vh, 1rem);
-
-        /*
-            Va de la mano con el ensanche de
-            ".hero__texto" de arriba: mismo texto, menos
-            renglones, sin recortarlo.
-        */
-        max-width: 62ch;
+        max-width: 62ch; /* va de la mano con el ensanche de arriba: mismo texto, menos renglones */
     }
 
     #proyecto {
-        /* Mismo motivo que "#hero" arriba */
         padding-top: 3rem;
     }
 
     #proyecto .contenedor {
-        /*
-            El propio ".contenedor" limita el ancho útil
-            (ver base.css); acá se ensancha la columna de
-            SOLO el párrafo de introducción (ver
-            ".proyecto__intro" abajo) — las cifras ya usan
-            todo ese ancho de por sí.
-        */
+        /* ensancha solo la columna del párrafo de introducción — las cifras ya usan todo el ancho */
         max-width: min(92vw, 900px);
         margin-inline: auto;
     }
@@ -620,28 +423,16 @@ html::-webkit-scrollbar-button:hover {
         margin-bottom: 0.4em;
     }
 
-    #proyecto .proyecto__intro {
-        /*
-            Antes: 68ch. Mismo criterio que
-            "#hero .hero__texto": más ancho, menos
-            renglones — es la altura la que hay que
-            cuidar acá, no el ancho.
-        */
-        max-width: 92ch;
+    #proyecto .intro {
+        max-width: 92ch; /* antes: 68ch — más ancho, menos renglones */
     }
 
-    #proyecto .proyecto__intro p {
+    #proyecto .intro p {
         font-size: clamp(0.85rem, 2.4vh, 1rem);
     }
 
-    #proyecto .proyecto__cifras {
-        /*
-            Antes: margin-top 3rem, padding-block 2.2rem.
-            El bloque de cifras es el que más alto pesa
-            (borde + padding arriba y abajo + número +
-            etiqueta): se comprime fuerte, conservando el
-            borde como separador visual.
-        */
+    #proyecto .cifras {
+        /* el bloque de cifras es el que más alto pesa: se comprime fuerte, conservando el borde */
         margin-top: 1rem;
         gap: 1rem 2rem;
         padding-block: 0.9rem;
@@ -656,16 +447,7 @@ html::-webkit-scrollbar-button:hover {
         font-size: 0.7rem;
     }
 
-    /*
-        "#scroll-hint" es fixed/absolute por su cuenta,
-        con bottom:34px — con el proyecto comprimido de
-        arriba ya no debería tocarlo, pero en el peor caso
-        (JSON con una etiqueta larga en la fila de cifras)
-        conviene que ocupe lo menos posible: se achica el
-        ícono y se recorta el margen inferior, sin sacar
-        el texto "Desliza" (sigue siendo la única pista de
-        que hay más fases).
-    */
+    /* red de seguridad si el JSON trae una etiqueta larga: se achica el ícono y el margen, sin sacar el texto */
     #scroll-hint {
         bottom: 14px;
         gap: 4px;
@@ -681,48 +463,33 @@ html::-webkit-scrollbar-button:hover {
 
 
 /* =========================
-   GUI (aparece recién al
-   terminar de hacer scroll)
+   GUI (aparece recién al terminar de hacer scroll)
+   ---------------------------------------------------
+   Grupo de "tabs" de catálogo — sin fondo ni borde
+   propio, separadas por una regla vertical fina, con la
+   opción activa marcada por un subrayado en
+   --color-primario ("ordenar por" ES un dato del corpus,
+   no un control de cámara, así que le corresponde el
+   primario y no el secundario, reservado al visor/mapa).
+   Tipografía --fuente-datos en mayúsculas con tracking,
+   mismo criterio que ".eyebrow" en base.css.
 ========================= */
 
-/*
-    Rediseño: en vez de una píldora contenedora con
-    botones-píldora adentro (rectángulo dentro de
-    rectángulo, look genérico de UI kit), esto es un
-    grupo de "tabs" de catálogo — sin fondo ni borde
-    propio, separadas por una regla vertical fina,
-    con la opción activa marcada por un subrayado en
-    --color-primario (mismo acento que el resto del
-    sitio usa para dato/eyebrow — acá "ordenar por" ES
-    un dato del corpus, no un control de cámara, así
-    que no le corresponde el secundario, que queda
-    reservado para el visor/mapa). Tipografía
-    --fuente-datos en mayúsculas con tracking, mismo
-    criterio que ".eyebrow" en base.css.
-*/
 #gui {
     position: absolute; /* antes: fixed */
 
     /*
-        Este "top" es solo un VALOR DE RESPALDO
-        (antes del reordenamiento por criterio, era
-        el valor real y único). La posición efectiva
-        la fija galeria.js (posicionarGui(), ver ahí)
-        con un top en píxeles inline: alinea #gui con
-        la altura en la que arranca la ficha
-        (#carousel-panel, más abajo en este archivo) —
-        así, al pasar de la pausa "orden" a "fichas",
-        el nombre/subtítulo aparece en el mismo lugar
-        donde estaban las pestañas de orden, sin
-        salto. Ese cálculo depende del contenido real
-        de la ficha y no se puede expresar solo en
-        CSS (#carousel-panel está anclado por abajo,
-        bottom:0, así que su borde superior es
-        variable). Este valor en rem solo se ve un
-        instante, antes de que corra el JS —invisible
-        en la práctica, porque #gui sigue en
-        opacity:0 hasta la fase "orden" (ver
-        #gui.visible).
+        Este "top" es solo un VALOR DE RESPALDO. La
+        posición efectiva la fija galeria.js
+        (posicionarGui(), ver galeria-gui.js) con un top en
+        px inline: alinea #gui con la altura en la que
+        arranca la ficha, así que al pasar de "orden" a
+        "fichas" el nombre/subtítulo aparece en el mismo
+        lugar donde estaban las pestañas, sin salto. Ese
+        cálculo depende del contenido real de la ficha y no
+        se puede expresar solo en CSS. Invisible en la
+        práctica: #gui sigue en opacity:0 hasta la fase
+        "orden" (ver "#gui.visible").
     */
     top: 6rem;
     left: 50%;
@@ -733,15 +500,11 @@ html::-webkit-scrollbar-button:hover {
     align-items: center;
 
     /*
-        Sin este límite, en pantallas angostas la suma
-        de las 5 pestañas se salía del viewport (el
-        translateX(-50%) centra la caja, pero no la
-        contiene). Se limita al mismo ancho útil que usa
-        ".contenedor" (ver base.css) y, si aun así no
-        entran todas las opciones, se habilita scroll
-        horizontal en vez de desbordar o partir el grupo
-        en varias filas — mismo patrón que una barra de
-        filtros/chips, mantiene la fila única.
+        Sin este límite, en pantallas angostas la suma de
+        las 5 pestañas se sale del viewport. Se limita al
+        mismo ancho útil que ".contenedor" y, si aun así no
+        entran, se habilita scroll horizontal en vez de
+        desbordar o partir el grupo en varias filas.
     */
     max-width: calc(100vw - 2 * clamp(1.25rem, 4vw, 2.5rem));
     overflow-x: auto;
@@ -749,12 +512,7 @@ html::-webkit-scrollbar-button:hover {
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* Edge/IE viejo */
 
-    /*
-        Desvanece los bordes izquierdo/derecho de la
-        franja — así, si hay scroll disponible, se nota
-        de forma sutil (la pestaña siguiente asoma
-        recortada) en vez de un corte seco.
-    */
+    /* desvanece los bordes izq/der: si hay scroll disponible, la pestaña siguiente asoma recortada */
     -webkit-mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
     mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
 
@@ -776,11 +534,7 @@ html::-webkit-scrollbar-button:hover {
     pointer-events: auto;
 }
 
-/*
-    Regla vertical entre tabs (no alrededor del grupo:
-    sin caja exterior). Se omite antes del primer
-    botón con :not(:first-child).
-*/
+/* Regla vertical entre tabs (no alrededor del grupo). Se omite antes del primer botón */
 #gui button:not(:first-child) {
     border-left: 1px solid var(--color-borde);
 }
@@ -796,14 +550,7 @@ html::-webkit-scrollbar-button:hover {
 
     padding: 9px 16px;
 
-    /*
-        flex-shrink: 0 evita que flexbox comprima el
-        texto de cada pestaña para intentar hacerlas
-        entrar todas — con el scroll horizontal del
-        contenedor ya no hace falta encogerlas, así que
-        mantienen su tamaño y white-space: nowrap evita
-        que ninguna palabra se corte a la mitad.
-    */
+    /* flex-shrink:0: con el scroll horizontal del contenedor no hace falta comprimir el texto */
     flex-shrink: 0;
     white-space: nowrap;
 
@@ -821,11 +568,9 @@ html::-webkit-scrollbar-button:hover {
 }
 
 /*
-    Subrayado propio (no el nativo del navegador):
-    un trazo de 2px que nace en reposo (0 ancho) y se
-    despliega en hover o activo — mismo gesto que los
-    links y el ".eyebrow" del sitio, sin caja de fondo
-    ni sombra que compita con la escena 3D de atrás.
+    Subrayado propio (no el nativo): trazo de 2px que nace
+    en reposo (0 ancho) y se despliega en hover/activo —
+    mismo gesto que los links y ".eyebrow" del sitio.
 */
 #gui button::after {
     content: "";
@@ -861,26 +606,15 @@ html::-webkit-scrollbar-button:hover {
 }
 
 /*
-    En celular, el scroll horizontal (arriba, en la
-    regla base de #gui) funciona pero no se descubre
-    solo: el mask-image que avisa "hay más" se
-    desvanece contra un fondo casi negro y queda
-    invisible en la práctica, así que la pestaña
-    cortada en el borde se lee como un bug, no como
-    una invitación a deslizar.
-
-    En vez de eso, por debajo de este ancho las pestañas
-    pasan a envolver en varias filas centradas
-    (flex-wrap), todas visibles de entrada, sin
-    depender de un gesto oculto. El max-width de #gui
-    (regla base, arriba) es lo que fuerza el wrap: sigue
-    limitando el ancho de la fila, pero ahora el sobrante
-    baja de línea en vez de desbordar u ocultarse en un
-    scroll.
-
-    overflow-x pasa a visible y se apaga el mask-image:
-    ya no hay nada que recortar ni degradar, todo el
-    contenido está a la vista.
+    En celular el scroll horizontal (regla base de #gui)
+    funciona pero no se descubre solo: el mask-image se
+    desvanece contra un fondo casi negro y queda invisible
+    en la práctica. Por debajo de este ancho, las pestañas
+    envuelven en varias filas centradas (flex-wrap), todas
+    visibles de entrada, sin depender de un gesto oculto.
+    El max-width de #gui (regla base) sigue limitando el
+    ancho de la fila, pero ahora el sobrante baja de línea
+    en vez de desbordar u ocultarse en un scroll.
 */
 @media (max-width: 480px) {
     #gui {
@@ -894,27 +628,19 @@ html::-webkit-scrollbar-button:hover {
     }
 
     /*
-        La regla vertical entre tabs (ver
-        "#gui button:not(:first-child)" arriba) asume
-        una sola fila: en una grilla envuelta, el primer
-        botón de cada fila nueva NO es ":first-child" del
-        DOM aunque visualmente arranque su línea, así que
-        heredaría un borde-izquierdo flotando solo al
-        principio de esa línea. Se apaga acá; las pestañas
-        quedan separadas solo por el espaciado (padding +
-        row-gap), sin dividers.
+        La regla vertical entre tabs asume una sola fila: en
+        una grilla envuelta, el primer botón de cada fila
+        nueva no es ":first-child" del DOM aunque arranque
+        su línea, así que heredaría un borde flotando. Se
+        apaga acá; las pestañas quedan separadas solo por el
+        espaciado (padding + row-gap), sin dividers.
     */
     #gui button:not(:first-child) {
         border-left: none;
     }
 }
 
-/*
-    En pantallas muy angostas se achica un poco el
-    padding y la tipografía de cada pestaña, para que
-    la grilla de arriba quede más compacta (menos filas,
-    o filas más parejas).
-*/
+/* Pantallas muy angostas: se achica el padding y la tipografía de cada pestaña */
 @media (max-width: 420px) {
     #gui button {
         padding: 8px 12px;
@@ -926,35 +652,20 @@ html::-webkit-scrollbar-button:hover {
 
 /* =========================
    PANEL DE MATERIAL
-   (antes flotante y visible
-   desde la fase A, después
-   lil-gui montado adentro de
-   la sección colapsable
-   "Opciones de visualización"
-   — ver galeria.html. YA NO
-   ES lil-gui: es HTML nativo
-   ("#ficha-material-tipo" +
-   "#boton-mostrar-malla", ver
-   galeria-panel-material.js),
-   con las mismas clases
-   ".ficha__select"/
-   ".ficha__switch" que el
-   resto de la ficha — así que
-   ya no hace falta ningún
-   theming propio, esas clases
-   YA siguen el tema solas.)
+   (montado adentro de la sección colapsable "Opciones de
+   visualización" — ver galeria.html. Ya no es lil-gui: es
+   HTML nativo, ver galeria-panel-material.js, con las
+   mismas clases ".ficha__select"/".ficha__switch" que el
+   resto de la ficha, así que ya sigue el tema solo)
 ========================= */
 
 /*
-    "display: contents" a propósito, MISMO motivo que
-    ".ficha__controles" más abajo (ver ese comentario):
-    el propio div solo existe para conservar el id
-    "panel-material" (que createMaterialPanel() usa como
-    ámbito de sus querySelector) — sin caja propia, el
-    campo "Tipo de material" y el switch "Mostrar malla"
-    pasan a ser hijos flex directos de
+    "display:contents" a propósito, mismo motivo que
+    ".ficha__controles" más abajo: el div solo existe para
+    conservar el id "panel-material" — sin caja propia, sus
+    hijos pasan a ser flex directos de
     ".ficha__seccion-contenido-inner", heredando su
-    "gap: 14px" sin duplicar la propiedad acá.
+    "gap:14px" sin duplicar la propiedad acá.
 */
 #panel-material {
     display: contents;
@@ -963,44 +674,29 @@ html::-webkit-scrollbar-button:hover {
 
 /* =========================
    FÓRMULA DE "GEOMETRÍA"
-   (#formula-geometria, ver
-   galeria.html — fija por
-   ahora, no varía por
-   elemento enfocado. KaTeX,
-   cargado en el <head> y
-   renderizado una sola vez
-   por galeria.js.)
+   (#formula-geometria, ver galeria.html — fija por ahora.
+   KaTeX, cargado en el <head> y renderizado una sola vez
+   por galeria.js)
 ========================= */
 
 /*
-    Posicionamiento: reutiliza el layout que YA arma
+    Posicionamiento: reutiliza el layout que ya arma
     "#ficha-panel-marco" (ver esa regla más abajo) en vez de
-    inventar coordenadas propias —
+    inventar coordenadas propias.
 
-    - Margen IZQUIERDO: "#ficha-panel-marco" es
-      "display:flex; justify-content:flex-end" para empujar
-      ".ficha__panel" a la derecha. Siendo el PRIMER hijo
-      (ver el orden en galeria.html) con "margin-right:auto",
-      esta fórmula cae sola contra el margen izquierdo que
-      ya deja armado ese mismo flex (padding-inline +
-      centrado por "max-width:var(--ancho-contenido)") — ni
-      un "left" propio, ni duplicar ese cálculo acá.
+    - Margen izquierdo: "#ficha-panel-marco" es flex con
+      justify-content:flex-end para empujar ".ficha__panel"
+      a la derecha. Siendo el primer hijo con
+      margin-right:auto, esta fórmula cae sola contra el
+      margen izquierdo que ya deja armado ese mismo flex.
 
-    - Margen SUPERIOR: "align-self:flex-start" en vez del
-      "align-items:stretch" que hereda por default de un
-      contenedor flex-row — así se ancla arriba del todo de
-      "#ficha-panel-marco", que a su vez ya trae
-      "top:5rem" (el mismo despeje de navbar que usa el
-      resto del sitio, ver el comentario junto a esa regla).
+    - Margen superior: align-self:flex-start en vez del
+      stretch por default, para anclarse arriba del todo.
 
     Visibilidad: ":has()" en vez de JS — "Geometría" solo
-    tiene que reportar su propio "data-colapsado" (que YA
-    escribe galeria-panel-derecho-secciones.js para TODAS
-    las secciones, sin saber que esta fórmula existe) y este
-    selector reacciona solo. Mismo espíritu que el resto del
-    sitio: "el colapso en sí es CSS puro" (ver el comentario
-    de ese módulo) — acá directamente ni hace falta
-    "onCambio", el propio atributo ya alcanza.
+    reporta su propio "data-colapsado" (ya lo escribe
+    galeria-panel-derecho-secciones.js para todas las
+    secciones) y este selector reacciona solo.
 */
 .ficha__formula-geometria {
     margin-right: auto;
@@ -1026,51 +722,17 @@ html::-webkit-scrollbar-button:hover {
 
 /* =========================
    PANEL DE PARÁMETROS
-   (fase C, por elemento —
-   ver galeria-panel-parametros.js.
-   YA NO ES lil-gui, mismo
-   motivo que "PANEL DE
-   MATERIAL" arriba: sliders
-   nativos (".ficha__slider",
-   misma clase que "Corte") en
-   vez de los number-drag de
-   lil-gui.
+   (fase C, por elemento — ver galeria-panel-parametros.js.
+   Ya no es lil-gui, mismo motivo que "PANEL DE MATERIAL":
+   sliders nativos en vez de los number-drag de lil-gui.
 
-   A diferencia de
-   "#panel-material" (que usa
-   "display:contents", ver
-   arriba), ACÁ SÍ hace falta
-   una caja propia: el fundido
-   de opacidad de más abajo
-   ("opacity"/".visible", que
-   galeria.js sigue disparando
-   al entrar/salir de "fichas",
-   ver panelParametrosContainer
-   en galeria.js) NO tiene
-   ningún efecto sobre un
-   elemento "display:contents"
-   — ese display hace que el
-   elemento no tenga caja
-   propia sobre la que aplicar
-   opacity. Por eso, en vez de
-   "contents", este contenedor
-   arma su PROPIO flex/gap
-   interno (mismo valor que
-   ".ficha__seccion-contenido-
-   inner", por consistencia
-   visual con el resto de las
-   secciones).
-
-   El fundido en sí es
-   redundante con el opacity de
-   "#ficha-panel-marco" completo
-   —ese ya lo tapa entero fuera
-   de "fichas"— pero inofensivo
-   dejarlo: es el mismo fundido
-   de siempre para el instante
-   en que SÍ está en "fichas"
-   pero todavía no hay ningún
-   elemento enfocado.
+   A diferencia de "#panel-material" (display:contents),
+   acá sí hace falta caja propia: el fundido de opacidad de
+   abajo no tiene efecto sobre un elemento sin caja. El
+   fundido es redundante con el opacity de
+   "#ficha-panel-marco" completo, pero inofensivo dejarlo:
+   cubre el instante en que ya se está en "fichas" pero
+   todavía no hay ningún elemento enfocado.
 ========================= */
 
 #panel-parametros {
@@ -1092,13 +754,10 @@ html::-webkit-scrollbar-button:hover {
 /*
     Valor numérico vivo junto al label de cada slider de
     "Geometría" (ver crearCampo() en
-    galeria-panel-parametros.js) — sin esto, un slider con
-    rango arbitrario (no 0-100% como los de "Corte") es
-    prácticamente imposible de leer con precisión solo por
-    la posición de la perilla. "tabular-nums" para que los
-    dígitos no salten de ancho al cambiar de valor
-    (mismo motivo que ".opacidad-value" usa en otros
-    lugares del sitio con números que cambian en vivo).
+    galeria-panel-parametros.js) — sin esto, un rango
+    arbitrario (no 0-100% como "Corte") es difícil de leer
+    solo por la posición de la perilla. tabular-nums para
+    que los dígitos no salten de ancho al cambiar.
 */
 .ficha__campo-valor {
     font-variant-numeric: tabular-nums;
@@ -1107,9 +766,7 @@ html::-webkit-scrollbar-button:hover {
 
 
 /* =========================
-   FICHA
-   (sección C: scroll
-   horizontal / spotlight)
+   FICHA (sección C: scroll horizontal / spotlight)
 ========================= */
 
 #carousel-panel {
@@ -1120,37 +777,24 @@ html::-webkit-scrollbar-button:hover {
     width: 100vw;
 
     /*
-        Sin padding horizontal acá: el degradado de
-        abajo tiene que cubrir TODO el ancho de la
-        ventana (es una "viñeta" completa). El
-        alineado del texto con el margen del navbar
-        lo da el <div class="contenedor"> que envuelve
-        el contenido real (ver galeria.html) — la
-        misma clase que usa el navbar, así quedan
-        exactamente alineados sin importar el ancho de
-        la ventana (a diferencia de solo copiar el
-        padding-inline, que no alcanza en pantallas
-        anchas: ".contenedor" también limita el ancho
-        máximo y se centra, ver base.css).
+        Sin padding horizontal acá: el degradado de abajo
+        tiene que cubrir todo el ancho de la ventana. El
+        alineado del texto con el margen del navbar lo da
+        el <div class="contenedor"> que envuelve el
+        contenido real (misma clase que usa el navbar).
     */
     padding: 34px 0 44px;
 
     z-index: 6;
 
     /*
-        Degradado hacia el mismo tono que usa el
-        fondo/lienzo en este tema (--color-negro en
-        oscuro, --color-blanco en claro — ver la
-        variante para [data-tema="claro"] más abajo),
-        NO hacia --color-fondo, porque acá interesa un
-        anclaje de contraste "puro" (negro/blanco),
-        no el tono exacto del fondo (que en claro es
-        un gris clarísimo, EEF1F3, insuficiente
-        contraste por sí solo). Así el texto de la
-        ficha (que sigue el tema, ver --color-texto en
-        variables.css) siempre es legible sobre la
-        escena 3D que vive debajo, sea cual sea el
-        tema.
+        Degradado hacia el mismo tono que usa el fondo/
+        lienzo en este tema (--color-negro en oscuro,
+        --color-blanco en claro), no hacia --color-fondo:
+        interesa un anclaje de contraste "puro", no el tono
+        exacto del fondo (que en claro es un gris clarísimo,
+        insuficiente por sí solo). Así el texto de la ficha
+        siempre es legible sobre la escena 3D de atrás.
     */
     background:
         linear-gradient(
@@ -1167,14 +811,12 @@ html::-webkit-scrollbar-button:hover {
 }
 
 [data-tema="claro"] #carousel-panel {
-
     background:
         linear-gradient(
             to top,
             rgba(var(--color-blanco), .82),
             rgba(var(--color-blanco), 0)
         );
-
 }
 
 #carousel-panel.visible {
@@ -1182,62 +824,32 @@ html::-webkit-scrollbar-button:hover {
 }
 
 /*
-    En celular horizontal el viewport tiene muy poco
-    alto (a veces <400px). El problema no es el ancho
-    (eso ya tiene sus propios breakpoints arriba): acá
-    el tamaño de ".nombre" escala con vw, no con vh, así
-    que en horizontal crece igual que en un celular
-    vertical de ancho equivalente — pero con mucha menos
-    altura disponible para acomodarlo. Sumado al padding
-    vertical fijo de #carousel-panel, la ficha termina
-    ocupando casi toda la pantalla.
+    Celular horizontal (viewport a veces <400px de alto): el
+    ancho no es el problema (ya tiene sus propios
+    breakpoints), pero ".nombre" escala con vw, no con vh,
+    así que crece igual que en un celular vertical con
+    mucha menos altura disponible. Sumado al padding
+    vertical fijo, la ficha termina ocupando casi toda la
+    pantalla — y explica por qué #gui se ve "más arriba":
+    su top lo fija posicionarGui() igualando el borde
+    superior de la ficha.
 
-    Esto además explica por qué #gui se ve "más arriba":
-    su top lo fija posicionarGui() (galeria.js) igualando
-    el borde superior de la ficha (#carousel-panel, que
-    está anclado por ABAJO) — si la ficha crece, ese
-    borde sube, y #gui la sigue.
-
-    Se activa solo por altura chica de viewport (no por
-    ancho): se achica el padding vertical y se acota la
-    tipografía del nombre a un rango atado a vh (no vw).
-
-    max-height + overflow-y quedan como salvavidas para
-    el caso extremo (un campo con contenido muy largo
-    que igual no entre), pero ya NO son el mecanismo
-    principal: el ancho fijo de cada campo (nombre,
-    subtítulo, specs) lo calcula galeria-ficha.js a
-    partir del contenido real, y ahora se vuelve a medir
-    en cada resize/rotación (ver remedirFicha() en
-    galeria.js) — así ese ancho siempre corresponde al
-    tamaño de fuente que en verdad se está renderizando
-    en ESTE viewport, y el texto entra en la cantidad de
-    líneas prevista sin forzar scroll, en vertical y en
-    horizontal por igual.
+    Se activa solo por altura chica de viewport: se achica
+    el padding vertical y se ata la tipografía del nombre a
+    un rango en vh. max-height/overflow-y quedan como
+    salvavidas, no como mecanismo principal: el ancho de
+    cada campo lo calcula galeria-ficha.js a partir del
+    contenido real y se vuelve a medir en cada resize/
+    rotación (ver remedirFicha() en galeria.js).
 */
 @media (max-height: 500px) and (orientation: landscape) {
 
-    /*
-        Mismo criterio que el ancho angosto (ver la regla
-        de 780px más arriba, junto a "#ficha-panel-marco"):
-        acá el recurso escaso es el ALTO, no el ancho —
-        pero el resultado es el mismo, no hay lugar de
-        sobra para el rectángulo sin apretar el texto real
-        de la ficha.
-    */
+    /* mismo criterio que el breakpoint de 780px: no hay lugar de sobra para el rectángulo sin apretar la ficha */
     #ficha-panel-marco {
         display: none;
     }
 
-    /*
-        Con el panel oculto (regla de arriba), la reserva
-        de espacio de "#carousel-panel .contenedor" (ver
-        su comentario, más arriba en este archivo) dejaría
-        un hueco vacío del lado derecho sin motivo — acá
-        el alto es justo el recurso escaso, así que se
-        devuelve el padding-right al mismo valor que el
-        izquierdo (el clamp de siempre).
-    */
+    /* con el panel oculto, se devuelve el padding-right al mismo valor que el izquierdo */
     #carousel-panel .contenedor {
         padding-right: clamp(1.25rem, 4vw, 2.5rem);
     }
@@ -1246,38 +858,20 @@ html::-webkit-scrollbar-button:hover {
         padding: 10px 0 14px;
 
         /*
-            overflow-y: hidden, NO auto — a propósito
-            (ver el porqué de "sin scroll" más abajo).
-
-            max-height: 58vh acá es solo el valor de
-            ARRANQUE/respaldo (por si JS todavía no corrió,
-            o falla) — ajustarAltoFichaSegunContenido()
+            max-height:58vh es solo el valor de arranque/
+            respaldo: ajustarAltoFichaSegunContenido()
             (galeria.js) lo pisa con un max-height inline
-            calculado a partir del alto que el contenido
-            REAL necesita (dimensionesFicha, ya medido al
-            ancho angosto de una sola fila — ver
-            calcularAnchoMaximoCampo()): si un campo con
-            mucho texto en el JSON necesita más líneas de
-            las que entran en 58vh, el panel crece lo
-            justo (con techo en 82vh, para no volver a
-            "tapar la pantalla") en vez de recortarlo. Por
-            eso esta regla queda como fallback, no como el
-            valor final real.
+            calculado del alto real que necesita el
+            contenido (techo en 82vh, para no volver a tapar
+            la pantalla).
 
-            overflow-y:hidden (en vez de auto) es porque
-            ya probamos reactivar pointer-events:auto para
-            poder scrollear un posible sobrante, y eso
-            capturaba el gesto de swipe que en TODA la
-            página se usa para avanzar de fase (hero →
-            proyecto → revelado → orden → fichas, ver
-            galeria.js): al tocar sobre la ficha, el swipe
-            quedaba atrapado adentro de #carousel-panel en
-            vez de mover el scroll real de la página.
-            hidden (sin pointer-events:auto, dejando la
-            regla base) evita ese conflicto: en el caso
-            extremo en el que ni el techo de 82vh alcance,
-            el desborde se recorta en silencio, en vez de
-            robarle el gesto a la navegación principal.
+            overflow-y:hidden (no auto): reactivar
+            pointer-events:auto para scrollear un sobrante
+            capturaba el gesto de swipe que en toda la
+            página avanza de fase — hidden evita ese
+            conflicto, y en el caso extremo el desborde se
+            recorta en silencio en vez de robarle el gesto a
+            la navegación principal.
         */
         max-height: 58vh;
         overflow-y: hidden;
@@ -1296,21 +890,8 @@ html::-webkit-scrollbar-button:hover {
         margin-bottom: 8px;
     }
 
+    /* ya no hace falta forzar una sola fila: "#panel-ficha" es grid fijo, no puede envolver una 3ra fila */
     #carousel-panel .specs {
-        /*
-            Ya NO hace falta forzar "una sola fila" acá
-            (antes: flex-wrap:nowrap) — desde que "#panel-
-            ficha" pasó a ser una grilla fija de 2 filas por
-            "grid-template-areas" (ver la regla base más
-            abajo), no puede "envolver" a una 3ra fila como
-            sí podía el flex-wrap viejo, así que el recorte
-            contra el "max-height" de arriba ya no es un
-            riesgo real. Sigue reduciéndose el gap nada más,
-            para ganar algo de alto extra en este breakpoint
-            tan bajo — calcularAnchoMaximoCampo() (galeria.js)
-            sigue calibrando el ancho de cada columna acá
-            igual que antes, ese mecanismo no cambió.
-        */
         gap: 10px 16px;
     }
 
@@ -1322,22 +903,14 @@ html::-webkit-scrollbar-button:hover {
 
 
 /*
-    Reserva, del lado derecho del texto de la ficha, el
-    mismo espacio (ancho del rectángulo + separación) que
-    ocupa "#ficha-panel-marco" — ese rectángulo vive FUERA
-    de este ".contenedor" (position:fixed, ver su
-    comentario más abajo) así que, sin esto, el propio
-    ".contenedor" no tiene forma de saber que ese espacio
-    está ocupado: el texto (sobre todo ".specs", que
-    envuelve en flex-wrap) seguiría usando el ancho
-    completo del contenedor y terminaría metiéndose debajo
-    del rectángulo.
-
-    Solo el padding DERECHO cambia (el izquierdo sigue
-    siendo el mismo clamp(1.25rem,4vw,2.5rem) de siempre,
-    heredado de ".contenedor" en base.css) — así el margen
-    con el logo del navbar, del lado izquierdo, no se
-    toca.
+    Reserva, a la derecha del texto de la ficha, el mismo
+    espacio (ancho + separación) que ocupa
+    "#ficha-panel-marco" — ese rectángulo vive fuera de
+    este ".contenedor" (position:fixed), así que sin esto
+    el propio ".contenedor" no sabe que ese espacio está
+    ocupado y ".specs" terminaría metiéndose debajo. Solo
+    el padding derecho cambia; el izquierdo sigue siendo el
+    mismo clamp heredado de ".contenedor" en base.css.
 */
 #carousel-panel .contenedor {
     padding-right:
@@ -1346,28 +919,15 @@ html::-webkit-scrollbar-button:hover {
             var(--ficha-panel-gap) +
             var(--ficha-panel-ancho)
         );
-
-    /*
-        Antes llevaba "overflow: hidden" acá — clearfix
-        clásico para que este contenedor incluyera en su
-        propio alto al "#ficha-controles" flotado (ver el
-        comentario viejo junto a ".ficha__fila" más abajo).
-        "#ficha-controles" ya no flota (se mudó a una
-        sección colapsable del panel derecho, ver
-        galeria.html) — no queda ningún float en toda la
-        página, así que el clearfix ya no hace falta.
-    */
 }
 
-
-
-    no un dato del edificio — por eso NO usa el acento
-    primario (reservado a los labels de dato de abajo,
-    ver ".spec .label") ni tampoco el secundario/azul,
-    que no aparece en ningún otro lugar del sitio. Se
-    queda en texto suave neutro, mismo tratamiento que
-    los créditos/leyendas (".dato" en base.css) — un
-    marcador discreto, no un segundo acento de color.
+/*
+    Marcador de índice/orden de la ficha — no un dato del
+    edificio, por eso NO usa el acento primario (reservado
+    a los labels de dato de abajo, ver ".spec .label") ni
+    el secundario. Se queda en texto suave neutro, mismo
+    tratamiento que los créditos/leyendas (".dato" en
+    base.css): un marcador discreto, no un segundo acento.
 */
 #carousel-panel .index {
     font-family: var(--fuente-datos);
@@ -1381,15 +941,7 @@ html::-webkit-scrollbar-button:hover {
     margin-bottom: 6px;
 }
 
-/*
-    Antes: clamp(22px, 3.4vw, 38px) — más chico que
-    hasta el --tam-h2 del resto del sitio (ver
-    variables.css), pese a ser el título real de la
-    ficha. Se sube a un rango cercano a --tam-h1 (mismo
-    letter-spacing negativo que usan los headings en
-    base.css) para que el nombre del cascarón tenga la
-    presencia que le corresponde sobre la escena.
-*/
+/* Rango cercano a --tam-h1 (mismo letter-spacing negativo que los headings en base.css) para el título real de la ficha */
 #carousel-panel .nombre {
     font-family: var(--fuente-display);
     color: var(--color-texto);
@@ -1424,27 +976,14 @@ html::-webkit-scrollbar-button:hover {
 }
 
 /*
-    Grilla de 2 filas x 4 columnas — SOLO los 7 campos de
-    datos (antes: flexbox con flex-wrap). Mismo ancho/alto
-    por campo de siempre (JS no cambió, ver
-    galeria-ficha.js): lo único distinto es que cada campo
-    cae en una celda con nombre propio ("grid-template-
-    areas") en vez de una posición emergente del ancho
-    disponible, como pasaba con flex-wrap. El TAMAÑO TOTAL
-    de esta grilla es el mismo que tenía antes — no crece
-    por nada nuevo.
-
-    "claro" ocupa las columnas 3 y 4 en la fila 1 (mismo
-    campo repetido dos veces en el string de esa fila —
-    así es como CSS Grid expresa un "colspan").
-
-    "#ficha-controles" (autorotar + sliders de corte) ya no
-    vive junto a esta grilla — se mudó a una sección
-    colapsable propia del panel derecho (ver
-    "CONTROLES DEL VISOR 3D" más abajo y ".ficha__fila" más
-    abajo para el porqué original de por qué había que
-    sacarlo de acá). Este grid, ahora, es el único contenido
-    de ".ficha__fila".
+    Grilla de 2 filas x 4 columnas — los 7 campos de datos
+    (antes: flexbox con flex-wrap). "claro" ocupa las
+    columnas 3 y 4 en la fila 1 (mismo campo repetido dos
+    veces en el string de esa fila — así CSS Grid expresa
+    un "colspan"). El ancho/alto real de cada campo lo fija
+    JS (galeria-ficha.js) a partir del contenido más largo,
+    para que ningún campo cambie de tamaño al pasar de uno
+    a otro; max-width:100% es solo red de seguridad.
 */
 #carousel-panel .specs {
     display: grid;
@@ -1460,43 +999,15 @@ html::-webkit-scrollbar-button:hover {
         transform .25s ease;
 }
 
-/*
-    Historia vieja: esto fue en su momento un contenedor
-    flex de DOS columnas ("#panel-ficha" + "#ficha-controles"
-    lado a lado, con "#ficha-controles" sacado del flujo vía
-    "float" para que su alto no inflara el de esta fila). Ese
-    mecanismo de float ya no existe en ningún lado del
-    archivo — "#ficha-controles" se mudó fuera de esta fila
-    del todo (ver el párrafo de abajo), así que la técnica en
-    sí quedó sin ningún uso que documentar.
-
-    "#ficha-controles" ya no es hijo de esta fila — se mudó a
-    una sección colapsable propia del panel derecho (ver
-    galeria.html). ".ficha__fila" hoy envuelve un solo hijo
-    ("#panel-ficha"), así que vuelve a ser un bloque simple,
-    sin necesidad de flex/float/clearfix para nada.
-*/
 .ficha__fila {
     display: block;
 }
 
 /*
-    El ancho/alto real de cada campo lo fija JS
-    (galeria-ficha.js), a partir del contenido más
-    largo entre todos los elementos, para que ningún
-    campo cambie de tamaño al pasar de uno a otro.
-    max-width:100% es solo una red de seguridad para
-    pantallas angostas.
-*/
-
-/*
-    Reglas COMPARTIDAS entre "#panel-ficha" (izquierda) y
-    "#panel-derecho-specs" (dentro de "#ficha-panel-marco",
-    ver más abajo): mismo selector combinado en vez de
-    duplicar la tipografía en dos lugares — así "mismo
-    estilo" se cumple de verdad (un solo lugar para
-    cambiarlo) y no por copiar los mismos números dos
-    veces, que se puede desincronizar.
+    Reglas compartidas entre "#panel-ficha" (izquierda) y
+    "#panel-derecho-specs" (dentro de "#ficha-panel-marco"):
+    un solo selector combinado en vez de duplicar la
+    tipografía en dos lugares.
 */
 #carousel-panel .spec,
 #ficha-panel-marco .spec {
@@ -1507,14 +1018,10 @@ html::-webkit-scrollbar-button:hover {
 }
 
 /*
-    Acento primario acá (no secundario): estos labels
-    SÍ son dato del edificio (autor, ubicación,
-    superficie...) — mismo rol semántico que el
-    "eyebrow" del hero y que --color-primario en
-    variables.css ("material del objeto de estudio").
-    El valor de cada campo (".value" abajo) se queda en
-    el color de texto neutro: es la mayoría del "60%",
-    el acento es solo la etiqueta.
+    Acento primario acá (no secundario): estos labels SÍ
+    son dato del edificio — mismo rol semántico que el
+    "eyebrow" del hero. El valor de cada campo (".value")
+    se queda en el color de texto neutro.
 */
 #carousel-panel .spec .label,
 #ficha-panel-marco .spec .label {
@@ -1544,15 +1051,12 @@ html::-webkit-scrollbar-button:hover {
 }
 
 /*
-    Layout de "#panel-derecho-specs" (el ".specs" de
-    ACÁ, distinto del de "#panel-ficha"): columna en vez
-    de fila con wrap — el panel derecho es angosto
+    Layout de "#panel-derecho-specs": columna, no fila con
+    wrap — el panel derecho es angosto
     (--ficha-panel-ancho, 180-280px) y sus valores más
-    largos (la dirección completa) de cualquier forma
-    ocupan la fila entera, así que dos columnas que se
-    envuelven (como en la ficha de la izquierda, que sí
-    tiene ancho de sobra) solo desalinearía los campos
-    cortos (Estado/Código postal) sin ganar nada.
+    largos (dirección completa) ocupan la fila entera de
+    cualquier forma, así que dos columnas solo
+    desalinearían los campos cortos sin ganar nada.
 */
 #ficha-panel-marco .specs {
     display: flex;
@@ -1561,16 +1065,6 @@ html::-webkit-scrollbar-button:hover {
 
     padding: 20px;
 
-    /*
-        El scroll interno ahora lo maneja ".ficha__panel-cuerpo"
-        (envuelve esta sección MÁS las nuevas de abajo) como
-        una sola unidad — antes este overflow-y:auto vivía acá
-        porque ".specs" era el único contenido debajo del
-        preview; con más secciones abajo, dos scrolls anidados
-        (uno acá y otro en el cuerpo) serían confusos, así que
-        se saca de acá.
-    */
-
     transition:
         opacity .25s ease,
         transform .25s ease;
@@ -1578,94 +1072,46 @@ html::-webkit-scrollbar-button:hover {
 
 /*
     PANEL DERECHO DE LA FICHA
-    Rectángulo semi-opaco. Adentro: un cuadrado arriba
-    (placeholder, ver ".ficha__panel-cuadro" más abajo) y
-    debajo, coordenadas + ubicación desglosada, con el
-    mismo estilo que "#panel-ficha" (ver "#carousel-panel
-    .spec, #ficha-panel-marco .spec" más abajo). El
-    contenido de texto lo arma normalizarElemento() en
+    Rectángulo semi-opaco. Adentro: cuadrado arriba (mapa,
+    ver galeria-mapa.js) y debajo coordenadas + ubicación
+    desglosada, con el mismo estilo que "#panel-ficha".
+    Contenido armado por normalizarElemento() en
     galeria-config.js, campo "panelDerecho".
 
     Vive FUERA de #carousel-panel a propósito: ese
-    contenedor mide solo lo que ocupa su propio contenido
-    (index/nombre/subtitulo/specs) + su padding — no toda
-    la ventana (ver el comentario junto a la regla base de
-    "#carousel-panel" más arriba: "padding: 34px 0 44px"
-    ya es un ajuste fino para el degradado, no una
-    referencia de alto completo) — así que no sirve de
-    contenedor para un rectángulo que tiene que medir TODA
-    la altura de la ventana con margen simétrico.
+    contenedor mide solo lo que ocupa su propio contenido +
+    padding, no toda la ventana — no sirve de contenedor
+    para un rectángulo que mide toda la altura de la
+    ventana con margen simétrico.
 
-    En cambio, "#ficha-panel-marco" se ancla con
-    "position: absolute" a "#galeria-escena-fija" (mismo
-    patrón que YA usan #hero/#scene/#carousel-panel/etc. —
-    ver los comentarios "antes: fixed" junto a cada uno):
-    ese contenedor mide 100vh tanto en su estado normal
-    (position:fixed;inset:0, ver su regla base) como
-    "liberado" (".liberada { height:100vh }", más arriba),
-    así que "top"/"bottom" en px siguen midiendo contra
-    una altura de ventana completa en los dos casos.
+    "#ficha-panel-marco" se ancla con position:absolute a
+    "#galeria-escena-fija" (mismo patrón que #hero/#scene/
+    #carousel-panel): OJO — "position:fixed" (usado en un
+    primer intento) se ancla al viewport para siempre, y
+    cuando la escena se libera y pasa a absolute, un
+    elemento fixed no la acompaña — se queda pegado a la
+    pantalla e invade el footer. "absolute" sí viaja con
+    ella.
 
-    OJO — importante: "position: fixed" (lo que se usó acá
-    en un primer intento) se ancla al VIEWPORT para
-    siempre, sin importar el scroll — cuando la página
-    pasa la fase de la ficha y "#galeria-escena-fija" se
-    libera (se desprende para dejar ver el <footer> real,
-    ver el comentario junto al contenedor "clavado" en
-    galeria.html), un elemento "fixed" NO se va con el
-    resto del bloque: se queda pegado a la pantalla e
-    invade el footer. "position: absolute" sí viaja con
-    "#galeria-escena-fija" cuando éste pasa a
-    position:absolute — es EXACTAMENTE el motivo por el
-    que #hero/#scene/#carousel-panel ya habían migrado de
-    fixed a absolute antes de este cambio.
+    Reproduce el mismo centrado que ".contenedor" sin ser
+    su hijo. "justify-content:flex-end" empuja el
+    rectángulo real (".ficha__panel") contra el borde
+    derecho de esa caja centrada.
 
-    Reproduce el mismo centrado que ".contenedor"
-    (max-width + margin-inline:auto + padding-inline, ver
-    base.css) sin ser un hijo suyo — mismo truco que ya
-    usa "#hero" más arriba en este archivo (ver su
-    comentario) para quedar alineado con el margen del
-    navbar sin depender del propio ".contenedor". Adentro,
-    "justify-content: flex-end" empuja el rectángulo real
-    (".ficha__panel") contra el borde derecho de esa caja
-    centrada — ahí es donde termina coincidiendo con el
-    margen derecho del texto de la ficha.
-
-    "bottom": 44px, a propósito el MISMO valor que ya usa
-    "#carousel-panel" como su propio padding-bottom (la
-    distancia real, hoy, entre el borde inferior del texto
-    de la ficha y el borde inferior de la ventana) — así el
-    margen inferior del rectángulo coincide con el margen
-    inferior real de la ficha, en vez de copiar el
-    padding-top de "#carousel-panel" (34px, ese sí pensado
-    solo para el degradado).
-
-    "top": HOY YA NO usa ese mismo 44px (antes sí, y por
-    eso el rectángulo quedaba tapado por el navbar): este
-    div cuelga de "#galeria-escena-fija", que es
-    "position:fixed;inset:0" — o sea que "top" se mide
-    desde el borde FÍSICO superior de la ventana, sin
-    descontar el alto del navbar fijo (a diferencia de
-    "bottom", donde no hay ningún elemento fijo estorbando
-    y 44px sí es un margen "libre" real). Se usa el mismo
+    "bottom":44px, a propósito el mismo valor que ya usa
+    "#carousel-panel" como padding-bottom — así el margen
+    inferior del rectángulo coincide con el margen inferior
+    real de la ficha. "top" no usa ese mismo valor: este
+    div cuelga de "#galeria-escena-fija" (fixed;inset:0),
+    así que "top" se mide desde el borde físico superior de
+    la ventana sin descontar el navbar — usa el mismo
     offset que ya despeja el navbar en el resto de la
-    página — "#hero"/"#proyecto" (padding-top: 5rem) y
-    "#panel-material" (top: 5.5rem) — así que el margen
-    superior/inferior del rectángulo ya NO es simétrico a
-    propósito: son dos problemas distintos (navbar arriba,
-    ninguno abajo) que antes compartían un solo número por
-    error. (Nota: "#panel-material" ya no vive suelto con
-    su propio "top" — se mudó adentro de este mismo panel,
-    ver la sección "Opciones de visualización" en
-    galeria.html — pero el 5.5rem que traía sigue siendo
-    la referencia de despeje de navbar que explica el
-    número de acá.)
+    página (padding-top:5rem de #hero/#proyecto).
 
-    Visibilidad: sigue a la de la ficha con el selector de
-    hermano de más abajo ("#carousel-panel.visible ~
-    #ficha-panel-marco"), en vez de que JS tenga que
-    tocar dos elementos — por eso este div TIENE que venir
-    después de "#carousel-panel" en el HTML.
+    Visibilidad: sigue a la ficha con el selector de hermano
+    de más abajo, en vez de que JS toque dos elementos —
+    por eso este div va después de "#carousel-panel" en el
+    HTML.
 */
 #ficha-panel-marco {
     position: absolute;
@@ -1681,8 +1127,7 @@ html::-webkit-scrollbar-button:hover {
     display: flex;
     justify-content: flex-end;
 
-    /* mismo z-index que #carousel-panel: por encima de la escena 3D */
-    z-index: 6;
+    z-index: 6; /* mismo z-index que #carousel-panel: por encima de la escena 3D */
 
     pointer-events: none;
 
@@ -1694,26 +1139,14 @@ html::-webkit-scrollbar-button:hover {
     opacity: 1;
 
     /*
-        BUG que arreglamos acá: ".ficha__panel" (el
-        contenedor de TODO lo interactivo de este panel —
-        selects, sliders, botón de autorotar, tirador del
-        bottom sheet) nunca reactivaba pointer-events, así
+        ".ficha__panel" (selects, sliders, autorotar, tirador
+        del bottom sheet) nunca reactivaba pointer-events, así
         que nada adentro era clickeable — pointer-events es
-        una propiedad heredable y "#ficha-panel-marco" la
-        deja en "none" (ver esa regla más arriba) para no
-        robarle el gesto de scroll/swipe a las demás fases,
-        mismo motivo por el que existe "fijarOpacidadPanel()"
-        en galeria.js para hero/proyecto.
-
-        A propósito NO se pone "pointer-events: auto"
-        directo en ".ficha__panel" sin condición: haría
-        clickeable/tocable el panel (tirador incluido) en
-        TODAS las fases, aunque esté en opacity:0 — mismo
-        bug que ya evita "fijarOpacidadPanel" ahí (opacity:0
-        no apaga pointer-events por sí solo). Reactivarlo
-        acá, colgado del mismo selector que ya gatea la
-        opacidad, garantiza que ambos viajen siempre juntos:
-        solo es interactivo cuando además es visible.
+        heredable y "#ficha-panel-marco" la deja en "none"
+        arriba para no robarle el gesto de scroll a las demás
+        fases. Se reactiva colgado del mismo selector que ya
+        gatea la opacidad, para que ambos viajen siempre
+        juntos: solo interactivo cuando además es visible.
     */
 }
 
@@ -1728,21 +1161,12 @@ html::-webkit-scrollbar-button:hover {
     height: 100%;
 
     /*
-        Columna: el tirador (mobile) arriba, ".ficha__panel-
-        cuerpo" ocupando el resto (ver esa regla más abajo)
-        — este último es hoy el ÚNICO hijo real en
-        escritorio, ya que el cuadrado del mapa se mudó
-        ADENTRO de él, como parte de la sección "Ubicación"
-        (ver ".ficha__panel-seccion--ubicacion" más abajo) —
-        antes vivía acá como hermano directo, pegado al
-        borde superior del panel.
-
-        "overflow: hidden" recorta cualquier esquina de lo
-        que sea que quede pegado al borde de este panel
-        contra su propio "border-radius", sin tener que
-        repetir el radio a mano en cada hijo — hoy eso es la
-        cabecera de la primera sección (o el tirador, en
-        mobile), antes era el cuadrado del mapa directo.
+        Columna: tirador (mobile) arriba, ".ficha__panel-
+        cuerpo" ocupando el resto — único hijo real en
+        escritorio. "overflow:hidden" recorta cualquier
+        esquina de lo que quede pegado al borde contra el
+        border-radius del panel, sin repetir el radio en
+        cada hijo.
     */
     display: flex;
     flex-direction: column;
@@ -1757,37 +1181,13 @@ html::-webkit-scrollbar-button:hover {
 }
 
 /*
-    Cuadrado superior del panel: alto = ancho, sin
-    márgenes. "aspect-ratio: 1" (no un alto en px fijo) es
-    lo que garantiza que el alto siga siendo IGUAL al
-    ancho pase lo que pase con "--ficha-panel-ancho" (que
-    es un clamp() que cambia con el viewport, ver su
-    definición en "#galeria-escena-fija" más arriba) — sin
-    esto, un alto fijo se hubiera desincronizado del ancho
-    real en pantallas intermedias.
-
-    Placeholder por ahora (pensado para una foto/miniatura
-    del elemento más adelante) — de ahí el "aria-hidden" en
-    el HTML y que no tenga contenido propio todavía.
-
-    UPDATE: ya no es un placeholder — ver galeria-mapa.js.
-    "position: relative" es lo que le da un contexto de
-    posicionamiento al <div> del mapa que ese módulo monta
-    ACÁ ADENTRO en tiempo de ejecución (position: absolute;
-    inset: 0, ver "#galeria-mapa-mini" más abajo); sin esto
-    el mapa se estiraría contra el ancestro posicionado más
-    cercano (probablemente <body>), no contra este
-    cuadrado.
-
-    UPDATE 2: ya no es hijo directo de ".ficha__panel" — se
-    mudó adentro de ".ficha__seccion-contenido-inner" de la
-    sección "Ubicación" (ver esa regla más abajo), que anula
-    el padding/gap que sí tienen el resto de las secciones
-    para que este "sin márgenes" siga siendo literal. El
-    "flex-shrink:0" de más abajo sigue haciendo falta por el
-    mismo motivo de siempre: ese contenedor también es un
-    flex column (mapa arriba, specs abajo) y sin esto el mapa
-    se dejaría achicar para hacerle lugar a las coordenadas.
+    Cuadrado superior del panel (mapa, ver galeria-mapa.js):
+    alto = ancho, sin márgenes. "aspect-ratio:1" (no un alto
+    fijo) mantiene el alto igual al ancho aunque
+    --ficha-panel-ancho cambie con el viewport.
+    "position:relative" le da contexto de posicionamiento
+    al div del mapa que se monta adentro en runtime
+    (position:absolute;inset:0, ver "#galeria-mapa-mini").
 */
 .ficha__panel-cuadro {
     width: 100%;
@@ -1799,35 +1199,17 @@ html::-webkit-scrollbar-button:hover {
 }
 
 /*
-    Mapa dentro del cuadrado (ver galeria-mapa.js). Arranca
-    invisible: recién se muestra (clase "lista") cuando
-    termina de cargar el estilo del mapa — evita el
-    destello de un mapa a medio construir mientras el
-    visitante todavía está en la fase "orden" (una fase
-    antes de que este cuadrado sea visible: fíjense que
-    "#ficha-panel-marco" recién llega a opacity:1 en la
-    fase "fichas", ver esa regla más arriba — este fundido
-    interno es una segunda capa de seguridad nada más, por
-    si "orden" y "fichas" llegaran a solaparse un frame).
+    Mapa dentro del cuadrado. Arranca invisible: se muestra
+    (clase "lista") recién cuando termina de cargar el
+    estilo del mapa, evitando el destello de un mapa a
+    medio construir.
 
-    "overflow: hidden" en el ancestro ".ficha__panel" ya
-    se encarga de recortar las esquinas de arriba de este
-    mapa contra el mismo "border-radius" del panel — no
-    hace falta repetirlo acá.
-
-    "pointer-events: auto" es NECESARIO acá: el ancestro
-    "#ficha-panel-marco" (ver esa regla más arriba) tiene
-    "pointer-events: none" — mismo patrón que ya usa el
-    resto de este archivo (".hero__texto",
-    ".proyecto__cifras", etc.: el contenedor grande no
-    captura clics, para no bloquear el scroll/gestos con
-    los que se avanza de fase sobre TODO el alto de la
-    ventana, y el elemento puntual que sí necesita
-    interacción lo reactiva sólo ahí). Sin esto, MapLibre
-    queda montado y visible pero sordo a mouse/touch: todo
-    click/drag/wheel pasa de largo hacia lo que esté
-    detrás, en vez de llegar al mapa (bug reportado: "no
-    me deja arrastrar el mapa").
+    "pointer-events:auto" es necesario: el ancestro
+    "#ficha-panel-marco" tiene pointer-events:none (para no
+    robarle el gesto de scroll/swipe a las demás fases) y
+    el elemento puntual que sí necesita interacción lo
+    reactiva acá — sin esto, MapLibre queda montado pero
+    sordo a mouse/touch.
 */
 #galeria-mapa-mini {
     position: absolute;
@@ -1845,16 +1227,7 @@ html::-webkit-scrollbar-button:hover {
     opacity: 1;
 }
 
-/*
-    Control de atribución de MapLibre (obligatorio, no se
-    puede ocultar del todo): se pide "compact" desde JS
-    (ver galeria-mapa.js), pero el chip que igual queda
-    visible usa colores de MapLibre por defecto (fondo
-    blanco) que no combinan con el panel de vidrio oscuro
-    — se lo atenúa acá para que no compita visualmente con
-    los pines/el resto de la UI, sin llegar a esconderlo
-    (sigue siendo legible/clickeable, solo más discreto).
-*/
+/* Control de atribución de MapLibre (obligatorio): se atenúa para no competir con el vidrio oscuro del panel */
 #galeria-mapa-mini .maplibregl-ctrl-attrib {
     font-size: 0.65rem;
     background: rgba(0, 0, 0, 0.35) !important;
@@ -1873,12 +1246,7 @@ html::-webkit-scrollbar-button:hover {
     background: rgba(var(--color-negro), 0.08);
 }
 
-/*
-    Mismo criterio que el resto de este bloque: track/thumb
-    pasan a la paleta oscura-sobre-claro (ver
-    ".ficha__panel-cuerpo" más abajo para los valores por
-    defecto/tema oscuro).
-*/
+/* Mismo criterio que el resto del bloque: track/thumb pasan a la paleta oscura-sobre-claro */
 [data-tema="claro"] .ficha__panel-cuerpo {
     scrollbar-color:
         rgba(var(--color-negro), 0.35)
@@ -1910,94 +1278,45 @@ html::-webkit-scrollbar-button:hover {
     SIDEBAR DEL PANEL DERECHO
     (mismo ".ficha__panel" de arriba: acá se divide su
     contenido, debajo del cuadro/preview, en secciones
-    apiladas con separadores finos — mismo lenguaje editorial
-    que ".proyecto__cifras" (border-top/bottom sutil,
-    ver ese comentario más arriba) en vez de tarjetas con
-    fondo propio por sección.
+    apiladas con separadores finos — mismo lenguaje que
+    ".cifras" en vez de tarjetas con fondo propio.
 
-    Estructura esperada en el HTML (el marcado en sí no
-    vive en este archivo, solo el CSS — y "Opciones de
-    visualización"/"Geometría", que entre otras cosas
-    contienen los controles de material/forma mudados
-    acá adentro (nativos, ya no lil-gui — ver
-    galeria-panel-material.js / galeria-panel-parametros.js),
-    siguen el mismo patrón header/contenido
-    que las de abajo, así que no se repiten acá):
+    Estructura (el markup vive en galeria.html):
 
     .ficha__panel
-      .ficha__sheet-tirador                    (solo mobile, ver
-                                                el media query de
-                                                780px más abajo —
-                                                oculto en escritorio)
-      .ficha__panel-cuerpo                     (envuelve TODAS las
-                                                secciones de abajo)
-        .ficha__panel-seccion--colapsable      ("Ubicación")
-          .ficha__seccion-header               (cabecera clickeable)
-          .ficha__seccion-contenido
-            .ficha__seccion-contenido-inner
-              .ficha__panel-cuadro             (mapa/preview, a sangre)
-              #panel-derecho-specs.specs       (coordenadas/dirección)
-        .ficha__panel-seccion--colapsable      ("Opciones de
-                                                visualización":
-                                                autorotar + sliders
-                                                de corte X/Y/Z, ver
-                                                "CONTROLES DEL VISOR
-                                                3D" más abajo +
-                                                #panel-material)
+      .ficha__sheet-tirador          (solo mobile, ver 780px más abajo)
+      .ficha__panel-cuerpo           (envuelve TODAS las secciones)
+        .ficha__panel-seccion--colapsable  "Ubicación"
           .ficha__seccion-header
-          .ficha__seccion-contenido
-            .ficha__seccion-contenido-inner
-              #ficha-controles
-              #panel-material
-        .ficha__panel-seccion--colapsable      ("Geometría":
-                                                #panel-parametros)
-          .ficha__seccion-header
-          .ficha__seccion-contenido
-            .ficha__seccion-contenido-inner
-              #panel-parametros
-        .ficha__panel-seccion--colapsable      ("Simulación", sin
-                                                contenido todavía)
-          .ficha__seccion-header
-          .ficha__seccion-contenido
-            .ficha__seccion-contenido-inner
-        .ficha__panel-seccion--colapsable      ("Levantamiento 3D",
-                                                sin contenido todavía)
-          .ficha__seccion-header
-          .ficha__seccion-contenido
-            .ficha__seccion-contenido-inner
-        .ficha__panel-seccion--colapsable      ("Fotografías")
-          .ficha__seccion-header
-          .ficha__seccion-contenido
-            .ficha__seccion-contenido-inner
+          .ficha__seccion-contenido > .ficha__seccion-contenido-inner
+            .ficha__panel-cuadro (mapa, a sangre)
+            #panel-derecho-specs.specs (coordenadas)
+        .ficha__panel-seccion--colapsable  "Opciones de visualización"
+          ... > #ficha-controles, #panel-material
+        .ficha__panel-seccion--colapsable  "Geometría"
+          ... > #panel-parametros
+        .ficha__panel-seccion--colapsable  "Simulación" (sin contenido aún)
+        .ficha__panel-seccion--colapsable  "Levantamiento 3D" (sin contenido aún)
+        .ficha__panel-seccion--colapsable  "Fotografías"
 
-    (".ficha__switch" de autorotado ya no vive superpuesto
-    sobre el mapa — ver el comentario junto a esa regla más
-    abajo: hoy vive dentro de "#ficha-controles", en la
-    sección "Opciones de visualización" de acá arriba.)
-
-    El TOGGLE de cada ".ficha__seccion-header" (y el reset()
-    a los estados por defecto del HTML al volver a "fichas")
-    vive en galeria-panel-derecho-secciones.js — este archivo
-    solo define el look de cada estado (ver
-    ".ficha__seccion-contenido"/"[data-colapsado]" más abajo).
+    El toggle de cada cabecera (y el reset() al volver a
+    "fichas") vive en galeria-panel-derecho-secciones.js —
+    este archivo solo define el look de cada estado.
     ===========================================================
 */
 
 /*
-    Tirador del bottom sheet (mobile): grip + "Detalles".
-    En ESCRITORIO no existe funcionalmente — display:none acá
-    mismo, sin condicionarlo al media query, para que sea
-    imposible que aparezca por error en un layout que no lo
-    espera. El media query de 780px (al final del archivo)
-    es quien lo reactiva y reposiciona ".ficha__panel" como
-    sheet — ver ese bloque para la mecánica completa.
+    Tirador del bottom sheet (mobile): grip + "Detalles". En
+    escritorio no existe funcionalmente — display:none acá
+    mismo (no condicionado al media query), para que sea
+    imposible que aparezca por error. El media query de
+    780px es quien lo reactiva y reposiciona ".ficha__panel"
+    como sheet.
 
-    Es un <button> (no un <div> con onclick) a propósito:
-    foco de teclado y activación con Enter/Espacio gratis,
-    "aria-expanded" ya viene en el HTML. El GESTO de arrastre
-    se maneja aparte con Pointer Events en JS (ver
-    galeria-panel-derecho.js) — el click nativo del botón
-    sigue cubriendo el tap.
+    Es un <button> a propósito: foco de teclado y activación
+    con Enter/Espacio gratis. El gesto de arrastre se maneja
+    aparte con Pointer Events en JS (galeria-panel-derecho.js)
+    — el click nativo sigue cubriendo el tap.
 */
 .ficha__sheet-tirador {
     display: none;
@@ -2005,35 +1324,17 @@ html::-webkit-scrollbar-button:hover {
 
 
 /*
-    Switch "Autorotado". Antes era un botón circular
-    solo-ícono (sin texto, "title" como único indicio de qué
-    hacía) superpuesto sobre el preview del mapa; después
-    pasó a "#ficha-controles" flotando junto a los datos de
-    la ficha, con el mismo look de chip circular. Hoy es un
-    switch de verdad, con su label a la vista ("Autorotado")
-    en vez de depender de un ícono + tooltip — vive dentro de
-    "#ficha-controles", sección colapsable "Opciones de
-    visualización" del panel derecho (ver "CONTROLES DEL
-    VISOR 3D" más abajo y galeria.html), como un elemento
-    más en flujo normal, ya no un overlay.
+    Switch "Autorotado" (galeria-autorotar.js). Vive dentro
+    de "#ficha-controles", sección "Opciones de
+    visualización", como un elemento más en flujo normal —
+    ya no un chip circular flotante sobre el mapa, así que
+    ya no necesita fondo/blur/borde propios: sigue el mismo
+    lenguaje que el resto de los campos (label + control).
 
-    Por eso YA NO necesita el tratamiento visual de "chip"
-    (fondo propio + blur + borde, pensado para leerse igual
-    sobre CUALQUIER fondo cuando flotaba encima del mapa/las
-    fotos) — acá adentro, sobre el fondo sólido del panel,
-    sigue el mismo lenguaje que el resto de los campos de la
-    sección (label + control, ver ".ficha__campo-label" /
-    ".ficha__slider").
-
-    "role=switch" + "aria-checked" (NO "aria-pressed", a
-    diferencia del resto de los toggles de esta página —
-    secciones colapsables, invertir corte): es un interruptor
-    de dos estados con su propio texto, no un botón que se
-    "presiona" — la semántica ARIA correcta para eso es
-    switch/aria-checked. El toggle en sí (más la lógica REAL
-    de prender/apagar el autorotado de la geometría) vive en
-    galeria-autorotar.js, wireado desde galeria.js — este
-    archivo solo define el look de cada estado.
+    "role=switch" + "aria-checked" (no "aria-pressed", a
+    diferencia del resto de los toggles de la página): es un
+    interruptor de dos estados con su propio texto, no un
+    botón que se "presiona".
 */
 .ficha__switch {
     display: flex;
@@ -2052,17 +1353,7 @@ html::-webkit-scrollbar-button:hover {
     cursor: pointer;
 }
 
-/*
-    Pista (track): apagado, mismo lenguaje sutil que
-    ".ficha__slider" (fondo translúcido, ver esa regla más
-    abajo) — encendido, acento primario A COLOR COMPLETO, no
-    envuelto en rgba() (a diferencia de --color-blanco/
-    --color-negro, esas sí son tripletas "r,g,b" — ver
-    ".ficha__switch-perilla" más abajo — --color-primario en
-    este archivo siempre se usa como color final armado, ver
-    ".spec .label"/"#gui button.active", ninguno lo envuelve
-    en rgba()).
-*/
+/* Pista: apagado, fondo translúcido; encendido, acento primario a color completo (no envuelto en rgba) */
 .ficha__switch-pista {
     position: relative;
     flex-shrink: 0;
@@ -2084,15 +1375,7 @@ html::-webkit-scrollbar-button:hover {
     background: var(--color-primario);
 }
 
-/*
-    Perilla (knob): blanco fijo en los dos estados/temas a
-    propósito — sobre pista translúcida (apagado) o sobre
-    --color-primario a pleno (encendido), un blanco sólido
-    con una sombra chica propia (no atada a tema, es solo
-    "elevación") da contraste parejo en cualquier
-    combinación, sin necesitar una segunda variante para
-    tema claro.
-*/
+/* Perilla: blanco fijo en los dos estados/temas — da contraste parejo sin necesitar variante de tema claro */
 .ficha__switch-perilla {
     position: absolute;
     top: 2px;
@@ -2112,16 +1395,7 @@ html::-webkit-scrollbar-button:hover {
     transform: translateX(14px);
 }
 
-/*
-    Hover en la PISTA, no en todo el botón: mismo criterio
-    que ".ficha__boton-invertir" más abajo (feedback en el
-    elemento visual chico, no en todo el área clickeable).
-    Solo se nota con el switch apagado — encendido, la
-    pista ya está a "--color-primario" pleno (ver arriba)
-    y esta regla, de igual especificidad pero definida
-    ANTES en la cascada, queda tapada por esa sin necesitar
-    un selector ":hover" aparte para el caso encendido.
-*/
+/* Hover en la pista, no en todo el botón — mismo criterio que ".ficha__boton-invertir" más abajo */
 .ficha__switch:hover .ficha__switch-pista {
     background: rgba(var(--color-blanco), 0.22);
 }
@@ -2140,55 +1414,24 @@ html::-webkit-scrollbar-button:hover {
     ===========================================================
     CONTROLES DEL VISOR 3D (#ficha-controles)
     Autorotar + 3 sliders de corte/clipping (X/Y/Z), cada uno
-    con su botón para invertir el sentido. Vive dentro de la
-    sección colapsable "Opciones de visualización" (ex
-    "Corte") del panel derecho (ver "SIDEBAR DEL PANEL
-    DERECHO" más arriba y galeria.html) —
-    bloque FIJO, no lo genera/destruye galeria-ficha.js (ver
-    "limpiarSpecs()" ahí): eso solo reconstruye los 7 ".spec"
-    de "#panel-ficha", que es un elemento distinto y ya no
-    comparte fila con este.
+    con su botón para invertir el sentido. Vive dentro de
+    "Opciones de visualización" — bloque FIJO, no lo genera/
+    destruye galeria-ficha.js (limpiarSpecs() solo reconstruye
+    los 7 ".spec" de "#panel-ficha", que es un elemento
+    distinto).
 
-    HISTORIA: esto vivió antes junto a "#panel-ficha", en
-    ".ficha__fila" (ver el comentario que queda ahí — todavía
-    documenta por qué en algún momento hizo falta "float"
-    para que las dos columnas no compitieran por alto). Se
-    sacó de ahí porque en ventanas angostas (~830px) no
-    entraban los dos juntos sin que alguno quedara mal — ver
-    el comentario en "#ficha-fila" de galeria.html.
-
-    Ni "float" ni "width" ni separador propio acá: a
-    diferencia de esa ubicación vieja, esta sección ya NO es
-    contigua a otro contenido en la misma fila — es el único
-    contenido de su ".ficha__seccion-contenido-inner" (ancho
-    completo, ver esa regla más arriba), que YA aporta su
-    propio padding/gap. El separador entre "Opciones de
-    visualización" y las secciones vecinas también viene
-    gratis, del mismo
-    "border-top" que ya usa cualquier par de secciones del
-    panel (ver ".ficha__panel-cuerpo > *:not(:first-child)").
-
-    "display: contents" a propósito: el propio div solo
-    existe para conservar el id "ficha-controles" (útil si
-    algún día hace falta referenciar el grupo entero desde
-    JS) — sin caja propia, el botón de autorotar y las 3
-    ".ficha__seccion-corte" pasan a ser hijos flex directos
-    de ".ficha__seccion-contenido-inner", heredando su
-    "gap: 14px" sin duplicar la propiedad acá.
+    "display:contents" a propósito: el div solo existe para
+    conservar el id "ficha-controles" — sin caja propia, sus
+    hijos heredan el "gap:14px" de
+    ".ficha__seccion-contenido-inner" sin duplicar la
+    propiedad acá.
     ===========================================================
 */
 .ficha__controles {
     display: contents;
 }
 
-/*
-    Un plano de corte = su label + una fila con el slider
-    (crece) y el botón de invertir (ancho fijo) — mismo
-    patrón vertical que ".ficha__campo" (label chico
-    arriba, control abajo), para que se lea como parte de
-    la misma familia visual que "Opacidad" (sección
-    "Fotografías") en el panel derecho.
-*/
+/* Un plano de corte = label + fila (slider que crece + botón de invertir de ancho fijo) */
 .ficha__seccion-corte {
     display: flex;
     flex-direction: column;
@@ -2207,33 +1450,13 @@ html::-webkit-scrollbar-button:hover {
     margin: 0;
 }
 
-/*
-    Mismo "glifo sin caja" que ".ficha__boton-invertir"
-    (ver esa regla más abajo, sección "Opciones de
-    visualización") — se comparte el mismo bloque de
-    reglas en vez de duplicar los mismos números: "un solo
-    lugar para cambiarlo", igual criterio que ya usa este
-    archivo en ".spec .label"/"#ficha-panel-marco .spec
-    .label".
-*/
-
 
 /*
-    Cuerpo del panel: envuelve las TRES secciones colapsables
-    (Ubicación —mapa+coordenadas—, Vista, Fotografías, ver
-    ".ficha__panel-seccion--colapsable" más abajo) como una
-    sola unidad con scroll propio — antes ese rol lo tenía
-    "#ficha-panel-marco .specs" sola, y el cuadrado del mapa
-    quedaba AFUERA de este cuerpo (hermano fijo arriba, nunca
-    scrolleaba); ahora vive adentro, como parte de la primera
-    sección, así que es el cuerpo entero el que scrollea como
-    una sola unidad si el contenido no entra.
-
-    flex:1 + min-height:0 es el truco de siempre para que
-    un hijo flex en columna se pueda encoger por debajo de
-    su contenido y de lugar a overflow-y:auto — sin
-    min-height:0 el flex item nunca se achica más que su
-    contenido y el scroll no llega a activarse.
+    Cuerpo del panel: envuelve las secciones colapsables como
+    una sola unidad con scroll propio. flex:1 + min-height:0
+    es el truco de siempre para que un hijo flex en columna
+    se pueda encoger por debajo de su contenido y de lugar a
+    overflow-y:auto.
 */
 .ficha__panel-cuerpo {
     flex: 1;
@@ -2245,55 +1468,23 @@ html::-webkit-scrollbar-button:hover {
     overflow-y: auto;
 
     /*
-        "stable" reserva el ancho de la scrollbar SIEMPRE
-        (haya overflow o no, la esté mostrando el navegador o
-        no) — sin esto, cada vez que una sección colapsa/
-        expande y el contenido pasa de entrar a no entrar (o
-        viceversa), la scrollbar aparece/desaparece y el ANCHO
-        ÚTIL de la columna cambia de golpe: el cuadrado del
-        mapa (100% del ancho disponible, ver
-        ".ficha__panel-cuadro") se ve literalmente cambiar de
-        tamaño en cada toggle, aunque nadie haya tocado su
-        contenido — eso es lo reportado como "el mapa cambia
-        de tamaño con el scroll".
-
-        "both-edges" además refleja ese mismo hueco en el
-        borde IZQUIERDO — así el mapa (y cualquier otro
-        contenido a ancho completo de la columna: cabeceras,
-        sliders de "Opciones de visualización", carrusel de
-        fotos) queda simétrico
-        en vez de "empujado" hacia la izquierda por una
-        scrollbar que solo vive del lado derecho. Soportado en
-        los tres motores desde fines de 2024 (Chromium 94+,
-        Firefox 97+, Safari 18.2+), sin JS ni calcular el
-        ancho de la scrollbar a mano.
-
-        No hace falta nada equivalente arriba/abajo: acá solo
-        hay scroll VERTICAL, así que el único eje con una
-        scrollbar real es el horizontal — "scrollbar-gutter"
-        no tiene efecto en el eje perpendicular al del scroll.
+        scrollbar-gutter:stable reserva el ancho de la
+        scrollbar siempre — sin esto, cada vez que una
+        sección colapsa/expande y el contenido pasa de
+        entrar a no entrar, la scrollbar aparece/desaparece
+        y el mapa (100% del ancho disponible) se ve cambiar
+        de tamaño en cada toggle. "both-edges" refleja el
+        mismo hueco en el borde izquierdo, para que el
+        contenido a ancho completo quede simétrico.
+        Soportado en los tres motores desde fines de 2024.
     */
     scrollbar-gutter: stable both-edges;
 
     /*
-        Colorea la scrollbar en vez de dejar la gris por
-        defecto del navegador (rompía contra el vidrio
-        esmerilado del panel): mismo fondo translúcido que
-        ".ficha__panel" (ver esa regla más arriba) para que el
-        track se sienta parte del panel, no una barra ajena
-        superpuesta encima. "thin" para que ocupe poco del
-        gutter recién reservado arriba. Override de tema claro
-        junto a "[data-tema=\"claro\"] .ficha__panel-cuadro" más
-        abajo, mismo criterio que ya usa el resto del archivo.
-
-        "scrollbar-color"/"scrollbar-width" cubren Firefox y
-        Chromium/Safari modernos; los "::-webkit-*" de abajo
-        son el mismo resultado para motores que todavía no
-        soportan las propiedades estándar.
-
-        FIX (reportado: "el scroll es algo delgado"): "auto"
-        en vez de "thin" — mismo motivo que la scrollbar de
-        página (ver "html" al principio del archivo).
+        Colorea la scrollbar (mismo fondo translúcido que
+        ".ficha__panel", para que el track se sienta parte
+        del panel). "auto" en vez de "thin", mismo motivo
+        que la scrollbar de página al principio del archivo.
     */
     scrollbar-width: auto;
     scrollbar-color:
@@ -2301,32 +1492,14 @@ html::-webkit-scrollbar-button:hover {
         rgba(var(--color-blanco), 0.12);
 
     /*
-        FIX (reportado: "los elementos tocan el borde
-        superior/inferior al scrollear"): margen — no
-        padding — arriba y abajo de la caja con scroll.
-
-        La diferencia importa acá: "padding" queda ADENTRO
-        de la caja scrolleable, así que solo se ve en los
-        dos extremos del recorrido (antes del primer
-        elemento / después del último) — apenas bajás un
-        poco, ese padding queda "atrás" y el contenido
-        vuelve a tocar el borde real del panel (el bug
-        reportado: el margen desaparecía al scrollear).
-
-        "margin" en cambio queda AFUERA de la caja: la achica
-        y la deja inset respecto a ".ficha__panel" — como
-        "overflow-y:auto" recorta el contenido justo en el
-        borde de esa caja (ya angosta), lo que se desborda
-        queda cortado ANTES de llegar al margen, sin importar
-        en qué posición esté el scroll. Por eso sí se ve
-        siempre, en el medio del recorrido también.
-
-        Nota: como con el padding, esto también deja el mapa
-        de "Ubicación" con un margen arriba en vez de "a
-        sangre" contra la esquina redondeada del panel (ver
-        ".ficha__panel-seccion--ubicacion .ficha__seccion-
-        contenido-inner" más abajo). Avisar si eso hay que
-        conservarlo aparte.
+        margin (no padding) arriba/abajo de la caja con
+        scroll: padding queda ADENTRO de la caja scrolleable
+        y solo se ve en los extremos del recorrido (el
+        contenido vuelve a tocar el borde apenas bajás un
+        poco). margin queda AFUERA: la caja se achica y
+        queda inset, así que overflow-y recorta el
+        desbordante antes de llegar al margen, en cualquier
+        posición del scroll.
     */
     margin-block: 16px;
 }
@@ -2348,12 +1521,6 @@ html::-webkit-scrollbar-button:hover {
     background: rgba(var(--color-blanco), 0.5);
 }
 
-/*
-    Flechas arriba/abajo — mismo recurso (clip-path, SOLO
-    Chromium/Edge) y mismo motivo que "html::-webkit-scrollbar-
-    button" al principio del archivo, ver el comentario ahí
-    para el porqué de la limitación en Firefox/Safari.
-*/
 .ficha__panel-cuerpo::-webkit-scrollbar-button {
     display: block;
     height: 14px;
@@ -2372,14 +1539,7 @@ html::-webkit-scrollbar-button:hover {
     background-color: rgba(var(--color-blanco), 0.5);
 }
 
-/*
-    Separador fino entre secciones (specs / controles /
-    fotografías) — mismo recurso que ya usa "#gui
-    button:not(:first-child)" para las tabs de orden: una
-    sola regla vertical/horizontal en vez de una caja por
-    sección, así ninguna sección "compite" visualmente con
-    las demás.
-*/
+/* Separador fino entre secciones — una sola regla en vez de una caja por sección */
 .ficha__panel-cuerpo > *:not(:first-child) {
     border-top: 1px solid var(--color-borde);
 }
@@ -2387,29 +1547,10 @@ html::-webkit-scrollbar-button:hover {
 .ficha__panel-seccion {
     display: flex;
     flex-direction: column;
-
-    /*
-        Ya NO lleva padding/gap acá (antes sí, cuando la
-        sección era solo contenido): con la cabecera
-        colapsable, cada sección pasa a tener DOS partes con
-        necesidades de espaciado distintas —
-        ".ficha__seccion-header" (su propio padding, pensado
-        para leerse como fila clickeable) y
-        ".ficha__seccion-contenido-inner" (el padding de
-        siempre, 20px, ver más abajo) — así que el padding se
-        mueve a esa segunda pieza en vez de vivir acá, en el
-        contenedor que envuelve a ambas.
-    */
+    /* sin padding/gap acá: con la cabecera colapsable, cada parte tiene su propio espaciado (ver más abajo) */
 }
 
-/*
-    Título de sección (antes un <h3>, ahora el label de
-    adentro de ".ficha__seccion-header" — mismo texto, ya no
-    hace falta un heading propio porque el <button> ya es el
-    elemento semántico/interactivo de la fila): mismo
-    tratamiento tipográfico que ".spec .label" — dato/eyebrow
-    del panel, no un heading con su propia escala.
-*/
+/* Título de sección: mismo tratamiento tipográfico que ".spec .label" — dato/eyebrow, no heading con escala propia */
 .ficha__panel-titulo {
     font-family: var(--fuente-datos);
     font-weight: 700;
@@ -2425,38 +1566,24 @@ html::-webkit-scrollbar-button:hover {
 /*
     ===========================================================
     SECCIONES COLAPSABLES (".ficha__panel-seccion--colapsable")
-    Cada una es un <button aria-expanded> ("cabecera") seguido
-    de un <div aria-controls> ("contenido") — mismo par
-    header/panel que ya usa ".ficha__sheet-tirador" para el
-    bottom sheet completo, acá repetido a nivel de sección
-    individual. Las tres secciones son INDEPENDIENTES entre sí
-    (abrir una no cierra las otras, a diferencia de un acordeón
-    clásico de "una sola abierta a la vez") — pedido explícito.
-    El toggle en sí (además de reset() al volver a "fichas") lo
-    maneja galeria-panel-derecho-secciones.js, wireado desde
-    galeria.js; este archivo solo define cómo se ve cada
-    estado.
+    Cada una es un <button aria-expanded> ("cabecera") + un
+    <div aria-controls> ("contenido"). Independientes entre sí
+    (abrir una no cierra las otras, a diferencia de un
+    acordeón clásico). El toggle (y el reset() al volver a
+    "fichas") vive en galeria-panel-derecho-secciones.js.
 
     MECANISMO DE COLAPSO — grid-template-rows 0fr/1fr, no
-    max-height ni JS midiendo alturas: con "display:grid" en
-    ".ficha__seccion-contenido" y una sola fila cuyo alto es
-    "1fr" (expandido) o "0fr" (colapsado), el navegador anima
-    la transición entre ambos valores solo — a diferencia de
-    "max-height" (que necesita un número fijo más grande que
-    cualquier contenido posible, o se corta feo si el contenido
-    crece) esto se ajusta solo al alto real del contenido,
-    sea cual sea. ".ficha__seccion-contenido-inner" (el hijo
-    único de esa fila) lleva "overflow:hidden" — con grid, una
-    fila en "0fr" igual necesita que su contenido no se filtre
-    por fuera mientras se achica, mismo motivo que ya usa
-    ".ficha__panel-cuerpo" en su propio truco de flex.
+    max-height ni JS midiendo alturas: con una sola fila cuyo
+    alto es "1fr" (expandido) o "0fr" (colapsado), el
+    navegador anima la transición solo, ajustándose al alto
+    real del contenido sea cual sea (a diferencia de
+    max-height, que necesita un número fijo mayor que
+    cualquier contenido posible). El hijo único de esa fila
+    lleva overflow:hidden para que nada se filtre mientras se
+    achica.
 
     "data-colapsado" (no una clase): lo escribe JS en el
-    propio ".ficha__seccion-contenido" cada vez que cambia el
-    estado de su cabecera — mismo criterio de atributo-como-
-    estado que ya usa "panel.dataset.estado" en
-    galeria-panel-derecho.js para el bottom sheet completo,
-    en vez de alternar clases sueltas.
+    propio contenedor cada vez que cambia el estado.
     ===========================================================
 */
 
@@ -2490,13 +1617,7 @@ html::-webkit-scrollbar-button:hover {
     outline-offset: -2px;
 }
 
-/*
-    Flechita: apunta hacia abajo expandida (rotate(0), su
-    dibujo original en el <svg> del HTML ya apunta para
-    abajo) y hacia arriba colapsada — mismo lenguaje que
-    cualquier <select>/acordeón nativo, así que no hace falta
-    aclarar el estado con texto aparte.
-*/
+/* Flechita: abajo expandida (su dibujo original ya apunta para abajo), arriba colapsada — lenguaje de acordeón nativo */
 .ficha__seccion-chevron {
     width: 14px;
     height: 14px;
@@ -2509,6 +1630,52 @@ html::-webkit-scrollbar-button:hover {
 
 .ficha__seccion-header[aria-expanded="false"] .ficha__seccion-chevron {
     transform: rotate(-90deg);
+}
+
+/*
+    Solo en pc (mismo umbral de 780px que usa el panel para
+    pasar de bottom-sheet a sidebar, ver el media query más
+    abajo): se invierte el orden visual de la cabecera con
+    row-reverse, sin tocar el HTML — la flecha (segunda en
+    el DOM) pasa a pintarse primero y con
+    justify-content:space-between queda pegada al borde
+    izquierdo; el título, al derecho. En celular se queda
+    con el orden normal (título-izq, flecha-der).
+*/
+@media (min-width: 781px) {
+    .ficha__seccion-header {
+        flex-direction: row-reverse;
+    }
+
+    .ficha__panel-titulo {
+        text-align: right;
+    }
+
+    /*
+        La regla de más arriba gira la flecha hacia la
+        derecha al colapsar (rotate(-90deg)), correcto
+        cuando el texto está a su derecha. Acá el texto
+        quedó del otro lado (row-reverse), así que se
+        espeja el giro: apunta hacia la izquierda en vez
+        de hacia la derecha.
+    */
+    .ficha__seccion-header[aria-expanded="false"] .ficha__seccion-chevron {
+        transform: rotate(90deg);
+    }
+
+    /*
+        El texto DENTRO de cada colapsable (labels, párrafos,
+        etc.) no hereda la alineación del header — cuelga de
+        ".ficha__seccion-contenido-inner", no de
+        ".ficha__seccion-header". Se alinea acá para que
+        quede consistente con el título ya alineado arriba.
+        No afecta a los elementos con su propio layout flex
+        (".ficha__switch", ".ficha__campo", etc.): text-align
+        solo mueve texto suelto, no reposiciona hijos flex.
+    */
+    .ficha__seccion-contenido-inner {
+        text-align: right;
+    }
 }
 
 .ficha__seccion-contenido {
@@ -2533,30 +1700,14 @@ html::-webkit-scrollbar-button:hover {
     padding: 4px 20px 20px;
 
     /*
-        BUG (visto en producción): "overflow:hidden" recorta
-        en el borde del PADDING BOX, no del content box — con
-        grid-template-rows en 0fr el contenido se aplasta a
-        0px de alto, pero estos 4px+20px de padding vertical
-        siguen ahí, y como el padding no es una pared, el
-        primer hijo que desborda (el <label> de "Plano de
-        corte en X" en "Opciones de visualización", el
-        <div class="ficha__fotos-miniaturas"> de
-        "Fotografías") queda flotando visible dentro de esa
-        franja residual de 24px en vez de desaparecer con el
-        resto. Confirmado midiendo getBoundingClientRect()
-        en un navegador real: el contenedor da 24px de alto
-        colapsado, pero el hijo sigue reportando ~45px,
-        sobresaliendo por abajo.
-
-        ".ficha__panel-seccion--ubicacion .ficha__seccion-
-        contenido-inner" (ver más abajo) nunca mostró el bug
-        porque esa sección YA pisa este padding a 0 — el
-        problema es específico de las secciones que SÍ
-        conservan el padding acá (Vista, Fotografías).
-
-        Fix: animar el padding vertical a 0 en el mismo
-        momento que el grid-row, así el "colchón" que dejaba
-        pasar contenido desaparece junto con todo lo demás.
+        FIX: overflow:hidden recorta en el borde del padding
+        box, no del content box — con grid-template-rows en
+        0fr el contenido se aplasta a 0px de alto, pero el
+        padding vertical sigue ahí y el primer hijo que
+        desborda queda flotando visible dentro de esa franja
+        residual en vez de desaparecer. Se anima también el
+        padding a 0 en el mismo momento que el grid-row, para
+        que ese "colchón" desaparezca junto con todo lo demás.
     */
     transition: padding .3s cubic-bezier(.4, 0, .2, 1);
 }
@@ -2566,31 +1717,13 @@ html::-webkit-scrollbar-button:hover {
     padding-bottom: 0;
 }
 
-/*
-    Excepción de "Ubicación": el mapa tiene que quedar A
-    SANGRE (alto=ancho, "sin márgenes", mismo look de
-    siempre que ya documentaba el comentario viejo junto a
-    ".ficha__panel-cuadro") — el padding de 20px que sí
-    quieren el resto de las secciones (droplist, fotos) le
-    metería un marco alrededor del mapa que no existía antes
-    de este cambio. "#panel-derecho-specs" ya trae su PROPIO
-    padding (ver "#ficha-panel-marco .specs" más arriba), así
-    que perder el padding del wrapper acá no lo deja pegado
-    al borde — solo el mapa queda a sangre, las coordenadas
-    conservan su margen de siempre.
-*/
+/* Excepción "Ubicación": el mapa queda a sangre (alto=ancho, sin márgenes) — el padding de 20px lo enmarcaría */
 .ficha__panel-seccion--ubicacion .ficha__seccion-contenido-inner {
     gap: 0;
     padding: 0;
 }
 
-/*
-    Un campo = su label + su control (select o slider).
-    Mismo patrón vertical que ".spec" (label arriba chico,
-    contenido abajo), para que un droplist o un slider se
-    lean como "un dato más" del panel, no como un widget de
-    otro sistema.
-*/
+/* Un campo = label + control. Mismo patrón vertical que ".spec" (label chico arriba, contenido abajo) */
 .ficha__campo {
     display: flex;
     flex-direction: column;
@@ -2610,13 +1743,7 @@ html::-webkit-scrollbar-button:hover {
 
 /* --- droplist --- */
 
-/*
-    Wrapper solo para poder dibujar la flecha propia con
-    ::after (un <select> no admite pseudo-elementos propios
-    en la mayoría de los navegadores) — el wrapper no tiene
-    estilo visual propio, existe solo para posicionar la
-    flecha sobre el borde derecho del select.
-*/
+/* Wrapper solo para dibujar la flecha propia con ::after (un <select> no admite pseudo-elementos propios) */
 .ficha__select-wrap {
     position: relative;
     display: block;
@@ -2638,14 +1765,7 @@ html::-webkit-scrollbar-button:hover {
     pointer-events: none;
 }
 
-/*
-    Sin caja: una línea inferior nada más (mismo lenguaje
-    que el resto del panel, nada de controles "de sistema
-    operativo" con relieve/degradé por default). appearance:
-    none saca el select nativo del navegador (flecha
-    incluida — la propia la pone ".ficha__select-wrap::after"
-    de arriba) para poder controlar el look en los dos temas.
-*/
+/* Sin caja: línea inferior nada más. appearance:none saca el select nativo (flecha incluida) para controlar el look en los dos temas */
 .ficha__select {
     width: 100%;
 
@@ -2675,27 +1795,150 @@ html::-webkit-scrollbar-button:hover {
     outline: none;
 }
 
-/*
-    El navegador no deja estilar a fondo el listado
-    desplegable en sí (eso lo dibuja el SO, no el CSS) —
-    esto alcanza para que al menos no quede un fondo blanco
-    default rompiendo el tema oscuro.
-*/
+/* El navegador no deja estilar el listado desplegable en sí — esto evita al menos el fondo blanco default */
 .ficha__select option {
     background: var(--color-fondo-alt);
     color: var(--color-texto);
 }
 
 
-/* --- slider --- */
+/* --- droplist editorial (reemplaza al <select> nativo de "Tipo de material") --- */
 
 /*
-    Track fino (línea, no barra gruesa) + thumb como punto
-    de acento — mismo espíritu "línea, no caja" que el
-    resto del panel. Hay que repetir cada regla en su
-    variante -webkit-/-moz- (los sliders nativos no se
-    pueden estilar con un selector compartido).
+    Popup 100% propio (botón + <ul role="listbox">, ver
+    "#panel-material" en galeria.html) en vez de <select>
+    nativo: el popup de un <select> lo dibuja el navegador
+    con su propio motor, así que la tipografía nunca
+    termina de igualar a la del sitio en todos los
+    navegadores (algunos ni siquiera dejan tocar el font de
+    <option>) — y en modo oscuro parpadea en blanco un frame
+    al abrir, porque el navegador pinta el popup con su tema
+    por defecto antes de que "background"/"color" del autor
+    lleguen a aplicarse. Con un popup propio no hay nada de
+    eso: nunca se renderiza nada que no sea este CSS.
+
+    El JS (galeria-panel-material.js, función crearDroplist)
+    hace que "#ficha-material-tipo" (el <ul>) se comporte
+    como el <select> que reemplaza: expone ".value" y
+    dispara un evento "change" real, así el resto del panel
+    no tuvo que cambiar.
 */
+
+/* Mismo look que tenía ".ficha__select": sin caja, solo línea inferior */
+.ficha__droplist-boton {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    width: 100%;
+
+    border: 0;
+    border-bottom: 1px solid var(--color-borde);
+    border-radius: 0;
+    background: none;
+
+    padding: 6px 2px 6px 0;
+
+    font-family: var(--fuente-cuerpo);
+    color: var(--color-texto);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+
+    cursor: pointer;
+
+    transition: border-color .2s ease;
+}
+
+.ficha__droplist-boton:hover,
+.ficha__droplist-boton:focus-visible,
+.ficha__droplist-boton[aria-expanded="true"] {
+    border-color: var(--color-primario);
+    outline: none;
+}
+
+/* Mismo dibujo que ".ficha__seccion-chevron" (misma <svg>) — abajo cerrado, arriba abierto */
+.ficha__droplist-chevron {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+
+    color: var(--color-texto-suave);
+
+    transition: transform .2s ease;
+}
+
+.ficha__droplist-boton[aria-expanded="true"] .ficha__droplist-chevron {
+    transform: rotate(180deg);
+}
+
+/*
+    Panel flotante: mismo par radio/sombra que ".tarjeta-
+    edificio:hover" en componentes.css, para que la
+    "elevación" del sitio se sienta igual acá.
+
+    "position:fixed" es solo el valor de arranque — en
+    cuanto se abre, galeria-panel-material.js (función
+    crearDroplist/posicionar) cuelga este <ul> de <body> y
+    le escribe left/width/top-o-bottom en cada apertura,
+    anclándolo al botón en coordenadas de viewport. Por eso
+    acá NO se declaran left/top/right/width fijos: cualquier
+    valor puesto acá quedaría siempre pisado por JS, así que
+    declararlo sería ruido.
+
+    z-index alto a propósito: al colgar de <body>, compite
+    directo con el navbar (z-index:100 en navbar.css) en vez
+    de quedar adentro del contexto de apilamiento propio de
+    "#galeria-escena-fija" (donde sus paneles llegan a 1000,
+    ver el comentario ahí) — tiene que ganarles a ambos.
+*/
+.ficha__droplist-lista {
+    position: fixed;
+    z-index: 1010;
+
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+
+    background: var(--color-fondo-alt);
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    box-shadow: 0 18px 34px -18px var(--color-sombra);
+}
+
+.ficha__droplist-lista[hidden] {
+    display: none;
+}
+
+.ficha__droplist-opcion {
+    padding: 8px 10px;
+
+    font-family: var(--fuente-cuerpo);
+    color: var(--color-texto);
+    font-size: 13px;
+    font-weight: 600;
+
+    border-radius: calc(var(--radio) - 4px);
+    cursor: pointer;
+
+    transition: background .15s ease, color .15s ease;
+}
+
+.ficha__droplist-opcion:hover,
+.ficha__droplist-opcion:focus-visible {
+    background: color-mix(in srgb, var(--color-primario) 12%, transparent);
+    outline: none;
+}
+
+.ficha__droplist-opcion[aria-selected="true"] {
+    color: var(--color-primario);
+}
+
+
+/* --- slider --- */
+
+/* Track fino + thumb como punto de acento. Hay que repetir cada regla en su variante -webkit-/-moz- */
 .ficha__slider {
     -webkit-appearance: none;
     appearance: none;
@@ -2705,7 +1948,7 @@ html::-webkit-scrollbar-button:hover {
     margin: 8px 0;
 
     background: var(--color-borde);
-    border-radius: 2px;
+    border-radius: var(--radio);
 
     cursor: pointer;
 }
@@ -2731,7 +1974,7 @@ html::-webkit-scrollbar-button:hover {
 .ficha__slider::-moz-range-track {
     height: 2px;
     background: var(--color-borde);
-    border-radius: 2px;
+    border-radius: var(--radio);
 }
 
 .ficha__slider::-moz-range-thumb {
@@ -2759,29 +2002,14 @@ html::-webkit-scrollbar-button:hover {
 
 /* --- fotografías: miniaturas --- */
 
-/*
-    Columna de tarjetas, una por foto — mismo criterio
-    que el mockup de referencia: ancho completo, gap fijo
-    entre tarjetas, sin grid de columnas (a diferencia de
-    un grid de miniaturas chicas, acá cada foto se ve a
-    tamaño legible dentro del panel angosto).
-*/
+/* Columna de tarjetas, una por foto — cada una a tamaño legible dentro del panel angosto, sin grid de columnas */
 .ficha__fotos-miniaturas {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
-/*
-    Cada tarjeta es un <button> (ver
-    galeria-panel-fotos.js — necesita ser clickeable e
-    interactivo, no una simple <img>), así que primero se
-    resetea el chrome nativo del navegador (borde/relleno/
-    fuente heredados de <button>) antes de aplicar el
-    look de tarjeta — mismo motivo por el que
-    ".ficha__switch"/".ficha__boton-invertir" hacen lo
-    mismo más arriba en este archivo.
-*/
+/* Cada tarjeta es un <button> (necesita ser clickeable, ver galeria-panel-fotos.js): primero se resetea el chrome nativo */
 .ficha__foto-miniatura {
     display: block;
     width: 100%;
@@ -2805,14 +2033,7 @@ html::-webkit-scrollbar-button:hover {
     background: rgba(var(--color-negro), 0.05);
 }
 
-/*
-    "object-fit: cover" es el pedido explícito (recortar
-    contra el aspect-ratio fijo de arriba en vez de
-    deformar/dejar barras) — el leve zoom en hover es el
-    mismo gesto que ya usa ".photo:hover img" en el
-    mockup de referencia, solo para dar feedback de que
-    la tarjeta es clickeable.
-*/
+/* object-fit:cover recorta contra el aspect-ratio fijo; el leve zoom en hover da feedback de que es clickeable */
 .ficha__foto-miniatura img {
     display: block;
     width: 100%;
@@ -2831,29 +2052,15 @@ html::-webkit-scrollbar-button:hover {
 }
 
 /*
-    Foto seleccionada (ver marcarActiva() en
-    galeria-panel-fotos.js).
-
-    NO va como "outline" directo sobre el botón (como sí
-    hace ".ficha__boton-invertir" más abajo) porque acá
-    compite con ".ficha__foto-miniatura:hover img" de
-    arriba: "transform" en CUALQUIER elemento le crea su
-    propio stacking context, así que apenas el cursor
-    entra y el <img> queda "promovido" por el scale(1.025)
-    del hover, ese <img> pasa a pintarse POR ENCIMA del
-    outline del botón padre (que usa offset negativo,
-    superpuesto a la imagen, no por fuera) — el aro sigue
-    estando ahí en el DOM, solo que tapado. Efecto real
-    reportado: el highlight de "seleccionada" se veía
-    SOLO cuando el cursor NO estaba encima, exactamente al
-    revés de lo esperable.
-
-    Con un "::after" en cambio: al ser el último hijo en
-    el orden de pintado del botón, siempre queda por
-    encima del <img> tenga o no "transform" activo en ese
-    momento — mismo acento primario, mismo look, pero ya
-    no depende de con quién compita el <img> por stacking
-    context.
+    Foto seleccionada (marcarActiva() en
+    galeria-panel-fotos.js). Va como "::after" y no como
+    "outline" directo en el botón: "transform" en cualquier
+    elemento crea su propio stacking context, así que al
+    entrar el cursor y activarse el scale(1.025) del hover,
+    el <img> queda promovido por encima del outline del
+    botón padre y lo tapa — con un "::after", al ser el
+    último hijo en el orden de pintado, siempre queda por
+    encima del <img> tenga o no transform activo.
 */
 .ficha__foto-miniatura[aria-current="true"]::after {
     content: "";
@@ -2866,13 +2073,7 @@ html::-webkit-scrollbar-button:hover {
 
 /* --- opciones de visualización: botón de invertir --- */
 
-/*
-    Glifo sin caja (⇄, ver galeria-corte-controles.js):
-    sin fondo ni borde propio, solo el glifo en el color
-    de texto suave, que se resalta en hover/foco con el
-    acento primario (mismo gesto que ya usa "#gui button"
-    para sus estados).
-*/
+/* Glifo sin caja (⇄): sin fondo/borde propio, se resalta en hover/foco con el acento primario, mismo gesto que "#gui button" */
 .ficha__boton-invertir {
     display: flex;
     align-items: center;
@@ -2904,14 +2105,7 @@ html::-webkit-scrollbar-button:hover {
     background: rgba(var(--color-negro), 0.06);
 }
 
-/*
-    Estado "presionado" (eje de corte invertido, ver
-    galeria-corte-controles.js): acento primario A COLOR
-    COMPLETO permanente, no solo en hover — mismo criterio
-    de "color final armado, no rgba()" que ya explica el
-    comentario junto a ".ficha__switch[aria-checked=true]
-    .ficha__switch-pista" más arriba.
-*/
+/* Estado "presionado" (eje de corte invertido): acento primario a color completo permanente, no solo en hover */
 .ficha__boton-invertir[aria-pressed="true"] {
     color: var(--color-primario);
 }
@@ -2923,34 +2117,28 @@ html::-webkit-scrollbar-button:hover {
 
 
 /*
-    Mismo umbral que usa el navbar para pasar a menú
-    móvil (ver navbar.css, 780px): por debajo de ese
-    ancho ya no sobra espacio junto al texto de la ficha
-    (que además puede crecer bastante — nombres largos,
-    varios autores), así que el rectángulo se oculta en
-    vez de forzar un layout apretado o que el texto se
-    achique más de la cuenta.
+    Mismo umbral que el navbar para pasar a menú móvil
+    (navbar.css, 780px): por debajo de ese ancho ya no sobra
+    espacio junto al texto de la ficha (que además puede
+    crecer bastante), así que el rectángulo se oculta en vez
+    de forzar un layout apretado.
 */
 @media (max-width: 780px) {
 
     /*
-        Bottom sheet en vez de sidebar (antes: el panel
-        directamente no existía acá, "display:none"). Mismo
-        contenido de siempre — mapa, coordenadas, controles,
-        carrusel de fotos — reacomodado como una hoja que
-        cuelga del borde inferior: colapsada muestra solo
+        Bottom sheet en vez de sidebar. Mismo contenido de
+        siempre (mapa, coordenadas, controles, fotos)
+        reacomodado como una hoja que cuelga del borde
+        inferior: colapsada muestra solo
         ".ficha__sheet-tirador"; expandida, hasta 70% del
-        alto de la ventana, con scroll propio adentro si el
-        contenido no entra (ver ".ficha__panel-cuerpo" en su
-        regla base, ya tiene flex:1 + min-height:0 +
-        overflow-y:auto).
+        alto, con scroll propio (".ficha__panel-cuerpo" ya
+        trae flex:1 + min-height:0 + overflow-y:auto).
 
-        La posición real (colapsado / expandido / arrastre en
-        curso) la escribe JS como "transform" inline — ver
-        galeria-panel-derecho.js — así que acá solo se define
-        el ESTADO DE REPOSO por defecto (oculto del todo, ver
-        el comentario junto a "transform" más abajo) y la
-        transición entre estados, nunca el estado en sí.
+        La posición real (colapsado/expandido/arrastre en
+        curso) la escribe JS como "transform" inline (ver
+        galeria-panel-derecho.js) — acá solo se define el
+        estado de reposo por defecto y la transición entre
+        estados.
     */
 
     #ficha-panel-marco {
@@ -2967,50 +2155,22 @@ html::-webkit-scrollbar-button:hover {
     }
 
     /*
-        El truco de "margin-right:auto" +
-        "align-self:flex-start" (ver
-        ".ficha__formula-geometria" más arriba) depende de
-        que "#ficha-panel-marco" siga siendo flex — acá
-        arriba mismo pasa a "display:block; bottom:0" para
-        el bottom sheet, así que esas dos propiedades dejan
-        de tener efecto y la fórmula quedaría flotando en
-        cualquier lugar del flujo normal, posiblemente
-        superpuesta con el propio bottom sheet. Se oculta
-        en vez de reposicionarla con coordenadas nuevas: el
-        pedido original ("ya tenemos los márgenes armados
-        con la ficha/navbar/panel derecho") es
-        específicamente del layout de escritorio — en mobile
-        no hay un "margen izquierdo ya armado" equivalente
-        del que colgarse.
+        El truco de "margin-right:auto" + "align-self:
+        flex-start" en ".ficha__formula-geometria" depende
+        de que "#ficha-panel-marco" siga siendo flex — acá
+        pasa a "display:block; bottom:0", así que la fórmula
+        se oculta en vez de reposicionarse: el layout de
+        "margen ya armado" del que cuelga es específico de
+        escritorio.
     */
     .ficha__formula-geometria {
         display: none;
     }
 
-    /*
-        Mismo motivo que en el breakpoint de landscape
-        bajo (ver ese comentario): sin panel lateral que
-        reservar, se devuelve al padding simétrico de
-        siempre.
-    */
+    /* mismo motivo que en el breakpoint de landscape bajo: sin panel lateral que reservar, padding simétrico de nuevo */
     #carousel-panel .contenedor {
         padding-right: clamp(1.25rem, 4vw, 2.5rem);
     }
-
-    /*
-        Antes, acá abajo, había una regla que apilaba
-        "#panel-ficha" y "#ficha-controles" en columna (con
-        "order" para que los datos pintaran primero) — eso
-        resolvía que en ~830px no entraban las dos columnas
-        de ".ficha__fila" lado a lado sin apretar los datos.
-        Ya no hace falta: "#ficha-controles" se mudó fuera de
-        ".ficha__fila" (ver el comentario junto a esa regla,
-        más arriba, y el que queda en "#ficha-fila" de
-        galeria.html) — ".ficha__fila" hoy tiene un solo
-        hijo, así que el "display:block" de su regla base ya
-        apila todo correctamente sin necesitar nada especial
-        acá.
-    */
 
     .ficha__panel {
         position: fixed;
@@ -3026,43 +2186,23 @@ html::-webkit-scrollbar-button:hover {
         border-bottom: none;
 
         /*
-            Arranca oculto del todo por debajo de la
-            ventana: es la red de seguridad si
-            galeria-panel-derecho.js no llegara a correr (JS
-            deshabilitado, error de carga, etc.) — mejor un
-            panel invisible que uno que tapa media pantalla
-            sin forma de cerrarlo. En uso normal, JS pisa
-            este valor con un "transform" inline apenas mide
-            el tirador real (altura exacta del estado
-            colapsado, que closest depende de la fuente/
-            tamaño de letra vigente — no se puede fijar un
-            píxel exacto solo en CSS).
+            Arranca oculto del todo por debajo de la ventana:
+            red de seguridad si galeria-panel-derecho.js no
+            llegara a correr. En uso normal, JS pisa este
+            valor con un transform inline apenas mide el
+            tirador real.
         */
         transform: translateY(100%);
 
         transition: transform .3s cubic-bezier(.32, .72, 0, 1);
     }
 
-    /*
-        Mientras el dedo arrastra el tirador, JS escribe
-        "transform" en cada pointermove — sin esto, CADA uno
-        de esos frames dispararía (e interrumpiría) la
-        transición de arriba, y el panel se sentiría
-        "pegajoso" en vez de seguir al dedo 1:1.
-    */
+    /* mientras el dedo arrastra, JS escribe "transform" en cada pointermove — sin esto, cada frame interrumpiría la transición */
     .ficha__panel.arrastrando {
         transition: none;
     }
 
-    /*
-        En mobile no hace falta que el preview sea un
-        cuadrado perfecto (eso tenía sentido en la columna
-        angosta del sidebar de escritorio) — a todo el ancho
-        de la pantalla, un 1:1 le comería casi todo el
-        presupuesto de 70vh sin dejarle aire al resto del
-        contenido. 16:9 alcanza para reconocer el mapa/foto
-        y deja más lugar para specs + controles + fotos.
-    */
+    /* en mobile un 1:1 le comería casi todo el presupuesto de 70vh; 16:9 alcanza para reconocer el mapa/foto */
     .ficha__panel-cuadro {
         aspect-ratio: 16 / 9;
     }
@@ -3080,13 +2220,7 @@ html::-webkit-scrollbar-button:hover {
         border: none;
         background: none;
 
-        /*
-            El arrastre lo procesa JS con Pointer Events, no
-            el scroll nativo del documento — sin esto, tirar
-            del tirador hacia arriba/abajo TAMBIÉN scrollea
-            la página por debajo (mismo dedo, mismo eje, dos
-            sistemas escuchando el gesto a la vez).
-        */
+        /* JS procesa el arrastre con Pointer Events, no el scroll nativo — sin esto, tirar del tirador también scrollea la página */
         touch-action: none;
 
         cursor: pointer;
@@ -3097,7 +2231,7 @@ html::-webkit-scrollbar-button:hover {
 
         width: 34px;
         height: 4px;
-        border-radius: 2px;
+        border-radius: var(--radio);
 
         background: var(--color-borde);
     }
@@ -3177,24 +2311,19 @@ html::-webkit-scrollbar-button:hover {
 /* =========================
    PAGINACIÓN (rail de dots)
    ---------------------------------------------------
-   Un punto por cada parada real del scroll — las 4
-   fases fijas MÁS una por ficha (mismo desglose que
-   reparte el presupuesto en galeria-fases.js: ver el
-   comentario ahí sobre "paradas" de igual tamaño) — en
-   vez de un único hint que solo dice "hay más" sin decir
-   cuánto. Contenido armado por JS (galeria-paginacion.js)
-   dentro de "#galeria-paginacion", vacío en el HTML —
-   mismo criterio que "#gui"/"#scene"/"#carousel-panel":
-   la cantidad real de fichas depende del GeoJSON, no se
-   puede fijar de antemano en el markup.
+   Un punto por cada parada real del scroll: las 4 fases
+   fijas más una por ficha (mismo desglose que reparte el
+   presupuesto en galeria-fases.js), en vez de un único
+   hint que solo dice "hay más" sin decir cuánto. Contenido
+   armado por galeria-paginacion.js dentro de
+   "#galeria-paginacion", vacío en el HTML — la cantidad
+   real de fichas depende del GeoJSON.
 
-   Igual que "#scroll-hint" y "#gui": position:absolute
-   (no fixed) porque ya vive DENTRO de
-   "#galeria-escena-fija", que es el que está
-   position:fixed — así, cuando ese contenedor pasa a
-   position:absolute al liberarse (ver ".liberada" más
-   arriba), el rail se desplaza CON el resto de la escena
-   en vez de quedar clavado de más a la ventana.
+   Igual que "#scroll-hint"/"#gui": position:absolute (no
+   fixed), porque vive dentro de "#galeria-escena-fija" —
+   así, cuando ese contenedor pasa a absolute al liberarse,
+   el rail se desplaza con el resto de la escena en vez de
+   quedar clavado de más a la ventana.
 ========================= */
 
 #galeria-paginacion {
@@ -3206,26 +2335,9 @@ html::-webkit-scrollbar-button:hover {
 
     z-index: 5;
 
-    /*
-        Mismo umbral que la transición de ".liberada":
-        al desprenderse la escena ya no queda "parada"
-        vigente que señalar (ver la nota sobre la fase
-        "final" en update(), galeria-paginacion.js), así
-        que el rail se desvanece en vez de arrastrarse
-        vacío hasta perderse de vista.
-    */
+    /* al desprenderse la escena ya no queda "parada" vigente que señalar, así que el rail se desvanece */
     transition: opacity .3s ease;
 }
-
-/*
-    Antes se desvanecía acá (opacity:0) al llegar a la
-    fase "final"/liberarse la escena — a pedido, ya NO se
-    oculta: sigue viajando con "#galeria-escena-fija" (que
-    pasa a position:absolute al liberarse, ver ".liberada"
-    más arriba) y simplemente sale de vista scrolleando
-    junto con el resto de la escena, en vez de desaparecer
-    de golpe con un fade.
-*/
 
 .paginacion__lista {
     position: relative;
@@ -3241,31 +2353,18 @@ html::-webkit-scrollbar-button:hover {
 }
 
 /*
-    Línea vertical detrás de los puntos: SACADA a pedido
-    (antes vivía acá como ::before de ".paginacion__lista",
-    ver el historial de este archivo). El rail ahora se lee
-    solo por los puntos + el blob que viaja entre ellos, sin
-    la regla de fondo.
-*/
-
-/*
     Indicador líquido: el círculo de vidrio que viaja y se
-    asienta con rebote sobre el punto activo. Se PREPENDE
+    asienta con rebote sobre el punto activo. Se prepende
     como primer hijo de la lista (ver construir() en
     galeria-paginacion.js), así que pinta debajo de todos
-    los <li> por simple orden en el DOM — no hace falta
-    z-index para eso (evita pelearse con el z-index:-1 de
-    la línea de arriba, que ya vive en su propia capa).
+    los <li> por simple orden en el DOM, sin necesitar
+    z-index.
 
-    JS mueve/estira ESTE contenedor (transform + height),
-    una sola vez por cada cambio real de punto activo, NO
-    en cada frame (ver moverBlob() — el mismo criterio de
-    "no leer layout de más" que ya sigue todo lo demás acá:
-    getBoundingClientRect solo se llama cuando el punto
-    activo realmente cambió). El "respirar" (escala) vive
-    aparte, en ".paginacion__blob-nucleo" adentro, para que
-    la animación de escala nunca compita con la transición
-    de posición/estiramiento sobre las mismas propiedades.
+    JS mueve/estira este contenedor (transform + height) una
+    sola vez por cada cambio real de punto activo, no en
+    cada frame (ver moverBlob()). El "respirar" (escala) vive
+    aparte, en ".paginacion__blob-nucleo", para que nunca
+    compita con la transición de posición/estiramiento.
 */
 .paginacion__blob {
     position: absolute;
@@ -3276,17 +2375,12 @@ html::-webkit-scrollbar-button:hover {
     height: 18px;
 
     /*
-        FIX (pedido: "liquid dot" — que el blob se estire
-        como una pastilla al moverse y se contraiga a
-        círculo al asentarse): border-radius en PÍXELES
-        fijos, no "50%". Con ancho constante (18px) y
-        radio = mitad de ese ancho (9px), la MISMA regla
-        da un círculo perfecto cuando alto=ancho (reposo)
-        y una pastilla con las puntas totalmente
-        redondeadas cuando el alto crece (galeria-
-        paginacion.js anima justamente ESE alto, ver
-        moverBlob() ahí: no hace falta animar border-radius
-        aparte, cambia solo por consecuencia del alto).
+        border-radius en px fijos (9px = mitad del ancho
+        constante de 18px), no "50%": la misma regla da un
+        círculo perfecto en reposo y una pastilla con las
+        puntas redondeadas cuando el alto crece (JS anima
+        ese alto, el border-radius no necesita animarse
+        aparte — efecto "liquid dot").
     */
     border-radius: 9px;
 
@@ -3297,12 +2391,10 @@ html::-webkit-scrollbar-button:hover {
 
     /*
         Sin transition acá para "transform"/"height": esas
-        dos las escribe JS con una duración distinta según
-        la fase del movimiento (estirar vs. asentar, ver
-        moverBlob() en galeria-paginacion.js) — declararlas
-        acá con un valor fijo competiría con esos valores
-        inline. "opacity" sí queda: no participa del
-        estiramiento, un solo fade alcanza siempre.
+        las escribe JS con una duración distinta según la
+        fase del movimiento (estirar vs. asentar) —
+        declararlas acá competiría con esos valores inline.
+        "opacity" sí queda: un solo fade alcanza siempre.
     */
     transition: opacity .25s ease;
 }
@@ -3310,27 +2402,16 @@ html::-webkit-scrollbar-button:hover {
 .paginacion__blob-nucleo {
     width: 100%;
     height: 100%;
-    /* mismo criterio que ".paginacion__blob" (radio fijo, no %) */
-    border-radius: 9px;
+    border-radius: 9px; /* mismo criterio que ".paginacion__blob": radio fijo, no % */
 
     /*
-        FIX (reportado: "el dot activo tiene reflejos/brillo,
-        que sea plano"): antes llevaba un radial-gradient de
-        brillo asimétrico (luz rebotando en una gota) más un
-        box-shadow de resplandor alrededor — dos efectos que
-        leían como vidrio/3D en vez de como una simple marca
-        de "acá estás". Ahora es un círculo de un solo color,
-        sin degradé ni sombra: el único plus visual es el
-        propio blur del vidrio esmerilado de abajo.
+        Círculo de un solo color, sin degradé ni sombra
+        (antes: radial-gradient de brillo + box-shadow de
+        resplandor, leía como vidrio/3D en vez de una simple
+        marca de "acá estás"). El único plus visual es el
+        blur del vidrio esmerilado de abajo.
     */
     background: var(--color-primario);
-
-    /*
-        El vidrio esmerilado real: funciona porque el blob
-        vive DENTRO de #galeria-escena-fija, sobre la
-        escena 3D — sin algo debajo que desenfocar, esta
-        propiedad no se nota.
-    */
     backdrop-filter: blur(2px);
 
     animation: paginacion-respirar 2.6s ease-in-out infinite;
@@ -3341,52 +2422,39 @@ html::-webkit-scrollbar-button:hover {
     50%      { transform: scale(1.12); }
 }
 
+/*
+    Ya no lleva "display:flex; justify-content:flex-end"
+    (eso centraba el <li> completo, así que el punto se
+    corría en X según el largo de su etiqueta, aunque
+    estuviera en opacity:0). Con la etiqueta ahora en
+    position:absolute (ver ".paginacion__etiqueta" más
+    abajo), el <li> solo contiene al botón — mismo ancho
+    para todos — y "align-items:center" en
+    ".paginacion__lista" centra ese ancho fijo.
+*/
 .paginacion__item {
-    /*
-        Ya NO lleva "display:flex; justify-content:flex-end"
-        — ese layout centraba el <li> COMPLETO (botón +
-        etiqueta) en la columna, así que el punto se corría
-        en X según cuánto medía SU PROPIA etiqueta (aunque
-        estuviera con opacity:0: seguía ocupando ancho real
-        en el flujo). Con la etiqueta ahora en
-        position:absolute (ver ".paginacion__etiqueta" más
-        abajo), el <li> solo contiene al botón — mismo ancho
-        angosto para todos — y "align-items:center" en
-        ".paginacion__lista" centra ESE ancho, no uno
-        variable: todos los puntos quedan sobre el mismo eje
-        X pase lo que pase con el largo del texto.
-    */
     position: relative;
 }
 
 /*
-    FIX (reportado: "no parecen estar uniformemente
-    distribuidos"): esto agregaba 6px de margen extra
-    antes de la primera ficha, sobre el gap parejo de
-    14px que ya define ".paginacion__lista" — el resultado
-    real era un hueco de 20px justo ahí y 14px en el resto,
-    lo opuesto a "parejo" (el reparto del SCROLL sí es
-    uniforme, ver galeria-fases.js; esto era puramente un
-    desvío visual en el rail). El separador entre "4 fases"
-    y "n fichas" ya lo da .paginacion__lista::before + el
-    propio salto de tamaño/etiqueta entre ambos tipos de
-    dot — no hace falta además romper el espaciado.
+    ".paginacion__item--primera-ficha" (clase que sigue
+    escribiendo JS en el primer dot de tipo "ficha") ya NO
+    lleva estilos propios a propósito: agregaba 6px extra de
+    margen que rompía el gap parejo de 14px entre dots. El
+    salto de tamaño/etiqueta entre "fase" y "ficha" ya
+    alcanza como separador visual, sin romper el espaciado.
+
+    OJO: el comentario original de esta regla también
+    mencionaba un ".paginacion__lista::before" como parte de
+    ese separador — pero esa regla ya no existe en el archivo
+    (se sacó, ver el comentario junto a ".paginacion__lista"
+    más arriba). Quedaba una referencia a código ya borrado;
+    se corrige acá.
 */
-.paginacion__item--primera-ficha {
-}
 
 .paginacion__dot {
     appearance: none;
 
-    /*
-        FIX (reportado: "todos siguen siendo algo pequeños,
-        por lo menos deberia ser 1.3x el actual"): antes
-        11px/9px (fase/ficha). Se sube ~1.3x en los dos,
-        conservando la misma proporción relativa entre
-        ambos (~78%, antes ~82% — prácticamente la misma
-        jerarquía visual, ver ".paginacion__item--ficha
-        .paginacion__dot" más abajo).
-    */
     width: 14px;
     height: 14px;
     padding: 0;
@@ -3394,23 +2462,7 @@ html::-webkit-scrollbar-button:hover {
     border: 1px solid var(--color-texto-suave);
     border-radius: 50%;
 
-    /*
-        FIX (pedido: "los dots inactivos tuvieran fill del
-        mismo color que el stroke, con opacidad baja, tal
-        vez un 15%"): antes transparente del todo. Se usa
-        color-mix() en vez de envolver en rgba(var(...)):
-        a diferencia de --color-blanco/--color-negro (esas
-        SÍ están guardadas como tripletas "r,g,b", ver el
-        comentario junto a ".ficha__switch[aria-checked=
-        true] .ficha__switch-pista" más arriba en este
-        archivo), --color-texto-suave es
-        un color final armado (hex/hsl/lo que sea) — mezclar
-        con "transparent" funciona sin importar el formato
-        interno de la variable. El activo pisa esto a
-        transparent explícito (ver ".paginacion__dot--activo"
-        más abajo): ese estado ya decidió a propósito quedar
-        "vacío", es el blob quien aporta color ahí.
-    */
+    /* dots inactivos: fill del mismo color que el stroke, con opacidad baja — mezcla con color-mix porque --color-texto-suave ya es un color final, no una tripleta */
     background: color-mix(
         in srgb,
         var(--color-texto-suave) 15%,
@@ -3419,14 +2471,7 @@ html::-webkit-scrollbar-button:hover {
 
     cursor: pointer;
 
-    /*
-        Área de toque real más grande que el círculo
-        visible — mismo criterio de accesibilidad táctil
-        que ya usa ".ficha__boton-invertir" más arriba
-        (28px de hit-area sobre un glifo más chico), acá
-        vía outline-offset actuando como padding de foco/
-        click en vez de agrandar el círculo mismo.
-    */
+    /* área de toque real más grande que el círculo visible, vía outline-offset (mismo criterio que ".ficha__boton-invertir") */
     outline-offset: 9px;
 
     transition:
@@ -3435,39 +2480,18 @@ html::-webkit-scrollbar-button:hover {
         transform .2s ease;
 }
 
-/*
-    FIX (reportado: "hay unos que miden 14 pero otros que
-    miden 11 conforme mas abajo estan"): esta regla achicaba
-    a propósito los dots de ficha frente a los de fase fija
-    (11px vs 9px originalmente, después 14px vs 11px al
-    subir el tamaño base) para reforzar en la forma la
-    jerarquía "4 paradas grandes + n paradas chicas". El
-    tamaño base ya sube en la regla ".paginacion__dot" de
-    arriba — no hace falta además esta diferenciación: se
-    saca para que TODOS los dots inactivos midan lo mismo,
-    sin importar en qué parte del rail estén.
-*/
-
 .paginacion__dot:hover,
 .paginacion__dot:focus-visible {
     border-color: var(--color-primario);
 }
 
 /*
-    FIX (reportado: "no me gusta el fill blanco" / "el dot
-    activo es muy grande"): antes este estado llevaba
-    fill blanco sólido + scale(1.15) — dos señales de
-    "esto está prendido" (relleno Y tamaño) compitiendo,
-    además, con el blob de vidrio que ya viaja por detrás
-    como indicador principal (su propio color primario +
-    brillo). Ahora el dot activo se resuelve con el MISMO
-    lenguaje que ya usan :hover/:focus-visible (solo
-    borde, sin fill) — el círculo queda "vacío" y es el
-    blob, no el dot, el que aporta color y masa visual.
-    El único plus propio del estado activo es un aumento
-    de escala sutil (1.08, no 1.15) para que el punto se
-    note ligeramente más firme incluso en el instante en
-    que el blob todavía está en tránsito hacia él.
+    Dot activo: mismo lenguaje que hover/focus-visible (solo
+    borde, sin fill) — el círculo queda "vacío" y es el blob,
+    no el dot, el que aporta color y masa visual. El único
+    plus propio es un aumento de escala sutil, para que el
+    punto se note ligeramente más firme incluso mientras el
+    blob todavía está en tránsito hacia él.
 */
 .paginacion__dot--activo {
     border-color: var(--color-primario);
@@ -3477,14 +2501,11 @@ html::-webkit-scrollbar-button:hover {
 
 .paginacion__etiqueta {
     /*
-        position:absolute (no margin-right dentro del flujo
+        position:absolute (no margin-right en el flujo
         normal): así el <li> no crece con el largo del
-        texto — ver el comentario en ".paginacion__item"
-        sobre por qué esto era justo el bug de X reportado.
-        "right: calc(100% + 12px)" la ancla al borde
-        izquierdo del propio <li> (que ahora mide lo mismo
-        que el botón) con 12px de aire, sin que ese ancho
-        vuelva a filtrarse al layout del rail.
+        texto. "right:calc(100% + 12px)" la ancla al borde
+        izquierdo del propio <li> con 12px de aire, sin que
+        ese ancho se filtre al layout del rail.
     */
     position: absolute;
     top: 50%;
@@ -3513,14 +2534,11 @@ html::-webkit-scrollbar-button:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-
     /*
-        El blob sigue moviéndose al punto correcto (sería
-        peor apagarlo del todo: dejaría de indicar nada),
-        pero de un salto — sin el rebote elástico — y sin
-        el pulso de "respirar" infinito, que es exactamente
-        el tipo de movimiento continuo que este media query
-        existe para evitar.
+        El blob sigue moviéndose al punto correcto (apagarlo
+        del todo sería peor: dejaría de indicar nada), pero
+        de un salto, sin el rebote elástico ni el pulso de
+        "respirar" infinito.
     */
     .paginacion__blob {
         transition: opacity .15s ease;
@@ -3529,20 +2547,10 @@ html::-webkit-scrollbar-button:hover {
     .paginacion__blob-nucleo {
         animation: none;
     }
-
 }
 
-/*
-    Celular: sin espacio cómodo para la etiqueta flotante
-    (y sin hover que la dispare), y "#ficha-panel-marco"
-    ya usa este mismo quiebre para pasar a bottom-sheet —
-    el rail se corre más cerca del borde y pierde la
-    etiqueta, pero se mantiene tappeable: el tamaño del
-    punto no cambia, solo el hit-area vía outline-offset
-    sigue dando margen para el dedo.
-*/
+/* Celular: sin espacio para la etiqueta flotante (y sin hover que la dispare) — el rail se corre más cerca del borde */
 @media (max-width: 780px) {
-
     #galeria-paginacion {
         right: 10px;
     }
@@ -3550,16 +2558,13 @@ html::-webkit-scrollbar-button:hover {
     .paginacion__etiqueta {
         display: none;
     }
-
 }
 
 
 /* =========================
    PIE DE PÁGINA
-   (misma .pie de footer.css;
-   acá solo nos aseguramos de
-   que quede por encima de
-   #galeria-escena-fija en el
+   (misma .pie de footer.css; acá solo nos aseguramos de
+   que quede por encima de #galeria-escena-fija en el
    instante de la transición)
 ========================= */
 
