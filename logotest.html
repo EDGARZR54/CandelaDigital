@@ -1,20 +1,55 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
+<head> 
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Animacion</title>
 <style>
   html, body {
     margin: 0;
+    padding: 0;
+    width: 100%;
     height: 100%;
+    overflow: hidden; /* pagina de inicio: sin scroll, solo el logo */
+    background: #000000; /* arranca en negro, fijo hasta terminar la intro */
+    /* Sin transition a proposito: el cambio de fondo debe ser instantaneo, no un fundido */
+  }
+  #svg-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #ffffff;
   }
   svg {
-    max-width: 90vw;
-    max-height: 90vh;
+    display: block;
+    width: min(27.5vw, 320px); /* 50% mas chico que el tamaño original (55vw, 640px) */
+    height: auto;
+    max-height: 42.5vh; /* tambien reducido a la mitad para mantener la proporcion */
+    transition: none;
+  }
+  /* Efecto de "respiracion" tipo loading.
+     IMPORTANTE: se anima "opacity" (el elemento entero), no "fill-opacity".
+     Cada forma rellena trae ademas su propio borde de 1px del mismo color
+     (hairline que Illustrator agrega para tapar costuras de antialiasing).
+     Si solo animaramos el fill y dejabamos ese borde fijo en opacidad 1,
+     se genera contraste simultaneo entre un borde siempre opaco y un
+     relleno que sube y baja: el ojo lo percibe como si el trazo tambien
+     respirara, aunque su opacidad nunca cambia. Animando "opacity" en el
+     elemento completo, el relleno y su propio borde se atenuan siempre
+     juntos, como una sola unidad, y desaparece el contraste.
+     Esta clase SOLO se aplica (via JS, ver tagBreathingElements) a los
+     elementos que realmente tienen relleno -- el trazo grueso de
+     construccion (fill:none) nunca la recibe y queda siempre fijo. */
+  svg .breathe {
+    animation: breathe 2.4s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 0.15; }
+    50%      { opacity: 1; }
   }
   #error-msg {
     font-family: sans-serif;
@@ -26,16 +61,214 @@
 </head>
 <body>
 <div id="svg-container"></div>
-
 <script>
 (function () {
   // --- Configuracion --------------------------------------------------
   var SVG_URL = "https://edgarzr54.github.io/CandelaDigital/AnimatedLogo.svg";
   var CONSTRUCTION_END = 59;   // ultimo frame de la construccion (0-indexed)
   var FPS = 30;                // velocidad de reproduccion (no depende del timing baked del svg)
+
+  // Paleta de fondos para probar el contraste/rendimiento del logo.
+  // El cambio entre colores es random y de golpe (sin degradado).
+  // Se incluyen tonos claros, oscuros y saturados a proposito.
+  var BG_COLORS = [
+    "#ffffff",           // blanco
+    "#000000",           // negro
+    "rgb(198, 81, 54)",  // terracota
+    "rgb(15, 107, 211)", // azul
+    "#007C00",           // verde
+    "#FFD100",           // amarillo
+    "rgb(139, 0, 255)",  // violeta
+    "#FF0090",           // magenta
+    "#00CFFF",           // cian
+    "#808080",           // gris medio
+    "#7A4B2A",           // marron
+    "#F2F2F2"            // gris muy claro (caso limite cerca del blanco)
+  ];
+  var MIN_INTERVAL = 1200; // ms, tiempo minimo entre cambios de fondo
+  var MAX_INTERVAL = 3000; // ms, tiempo maximo entre cambios de fondo
   // ---------------------------------------------------------------------
 
   var container = document.getElementById("svg-container");
+
+  // --- Utilidades de color ---------------------------------------------
+
+  function parseColorToRgb(colorStr) {
+    colorStr = colorStr.trim();
+    if (colorStr[0] === "#") {
+      var hex = colorStr.slice(1);
+      if (hex.length === 3) {
+        hex = hex.split("").map(function (c) { return c + c; }).join("");
+      }
+      var num = parseInt(hex, 16);
+      return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+    }
+    var match = colorStr.match(/rgba?\(([^)]+)\)/);
+    if (match) {
+      var parts = match[1].split(",").map(function (s) { return parseFloat(s); });
+      return [parts[0], parts[1], parts[2]];
+    }
+    return [0, 0, 0];
+  }
+
+  function relativeLuminance(colorStr) {
+    var rgb = parseColorToRgb(colorStr);
+    return 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2];
+  }
+
+  // --- Secuencia de fondo + contraste del logo ---------------------------
+  // El logo (svg) SOLO alterna entre negro y blanco, nunca toma los colores
+  // de acento. Se elige segun la luminancia del fondo actual, para que
+  // siempre quede legible: fondo claro -> logo negro, fondo oscuro -> logo blanco.
+  //
+  // Secuencia pedida:
+  //   1) Arranca en negro y se queda fija mientras corre la intro
+  //      (construccion + una vuelta completa del loop de rotacion).
+  //   2) Al terminar esa primera vuelta, pasa a blanco.
+  //   3) De ahi en adelante, cicla al azar por el resto de la paleta
+  //      (colores de golpe, sin degradado), para probar el logo contra
+  //      distintos fondos.
+
+  var currentBgIndex = BG_COLORS.indexOf("#000000");
+  var introComplete = false;
+  var colorCycleStarted = false;
+
+  function setBackground(color) {
+    document.body.style.backgroundColor = color; // cambio instantaneo, no hay transition en CSS
+    applyLogoColorFor(color);
+  }
+
+  function applyLogoColorFor(bgColor) {
+    var svg = container.querySelector("svg");
+    if (!svg) return;
+    var lum = relativeLuminance(bgColor);
+    var logoColor = lum > 128 ? "#000000" : "#ffffff";
+    svg.style.color = logoColor; // de golpe, sin degradado
+  }
+
+  function randomInterval() {
+    return MIN_INTERVAL + Math.random() * (MAX_INTERVAL - MIN_INTERVAL);
+  }
+
+  function pickRandomColor() {
+    var idx;
+    do {
+      idx = Math.floor(Math.random() * BG_COLORS.length);
+    } while (idx === currentBgIndex && BG_COLORS.length > 1);
+    currentBgIndex = idx;
+    return BG_COLORS[idx];
+  }
+
+  function randomCycleStep() {
+    setBackground(pickRandomColor());
+    setTimeout(randomCycleStep, randomInterval());
+  }
+
+  // Llamado por el reproductor de frames cuando se completa la primera
+  // vuelta del loop (ver advanceFrame mas abajo).
+  function onIntroComplete() {
+    if (colorCycleStarted) return;
+    colorCycleStarted = true;
+
+    currentBgIndex = BG_COLORS.indexOf("#ffffff");
+    setBackground("#ffffff");
+
+    setTimeout(randomCycleStep, randomInterval());
+  }
+
+  // --- Deteccion de formas con relleno + limpieza de contornos duplicados -
+  // El SVG fuente trae, por cada forma rellena, un "hairline" de 1px del
+  // mismo color como parte del propio elemento (fill + stroke juntos), y
+  // A VECES ademas una segunda copia EXACTA de esa geometria dibujada
+  // encima, con fill:none y solo stroke (refuerzo redundante del mismo
+  // borde). Si esa copia se queda como esta, permanece siempre 100%
+  // opaca por encima de una forma que va a atenuarse, y el contraste
+  // entre ambas se ve como si el trazo "respirara" sin que su opacidad
+  // cambie realmente.
+  //
+  // Este parser NO depende de que el SVG fuente se regenere: procesa
+  // cualquier SVG que llegue por fetch, leyendo las clases de su propio
+  // <style> para resolver el "fill" real de cada elemento.
+
+  function parseClassProps(styleText) {
+    var props = {};
+    var ruleRe = /([^{}]+)\{([^{}]*)\}/g;
+    var m;
+    while ((m = ruleRe.exec(styleText))) {
+      var selectors = m[1].split(",");
+      var decl = {};
+      m[2].split(";").forEach(function (pair) {
+        var idx = pair.indexOf(":");
+        if (idx > -1) {
+          var k = pair.slice(0, idx).trim();
+          var v = pair.slice(idx + 1).trim();
+          if (k) decl[k] = v;
+        }
+      });
+      selectors.forEach(function (sel) {
+        sel = sel.trim();
+        if (sel.charAt(0) === ".") {
+          var name = sel.slice(1);
+          props[name] = props[name] || {};
+          for (var key in decl) { props[name][key] = decl[key]; }
+        }
+      });
+    }
+    return props;
+  }
+
+  function resolveFill(el, classProps) {
+    var classAttr = el.getAttribute("class") || "";
+    var classes = classAttr.split(/\s+/).filter(Boolean);
+    var fill = "none";
+    classes.forEach(function (c) {
+      if (classProps[c] && classProps[c].fill !== undefined) {
+        fill = classProps[c].fill;
+      }
+    });
+    return fill;
+  }
+
+  function geometryKey(el) {
+    var tag = el.tagName.toLowerCase();
+    var raw = tag === "path" ? el.getAttribute("d") : el.getAttribute("points");
+    return (raw || "").replace(/\s+/g, "");
+  }
+
+  function tagBreathingElements(svg) {
+    var styleEl = svg.querySelector("defs style");
+    var classProps = styleEl ? parseClassProps(styleEl.textContent) : {};
+
+    var frameGroups = Array.prototype.filter.call(svg.children, function (el) {
+      return el.tagName.toLowerCase() === "g";
+    });
+
+    frameGroups.forEach(function (g) {
+      var seenFilledGeometry = {}; // geometria ya vista con fill real, DENTRO de este frame
+      Array.prototype.forEach.call(g.children, function (el) {
+        var tag = el.tagName.toLowerCase();
+        if (tag !== "path" && tag !== "polyline" && tag !== "circle") return;
+
+        var fill = resolveFill(el, classProps);
+        var key = geometryKey(el);
+
+        if (fill && fill !== "none") {
+          // Forma con relleno real: respira como unidad (fill + su propio borde).
+          el.classList.add("breathe");
+          if (key) seenFilledGeometry[key] = true;
+        } else if (key && seenFilledGeometry[key]) {
+          // Contorno duplicado de una forma que ya vimos con relleno en
+          // este mismo frame: es un refuerzo redundante, se oculta para
+          // que no quede pisando con opacidad fija por encima.
+          el.style.display = "none";
+        }
+        // Resto (trazos genuinos como el de construccion, fill:none y sin
+        // geometria duplicada): no se toca. Queda fijo, sin animacion.
+      });
+    });
+  }
+
+  // --- Carga del SVG y reproduccion de frames ----------------------------
 
   fetch(SVG_URL)
     .then(function (res) {
@@ -43,8 +276,20 @@
       return res.text();
     })
     .then(function (svgText) {
+      // El SVG original pinta todo con "#000000" / "Black" fijos en los
+      // <style>. Los reemplazamos por currentColor para poder controlar
+      // el color (negro/blanco) desde afuera con svg.style.color, sin
+      // tocar los "fill:none" (esos quedan intactos).
+      svgText = svgText
+        .replace(/#000000/g, "currentColor")
+        .replace(/\bBlack\b/g, "currentColor");
+
       container.innerHTML = svgText;
       initPlayer();
+
+      // El fondo arranca en negro (ver CSS de html/body), asi que el logo
+      // arranca en blanco. Esto se mantiene fijo hasta que termine la intro.
+      applyLogoColorFor("#000000");
     })
     .catch(function (err) {
       container.innerHTML = '<div id="error-msg">No se pudo cargar el SVG (' + err.message + ').<br>Revisa la URL en SVG_URL.</div>';
@@ -58,15 +303,15 @@
       return;
     }
 
+    tagBreathingElements(svg);
+
     var frames = Array.prototype.filter.call(svg.children, function (el) {
       return el.tagName.toLowerCase() === "g";
     });
-
     if (frames.length === 0) {
       console.warn("No se encontraron grupos <g> de frames dentro del SVG.");
       return;
     }
-
     // El SVG ya trae un timing SMIL baked (<set>) que reproduce todo una
     // sola vez sin loop -- no alcanza para reproducir construccion + loop
     // parcial. Lo pausamos y tomamos control manual de la visibilidad de
@@ -76,20 +321,16 @@
     if (typeof svg.pauseAnimations === "function") {
       svg.pauseAnimations();
     }
-
     var LOOP_START = CONSTRUCTION_END + 1;
     var LOOP_END = frames.length - 1;
     var FRAME_DURATION = 1000 / FPS;
-
     var phase = "construction";
     var idx = 0;
-
     function showFrame(i) {
       for (var k = 0; k < frames.length; k++) {
         frames[k].style.visibility = (k === i) ? "visible" : "hidden";
       }
     }
-
     function advanceFrame() {
       showFrame(idx);
       if (phase === "construction") {
@@ -100,26 +341,33 @@
           idx = LOOP_START;
         }
       } else {
-        idx = (idx >= LOOP_END) ? LOOP_START : idx + 1;
+        if (idx >= LOOP_END) {
+          idx = LOOP_START;
+          // El indice acaba de "dar la vuelta" por primera vez: se completo
+          // la construccion + una rotacion entera del loop. A partir de aca
+          // arranca la secuencia de colores de fondo.
+          if (!introComplete) {
+            introComplete = true;
+            onIntroComplete();
+          }
+        } else {
+          idx++;
+        }
       }
     }
-
     var lastTime = null;
     var acc = 0;
-
     function tick(now) {
       if (lastTime === null) lastTime = now;
       var delta = now - lastTime;
       lastTime = now;
       acc += delta;
-
       while (acc >= FRAME_DURATION) {
         acc -= FRAME_DURATION;
         advanceFrame();
       }
       requestAnimationFrame(tick);
     }
-
     showFrame(0);
     requestAnimationFrame(tick);
   }
