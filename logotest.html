@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Animacion</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+  }
+  svg {
+    max-width: 90vw;
+    max-height: 90vh;
+  }
+  #error-msg {
+    font-family: sans-serif;
+    color: #b00020;
+    padding: 1rem;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div id="svg-container"></div>
+
+<script>
+(function () {
+  // --- Configuracion --------------------------------------------------
+  var SVG_URL = "https://edgarzr54.github.io/CandelaDigital/AnimatedLogo.svg";
+  var CONSTRUCTION_END = 59;   // ultimo frame de la construccion (0-indexed)
+  var FPS = 30;                // velocidad de reproduccion (no depende del timing baked del svg)
+  // ---------------------------------------------------------------------
+
+  var container = document.getElementById("svg-container");
+
+  fetch(SVG_URL)
+    .then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.text();
+    })
+    .then(function (svgText) {
+      container.innerHTML = svgText;
+      initPlayer();
+    })
+    .catch(function (err) {
+      container.innerHTML = '<div id="error-msg">No se pudo cargar el SVG (' + err.message + ').<br>Revisa la URL en SVG_URL.</div>';
+      console.error("Error cargando el SVG:", err);
+    });
+
+  function initPlayer() {
+    var svg = container.querySelector("svg");
+    if (!svg) {
+      container.innerHTML = '<div id="error-msg">El contenido cargado no es un SVG valido.</div>';
+      return;
+    }
+
+    var frames = Array.prototype.filter.call(svg.children, function (el) {
+      return el.tagName.toLowerCase() === "g";
+    });
+
+    if (frames.length === 0) {
+      console.warn("No se encontraron grupos <g> de frames dentro del SVG.");
+      return;
+    }
+
+    // El SVG ya trae un timing SMIL baked (<set>) que reproduce todo una
+    // sola vez sin loop -- no alcanza para reproducir construccion + loop
+    // parcial. Lo pausamos y tomamos control manual de la visibilidad de
+    // cada grupo via JS. Como escribimos directo sobre "style" (mayor
+    // prioridad en CSS que el atributo de presentacion que toca SMIL),
+    // esto funciona igual aunque pauseAnimations() no este soportado.
+    if (typeof svg.pauseAnimations === "function") {
+      svg.pauseAnimations();
+    }
+
+    var LOOP_START = CONSTRUCTION_END + 1;
+    var LOOP_END = frames.length - 1;
+    var FRAME_DURATION = 1000 / FPS;
+
+    var phase = "construction";
+    var idx = 0;
+
+    function showFrame(i) {
+      for (var k = 0; k < frames.length; k++) {
+        frames[k].style.visibility = (k === i) ? "visible" : "hidden";
+      }
+    }
+
+    function advanceFrame() {
+      showFrame(idx);
+      if (phase === "construction") {
+        if (idx < CONSTRUCTION_END) {
+          idx++;
+        } else {
+          phase = "loop";
+          idx = LOOP_START;
+        }
+      } else {
+        idx = (idx >= LOOP_END) ? LOOP_START : idx + 1;
+      }
+    }
+
+    var lastTime = null;
+    var acc = 0;
+
+    function tick(now) {
+      if (lastTime === null) lastTime = now;
+      var delta = now - lastTime;
+      lastTime = now;
+      acc += delta;
+
+      while (acc >= FRAME_DURATION) {
+        acc -= FRAME_DURATION;
+        advanceFrame();
+      }
+      requestAnimationFrame(tick);
+    }
+
+    showFrame(0);
+    requestAnimationFrame(tick);
+  }
+})();
+</script>
+</body>
+</html>
