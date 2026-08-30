@@ -225,11 +225,54 @@
 	// toca el mouse/touch para navegar, lo soltamos: ya cumplió su propósito
 	// (mostrar el roll correcto al entrar a la vista de la cámara) y a partir
 	// de ahí el control pasa a ser 100% del OrbitControls normal.
+	//
+	// Además: al "volar" a la posición del dron dejamos el radio de órbita
+	// (view.radius) muy corto —la distancia estimada hasta el terreno,
+	// típicamente 15-50m—, porque ahí es donde apunta la foto. Con un radio
+	// tan chico, orbitar con OrbitControls se siente como girar la cámara
+	// sobre sí misma (el pivote queda pegado a la cámara) en vez de girar
+	// alrededor de la escena. La primera vez que el usuario interactúa
+	// después de volar, lo agrandamos a algo más navegable.
+	// Además: al "volar" a la posición del dron dejamos el radio de órbita
+	// (view.radius) muy corto —la distancia estimada hasta el terreno,
+	// típicamente 15-50m—, porque ahí es donde apunta la foto. Con un radio
+	// tan chico, orbitar con OrbitControls se siente como girar la cámara
+	// sobre sí misma (el pivote queda pegado a la cámara) en vez de girar
+	// alrededor de la escena. La primera vez que el usuario interactúa
+	// después de volar, lo recalculamos: tiramos un rayo desde la cámara en
+	// la dirección en la que está mirando y medimos dónde cruza el
+	// bounding box real de la nube (no un número inventado). Si no cruza
+	// (por ej. si mira para un costado), usamos la distancia al centro de
+	// la nube como respaldo.
+	const FALLBACK_ORBIT_RADIUS = 25; // solo si ni siquiera hay bounding box cargado
+	function computeOrbitRadius(camPos, forward){
+		if (pointcloudBBox){
+			const hit = new THREE.Vector3();
+			const ray = new THREE.Ray(camPos, forward);
+			if (ray.intersectBox(pointcloudBBox, hit)){
+				return camPos.distanceTo(hit);
+			}
+			const center = pointcloudBBox.getCenter(new THREE.Vector3());
+			return camPos.distanceTo(center);
+		}
+		return FALLBACK_ORBIT_RADIUS;
+	}
+
+	let justFlew = false;
 	const renderArea = document.getElementById('potree_render_area');
 	['mousedown','wheel','touchstart'].forEach(evt => {
 		renderArea.addEventListener(evt, () => {
 			cameraRollRad = 0;
 			rollTarget = null;
+			if (justFlew){
+				justFlew = false;
+				const view = viewer.scene && viewer.scene.view;
+				if (view && 'radius' in view && lastShot){
+					const forward = lastShot.target.clone().sub(lastShot.camPos).normalize();
+					const goodRadius = computeOrbitRadius(lastShot.camPos, forward);
+					if (view.radius < goodRadius) view.radius = goodRadius;
+				}
+			}
 		}, { passive: true });
 	});
 
@@ -273,12 +316,19 @@ window.fetch = function(url, options) {
 };
 
 
+	let pointcloudBBox = null; // THREE.Box3 en coords de mundo, para calcular radios de órbita razonables
+
 	Potree.loadPointCloud("js/potree/nubes/15m_utm14n_converted/metadata.json", "15m", function (e) {
 		viewer.scene.addPointCloud(e.pointcloud);
 
 		let material = e.pointcloud.material;
 		material.size = 1;
 		material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
+
+		if (e.pointcloud.boundingBox){
+			pointcloudBBox = e.pointcloud.boundingBox.clone();
+			if (e.pointcloud.matrixWorld) pointcloudBBox.applyMatrix4(e.pointcloud.matrixWorld);
+		}
 
 		viewer.fitToScreen();
 	});
@@ -718,6 +768,8 @@ window.fetch = function(url, options) {
 		if ('radius' in view) view.radius = camPos.distanceTo(target);
 
 		viewer.setFOV(vfovDeg);
+
+		justFlew = true;
 
 		// Potree (yaw/pitch) no sabe de roll; lo aplicamos aparte cada frame
 		// directamente sobre la cámara Three.js (ver evento 'update' arriba).
