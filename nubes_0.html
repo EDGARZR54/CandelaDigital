@@ -208,9 +208,15 @@
 		// Reconstruimos la orientación desde una base "sin roll" cada frame
 		// (no una rotación relativa) para que el roll no se vaya acumulando
 		// frame a frame.
+		//
+		// OJO con el signo: después de lookAt(), el eje Z LOCAL de la cámara
+		// apunta hacia ATRÁS (no hacia "forward"), así que rotar alrededor de
+		// ese eje local con +ángulo gira en sentido contrario a como rotamos
+		// el plano de la foto (que usa +forward como eje). Por eso acá va
+		// el ángulo negado.
 		camera.up.set(0, 0, 1);
 		camera.lookAt(rollTarget);
-		camera.rotateZ(cameraRollRad);
+		camera.rotateZ(-cameraRollRad);
 	});
 
 	// El enganche de roll de arriba corre en TODOS los frames y pisa lo que
