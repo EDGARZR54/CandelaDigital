@@ -92,6 +92,21 @@
 	#dropzone.drag{ border-color: var(--phosphor); background: rgba(99,242,160,0.06); color: var(--ink); }
 	#fileInput{ display:none; }
 
+	.miniDrop{
+		border: 1px dashed var(--phosphor-dim);
+		padding: 10px 8px;
+		text-align:center;
+		cursor:pointer;
+		font-size: 10px;
+		color: var(--ink-dim);
+		margin-bottom: 8px;
+		transition: border-color .15s, background .15s;
+	}
+	.miniDrop.drag{ border-color: var(--phosphor); background: rgba(99,242,160,0.06); color: var(--ink); }
+	.miniDrop.loaded{ border-style: solid; color: var(--phosphor); }
+	#xmlFileInput{ display:none; }
+	#xmlStatus{ font-size: 10px; color: var(--ink-dim); margin: -4px 0 8px; text-align:center; }
+
 	#readout{ margin-top:10px; display:none; }
 	#readout .row{
 		display:flex; justify-content:space-between; gap:8px;
@@ -136,6 +151,10 @@
 <div id="photoPanel">
 	<div class="head" id="photoPanelHead">Foto sobre la nube <span id="collapseIcon">▾</span></div>
 	<div class="body">
+		<div id="xmlDropzone" class="miniDrop">Cargar cámaras ajustadas<br>(XML exportado de Metashape)</div>
+		<input type="file" id="xmlFileInput" accept=".xml,text/xml">
+		<div id="xmlStatus"></div>
+
 		<div id="dropzone">Arrastrá una foto JPG del dron aquí<br>(o hacé clic para elegirla)</div>
 		<input type="file" id="fileInput" accept="image/jpeg,.jpg,.jpeg">
 
@@ -260,9 +279,175 @@ window.fetch = function(url, options) {
 	// =========================================================================
 
 	const PROJ4_UTM14N = "+proj=utm +zone=14 +datum=WGS84 +units=m +no_defs";
+	const PROJ4_ECEF   = "+proj=geocent +datum=WGS84 +units=m +no_defs";
+
+	// =========================================================================
+	// Cámaras ajustadas (bundle adjustment de Agisoft Metashape).
+	//
+	// El EXIF crudo del dron es solo el punto de partida que usó Metashape;
+	// durante el alineamiento esas posiciones/orientaciones se refinan.
+	// El XML exportado ("Export Cameras") trae, por cámara, la pose YA
+	// AJUSTADA como una matriz 4x4 en el sistema de coordenadas interno del
+	// chunk, más una transformación de chunk -> mundo (rotación + traslación
+	// + escala) cuyo resultado es ECEF (geocéntrico WGS84, en metros: por
+	// eso la traslación son números de ~6 dígitos, del orden del radio
+	// terrestre).
+	//
+	// Para usar esa pose en nuestra escena (que vive en UTM 14N + altura):
+	//   1) posición/ejes de la cámara en coords locales del chunk
+	//      (columna de traslación / columnas de rotación de <camera><transform>)
+	//   2) aplicar la transform de chunk (rotación*escala + traslación) -> ECEF
+	//   3) ECEF -> lon/lat/altura (geográficas WGS84) con proj4
+	//   4) lon/lat -> UTM 14N (igual que con las fotos sueltas); la altura
+	//      queda directamente como Z, sin tocar (mismo criterio que usamos
+	//      en todo lo demás)
+	//   5) los EJES de la cámara (right/up/forward) se llevan de ECEF a un
+	//      sistema local Este-Norte-Arriba (ENU) en el punto de la cámara;
+	//      ENU y nuestro mundo UTM/altura son esencialmente el mismo marco
+	//      a esta escala (decenas de metros), así que right/up/forward en
+	//      ENU son directamente utilizables como right/up/forward del plano.
+	// =========================================================================
+
+	let cameraDB = null; // { hFOVdeg, vFOVdeg, Rc[9], Tc[3], scale, camerasByLabel: Map }
+
+	function parseCamerasXML(xmlText){
+		const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+		if (doc.querySelector('parsererror')) throw new Error('El XML no se pudo interpretar (¿es el export de cámaras de Metashape?).');
+
+		const sensorEl = doc.querySelector('sensors > sensor');
+		if (!sensorEl) throw new Error('No encontré <sensor> en el XML.');
+		const calibEl = sensorEl.querySelector('calibration');
+		if (!calibEl) throw new Error('El sensor no trae <calibration> (¿el chunk está alineado?).');
+		const resEl = calibEl.querySelector('resolution');
+		const fPix  = parseFloat(calibEl.querySelector('f').textContent);
+		const wPix  = parseFloat(resEl.getAttribute('width'));
+		const hPix  = parseFloat(resEl.getAttribute('height'));
+		const hFOVdeg = 2 * Math.atan(wPix / (2 * fPix)) * 180 / Math.PI;
+		const vFOVdeg = 2 * Math.atan(hPix / (2 * fPix)) * 180 / Math.PI;
+
+		const chunkTransformEl = doc.querySelector('chunk > transform');
+		if (!chunkTransformEl) throw new Error('No encontré la transform del chunk (chunk > transform).');
+		const Rc = chunkTransformEl.querySelector('rotation').textContent.trim().split(/\s+/).map(Number);
+		const Tc = chunkTransformEl.querySelector('translation').textContent.trim().split(/\s+/).map(Number);
+		const scale = parseFloat(chunkTransformEl.querySelector('scale').textContent);
+
+		const camerasByLabel = new Map();
+		let alignedCount = 0;
+		doc.querySelectorAll('cameras > camera').forEach(camEl => {
+			const label = camEl.getAttribute('label');
+			const transformEl = camEl.querySelector('transform');
+			const entry = { label, aligned: !!transformEl };
+			if (transformEl){
+				entry.localMatrix = transformEl.textContent.trim().split(/\s+/).map(Number);
+				alignedCount++;
+			}
+			camerasByLabel.set(label, entry);
+		});
+
+		return { hFOVdeg, vFOVdeg, Rc, Tc, scale, camerasByLabel, alignedCount, total: camerasByLabel.size };
+	}
+
+	function mat3VecMul(R, v){
+		return [
+			R[0]*v[0] + R[1]*v[1] + R[2]*v[2],
+			R[3]*v[0] + R[4]*v[1] + R[5]*v[2],
+			R[6]*v[0] + R[7]*v[1] + R[8]*v[2]
+		];
+	}
+	function vNormalize(v){
+		const len = Math.hypot(v[0], v[1], v[2]) || 1;
+		return [v[0]/len, v[1]/len, v[2]/len];
+	}
+	function vDot(a,b){ return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
+
+	// Pose ajustada (posición + ejes right/up/forward) de una cámara alineada,
+	// ya llevada a UTM 14N + ENU local.
+	function computeAdjustedPose(entry){
+		const M = entry.localMatrix; // 4x4 fila por fila: m00 m01 m02 m03 m10 m11 ... m33
+		const camPosLocal = [M[3], M[7], M[11]];
+		// columnas de la parte de rotación = ejes de la cámara en coords locales del chunk
+		// (convención Agisoft: X=derecha, Y=arriba, Z=hacia atrás de la vista)
+		const rightLocal = [M[0], M[4], M[8]];
+		const upLocal     = [M[1], M[5], M[9]];
+		const backLocal   = [M[2], M[6], M[10]];
+
+		const Rc = cameraDB.Rc, Tc = cameraDB.Tc, s = cameraDB.scale;
+
+		const posEcef = mat3VecMul(Rc, camPosLocal).map((v,i) => v*s + Tc[i]);
+		const rightEcef = mat3VecMul(Rc, rightLocal);
+		const upEcef    = mat3VecMul(Rc, upLocal);
+		const forwardEcef = mat3VecMul(Rc, backLocal).map(v => -v);
+
+		const [lon, lat, h] = proj4(PROJ4_ECEF, 'EPSG:4326', posEcef);
+
+		const lonRad = lon*Math.PI/180, latRad = lat*Math.PI/180;
+		const sinLon = Math.sin(lonRad), cosLon = Math.cos(lonRad);
+		const sinLat = Math.sin(latRad), cosLat = Math.cos(latRad);
+		const East  = [-sinLon, cosLon, 0];
+		const North = [-sinLat*cosLon, -sinLat*sinLon, cosLat];
+		const Up    = [cosLat*cosLon, cosLat*sinLon, sinLat];
+		const toENU = (v) => vNormalize([vDot(v,East), vDot(v,North), vDot(v,Up)]); // x=Este, y=Norte, z=Arriba
+
+		const rightENU   = toENU(rightEcef);
+		const upENU      = toENU(upEcef);
+		const forwardENU = toENU(forwardEcef);
+
+		const utm = proj4('EPSG:4326', PROJ4_UTM14N, [lon, lat]);
+		const camPos = new THREE.Vector3(utm[0], utm[1], h);
+
+		return {
+			camPos,
+			right:   new THREE.Vector3(rightENU[0],   rightENU[1],   rightENU[2]),
+			up:      new THREE.Vector3(upENU[0],      upENU[1],      upENU[2]),
+			forward: new THREE.Vector3(forwardENU[0], forwardENU[1], forwardENU[2])
+		};
+	}
+
+	// A partir de yaw/pitch/roll "de vuelo" (grados), construye la misma
+	// terna right/up/forward que usa computeAdjustedPose — es el método
+	// de respaldo cuando no hay XML o la foto no está en él.
+	function basisFromYPR(yawDeg, pitchDeg, rollDeg){
+		const yawRad = yawDeg * Math.PI/180;
+		const pitchRad = pitchDeg * Math.PI/180;
+		const rollRad = rollDeg * Math.PI/180;
+
+		const forward = new THREE.Vector3(
+			Math.cos(pitchRad) * Math.sin(yawRad),
+			Math.cos(pitchRad) * Math.cos(yawRad),
+			Math.sin(pitchRad)
+		).normalize();
+
+		const worldUp = new THREE.Vector3(0,0,1);
+		let right = new THREE.Vector3().crossVectors(forward, worldUp);
+		if (right.lengthSq() < 1e-6) right.set(1,0,0); else right.normalize();
+		let up = new THREE.Vector3().crossVectors(right, forward).normalize();
+
+		const rollQuat = new THREE.Quaternion().setFromAxisAngle(forward, rollRad);
+		right.applyQuaternion(rollQuat);
+		up.applyQuaternion(rollQuat);
+
+		return { right, up, forward };
+	}
+
+	// Angulo de roll equivalente de una terna right/up/forward, relativo a
+	// la orientación "sin roll" (horizonte nivelado) para ese mismo forward.
+	// Se usa solo para la compensación visual de roll en la vista primera
+	// persona (ver evento 'update' más abajo).
+	function rollAngleFromBasis(forward, up){
+		const worldUp = new THREE.Vector3(0,0,1);
+		let right0 = new THREE.Vector3().crossVectors(forward, worldUp);
+		if (right0.lengthSq() < 1e-6) return 0;
+		right0.normalize();
+		const up0 = new THREE.Vector3().crossVectors(right0, forward).normalize();
+		const cross = new THREE.Vector3().crossVectors(up0, up);
+		return Math.atan2(cross.dot(forward), up0.dot(up));
+	}
 
 	const dropzone   = document.getElementById('dropzone');
 	const fileInput  = document.getElementById('fileInput');
+	const xmlDropzone = document.getElementById('xmlDropzone');
+	const xmlFileInput = document.getElementById('xmlFileInput');
+	const xmlStatus  = document.getElementById('xmlStatus');
 	const readout    = document.getElementById('readout');
 	const opacityRow = document.getElementById('opacityRow');
 	const opacitySlider = document.getElementById('opacitySlider');
@@ -302,6 +487,35 @@ window.fetch = function(url, options) {
 	dropzone.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) handlePhoto(f); });
 	dropzone.addEventListener('click', () => fileInput.click());
 	fileInput.addEventListener('change', () => { if (fileInput.files[0]) handlePhoto(fileInput.files[0]); });
+
+	['dragenter','dragover'].forEach(evt => {
+		xmlDropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); xmlDropzone.classList.add('drag'); });
+	});
+	['dragleave','drop'].forEach(evt => {
+		xmlDropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); xmlDropzone.classList.remove('drag'); });
+	});
+	xmlDropzone.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) handleCamerasXML(f); });
+	xmlDropzone.addEventListener('click', () => xmlFileInput.click());
+	xmlFileInput.addEventListener('change', () => { if (xmlFileInput.files[0]) handleCamerasXML(xmlFileInput.files[0]); });
+
+	async function handleCamerasXML(file){
+		xmlStatus.style.display = 'block';
+		xmlStatus.style.color = '';
+		xmlStatus.textContent = 'Leyendo XML…';
+		try{
+			const text = await file.text();
+			cameraDB = parseCamerasXML(text);
+			xmlDropzone.classList.add('loaded');
+			xmlDropzone.textContent = 'Cámaras cargadas ✓ (' + file.name + ')';
+			xmlStatus.textContent = `${cameraDB.alignedCount}/${cameraDB.total} cámaras alineadas · FOV calibrado ${cameraDB.hFOVdeg.toFixed(1)}°`;
+		} catch(err){
+			console.error(err);
+			cameraDB = null;
+			xmlDropzone.classList.remove('loaded');
+			xmlStatus.style.color = 'var(--danger)';
+			xmlStatus.textContent = 'Error: ' + err.message;
+		}
+	}
 
 	function showError(msg){ photoError.style.display = 'block'; photoError.textContent = msg; }
 	function clearError(){ photoError.style.display = 'none'; photoError.textContent = ''; }
@@ -361,8 +575,8 @@ window.fetch = function(url, options) {
 			const absAlt = pick(tags, ['AbsoluteAltitude']);
 			const gpsAlt = pick(tags, ['GPSAltitude']);
 			const relAlt = pick(tags, ['RelativeAltitude']);
-			const alt = (typeof absAlt === 'number') ? absAlt : (typeof gpsAlt === 'number' ? gpsAlt : undefined);
-			if (typeof alt !== 'number'){
+			const altExif = (typeof absAlt === 'number') ? absAlt : (typeof gpsAlt === 'number' ? gpsAlt : undefined);
+			if (typeof altExif !== 'number'){
 				showError('La foto no trae altitud; no puedo ubicarla en Z.');
 				return;
 			}
@@ -375,24 +589,51 @@ window.fetch = function(url, options) {
 			if (typeof pitch !== 'number') pitch = -90; // asumimos nadir si no hay dato
 			if (typeof roll !== 'number')  roll = 0;
 
-			let fovDeg = pick(tags, ['FOV']);
+			let fovDegExif = pick(tags, ['FOV']);
 			const focal35 = pick(tags, ['FocalLengthIn35mmFormat']);
-			if (typeof fovDeg !== 'number'){
+			if (typeof fovDegExif !== 'number'){
 				if (typeof focal35 === 'number' && focal35 > 0){
-					fovDeg = 2 * Math.atan(36 / (2 * focal35)) * (180/Math.PI);
+					fovDegExif = 2 * Math.atan(36 / (2 * focal35)) * (180/Math.PI);
 				} else {
-					fovDeg = 84; // fallback típico de gran angular en drones si no hay dato
+					fovDegExif = 84; // fallback típico de gran angular en drones si no hay dato
 				}
 			}
 
 			const imgAspect = img.naturalHeight / img.naturalWidth;
 
-			// distancia estimada al terreno: usamos altitud relativa si está,
-			// si no, un valor por defecto razonable para un plano nadir
+			// -----------------------------------------------------------
+			// Elegir fuente de la pose: XML de Metashape (ajustado, exacto)
+			// si la foto matchea por nombre de archivo, si no EXIF crudo.
+			// -----------------------------------------------------------
+			const baseName = file.name.replace(/\.[^.]+$/, '');
+			let pose, hFOVdeg, vFOVdeg, poseSource, xmlNote = '';
+
+			if (cameraDB && cameraDB.camerasByLabel.has(baseName)){
+				const entry = cameraDB.camerasByLabel.get(baseName);
+				if (entry.aligned){
+					pose = computeAdjustedPose(entry);
+					hFOVdeg = cameraDB.hFOVdeg;
+					vFOVdeg = cameraDB.vFOVdeg;
+					poseSource = 'xml';
+				} else {
+					xmlNote = ' (esta foto no se alineó en Metashape, usando EXIF)';
+				}
+			}
+
+			if (!pose){
+				pose = basisFromYPR(yaw, pitch, roll);
+				const utm = proj4('EPSG:4326', PROJ4_UTM14N, [lon, lat]);
+				pose.camPos = new THREE.Vector3(utm[0], utm[1], altExif);
+				hFOVdeg = fovDegExif;
+				vFOVdeg = 2 * Math.atan(Math.tan(hFOVdeg*Math.PI/180/2) * imgAspect) * 180/Math.PI;
+				poseSource = 'exif';
+			}
+
+			// distancia estimada al terreno: usamos altitud relativa (EXIF)
+			// si está, si no un valor por defecto razonable para un plano nadir
 			let distance;
-			const pitchRad = pitch * Math.PI/180;
-			if (typeof relAlt === 'number' && relAlt > 0 && Math.abs(Math.sin(pitchRad)) > 0.1){
-				distance = Math.abs(relAlt / Math.sin(pitchRad));
+			if (typeof relAlt === 'number' && relAlt > 0 && Math.abs(pose.forward.z) > 0.1){
+				distance = Math.abs(relAlt / pose.forward.z);
 			} else {
 				distance = 50;
 			}
@@ -402,15 +643,18 @@ window.fetch = function(url, options) {
 			currentTexture = new THREE.Texture(img);
 			currentTexture.needsUpdate = true;
 
-			placePlane({lat, lon, alt, yaw, pitch, roll, fovDeg, imgAspect, distance});
+			placePlane({ pose, hFOVdeg, vFOVdeg, imgAspect, distance });
 
 			// readout informativo
 			readout.style.display = 'block';
-			readout.appendChild(row('Lat / Lon', `${lat.toFixed(5)}, ${lon.toFixed(5)}`));
-			readout.appendChild(row('Altitud', `${alt.toFixed(1)} m` + (typeof absAlt !== 'number' ? ' (GPS EXIF)' : ' (XMP abs.)')));
-			readout.appendChild(row('Yaw / Pitch / Roll', `${yaw.toFixed(1)}° / ${pitch.toFixed(1)}° / ${roll.toFixed(1)}°`, gimbalSource !== 'gimbal'));
-			if (gimbalSource !== 'gimbal') readout.lastChild.querySelector('span:first-child').textContent = 'Yaw/Pitch/Roll (vuelo, sin gimbal)';
-			readout.appendChild(row('FOV horiz.', `${fovDeg.toFixed(1)}°` + (typeof pick(tags,['FOV']) !== 'number' ? ' (estimado)' : '')));
+			readout.appendChild(row('Fuente de la pose', poseSource === 'xml' ? 'XML Metashape (ajustada)' : ('EXIF' + xmlNote)));
+			readout.appendChild(row('Posición cámara', `${pose.camPos.x.toFixed(2)}, ${pose.camPos.y.toFixed(2)}, ${pose.camPos.z.toFixed(2)}`));
+			readout.appendChild(row('Lat / Lon (EXIF)', `${lat.toFixed(5)}, ${lon.toFixed(5)}`));
+			if (poseSource === 'exif'){
+				readout.appendChild(row('Yaw / Pitch / Roll', `${yaw.toFixed(1)}° / ${pitch.toFixed(1)}° / ${roll.toFixed(1)}°`, gimbalSource !== 'gimbal'));
+				if (gimbalSource !== 'gimbal') readout.lastChild.querySelector('span:first-child').textContent = 'Yaw/Pitch/Roll (vuelo, sin gimbal)';
+			}
+			readout.appendChild(row('FOV horiz. / vert.', `${hFOVdeg.toFixed(1)}° / ${vFOVdeg.toFixed(1)}°` + (poseSource === 'xml' ? ' (calibrado)' : ' (estimado)')));
 			readout.appendChild(row('Distancia proyectada', `${distance.toFixed(1)} m` + (typeof relAlt !== 'number' ? ' (por defecto)' : '')));
 
 			opacityRow.style.display = 'block';
@@ -481,38 +725,15 @@ window.fetch = function(url, options) {
 	});
 	restoreBtn.addEventListener('click', () => restoreGeneralView());
 
-	function placePlane({lat, lon, alt, yaw, pitch, roll, fovDeg, imgAspect, distance}){
+	function placePlane({pose, hFOVdeg, vFOVdeg, distance}){
 		const scene = getThreeScene();
 		if (!scene){ showError('No se pudo acceder a la escena 3D de Potree.'); return; }
 
-		const utm = proj4('EPSG:4326', PROJ4_UTM14N, [lon, lat]); // [easting, northing]
-		const camPos = new THREE.Vector3(utm[0], utm[1], alt);
-
-		const yawRad   = yaw   * Math.PI/180;
-		const pitchRad = pitch * Math.PI/180;
-		const rollRad  = roll  * Math.PI/180;
-
-		// dirección a la que apunta la cámara (X=este, Y=norte, Z=arriba)
-		const forward = new THREE.Vector3(
-			Math.cos(pitchRad) * Math.sin(yawRad),
-			Math.cos(pitchRad) * Math.cos(yawRad),
-			Math.sin(pitchRad)
-		).normalize();
-
-		const worldUp = new THREE.Vector3(0,0,1);
-		let right = new THREE.Vector3().crossVectors(forward, worldUp);
-		if (right.lengthSq() < 1e-6) right.set(1,0,0); else right.normalize();
-		let up = new THREE.Vector3().crossVectors(right, forward).normalize();
-
-		// roll: gira right/up alrededor del eje de visión
-		const rollQuat = new THREE.Quaternion().setFromAxisAngle(forward, rollRad);
-		right.applyQuaternion(rollQuat);
-		up.applyQuaternion(rollQuat);
-
+		const { camPos, right, up, forward } = pose;
 		const center = camPos.clone().add(forward.clone().multiplyScalar(distance));
 
-		const hfovRad = fovDeg * Math.PI/180;
-		const vfovRad = 2 * Math.atan(Math.tan(hfovRad/2) * imgAspect);
+		const hfovRad = hFOVdeg * Math.PI/180;
+		const vfovRad = vFOVdeg * Math.PI/180;
 		const width  = 2 * distance * Math.tan(hfovRad/2);
 		const height = 2 * distance * Math.tan(vfovRad/2);
 
@@ -551,6 +772,7 @@ window.fetch = function(url, options) {
 		viewer.setEDLEnabled(false);
 
 		const vfovDeg = vfovRad * 180/Math.PI;
+		const rollRad = rollAngleFromBasis(forward, up);
 		lastShot = { camPos: camPos.clone(), target: center.clone(), vfovDeg, rollRad };
 		flyToCameraView(camPos, center, vfovDeg, rollRad);
 		viewBtnsRow.style.display = 'flex';
