@@ -213,6 +213,20 @@
 		camera.rotateZ(cameraRollRad);
 	});
 
+	// El enganche de roll de arriba corre en TODOS los frames y pisa lo que
+	// haga OrbitControls, así que si lo dejamos activo el usuario no puede
+	// orbitar (cada drag se resetea al frame siguiente). Apenas el usuario
+	// toca el mouse/touch para navegar, lo soltamos: ya cumplió su propósito
+	// (mostrar el roll correcto al entrar a la vista de la cámara) y a partir
+	// de ahí el control pasa a ser 100% del OrbitControls normal.
+	const renderArea = document.getElementById('potree_render_area');
+	['mousedown','wheel','touchstart'].forEach(evt => {
+		renderArea.addEventListener(evt, () => {
+			cameraRollRad = 0;
+			rollTarget = null;
+		}, { passive: true });
+	});
+
 const POTREE_LFS_URL =
     "https://media.githubusercontent.com/media/EDGARZR54/CandelaDigital/main/js/potree/nubes/15m_utm14n_converted/octree.bin";
 
