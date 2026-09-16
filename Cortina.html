@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Animacion</title>
+<style>
+  :root {
+    /* Colores: un solo lugar para definirlos, todo lo demas los referencia. */
+    --color-cortina: #EF4327;
+    --color-logo: #ffffff;      /* logo + texto "Cargando..." comparten este color */
+    --color-fondo-contenido: #ffffff;
+    --color-texto-contenido: #222;
+
+    /* Curvas de easing reutilizadas en varias animaciones. */
+    --ease-suave: cubic-bezier(.4, 0, .2, 1);   /* fades: acelera y frena con cuerpo */
+    --ease-snap: cubic-bezier(.65, 0, .35, 1);  /* cortina: mas contundente que ease-in-out */
+    --ease-expo: cubic-bezier(.16, 1, .3, 1);   /* revelado de contenido: arranque rapido, freno largo */
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--color-fondo-contenido);
+  }
+
+  /* ---------- Contenido que se revela al abrirse la cortina ---------- */
+  #contenido {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 2rem;
+    color: var(--color-texto-contenido);
+    opacity: 0;
+    transform: translateY(26px) scale(0.98);
+    transition: opacity 0.85s var(--ease-expo),
+                transform 0.85s var(--ease-expo);
+  }
+  #contenido.mostrar {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  /* ---------- Cortina: dos mitades del mismo color de fondo ---------- */
+  .cortina {
+    position: fixed;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    background-color: var(--color-cortina);
+    z-index: 10;
+  }
+  .cortina.arriba {
+    top: 0;
+    transform-origin: bottom center; /* el "squash" de anticipacion nace del filo, cerca de la costura */
+  }
+  .cortina.abajo {
+    bottom: 0;
+    transform-origin: top center;
+  }
+  .cortina.arriba.abrir {
+    animation: abrirArriba 0.95s var(--ease-snap) forwards;
+  }
+  .cortina.abajo.abrir {
+    animation: abrirAbajo 0.95s var(--ease-snap) forwards;
+  }
+  /* Squash de anticipacion (principio de "squash & stretch"): un
+     pequeño amague hacia adentro antes de lanzarse hacia afuera de la
+     pantalla. Le da ese golpe de resorte que se siente "juicy" en vez
+     de un simple deslizamiento lineal. */
+  @keyframes abrirArriba {
+    0%   { transform: translateY(0)      scaleY(1);    }
+    18%  { transform: translateY(0)      scaleY(1.035); }
+    100% { transform: translateY(-100%)  scaleY(1);    }
+  }
+  @keyframes abrirAbajo {
+    0%   { transform: translateY(0)      scaleY(1);    }
+    18%  { transform: translateY(0)      scaleY(1.035); }
+    100% { transform: translateY(100%)   scaleY(1);    }
+  }
+
+  /* ---------- Logo + texto de carga, centrados sobre la cortina ---------- */
+  #logo-wrap {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+  }
+  #logo-wrap.fade-out {
+    animation: logoFadeOut 0.65s var(--ease-suave) forwards;
+    pointer-events: none;
+  }
+  /* Antes de desvanecerse, un leve "pop" hacia afuera (0% -> 25%): le da
+     un golpe de vida en vez de simplemente apagarse. Recien despues
+     encoge y se desvanece del todo. */
+  @keyframes logoFadeOut {
+    0%   { opacity: 1; transform: scale(1)    translateY(0);   }
+    25%  { opacity: 1; transform: scale(1.05) translateY(-2px); }
+    100% { opacity: 0; transform: scale(0.85) translateY(-14px); }
+  }
+
+  #svg-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  svg {
+    display: block;
+    width: min(27.5vw, 320px);
+    height: auto;
+    max-height: 42.5vh;
+    color: var(--color-logo);
+  }
+
+  /* Efecto de "respiracion" tipo loading.
+     Se anima "opacity" en el elemento completo (relleno + su propio
+     borde de 1px), nunca "fill-opacity", para que ambos se atenuen
+     siempre juntos y no se vea un contraste raro entre un trazo fijo
+     y un relleno que respira. */
+  svg .breathe {
+    animation: breathe 2.4s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 0.15; }
+    50%      { opacity: 1; }
+  }
+
+  #loading-text {
+    margin-top: clamp(16px, 3vh, 32px);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: clamp(12px, 1.4vw, 15px);
+    font-weight: 400;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--color-logo); /* mismo color que el svg: una sola fuente de verdad */
+    animation: breathe 2.4s ease-in-out infinite;
+    user-select: none;
+  }
+
+  #error-msg {
+    font-family: sans-serif;
+    color: #b00020;
+    padding: 1rem;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+  <div id="contenido">
+    <p>¡Bienvenido!</p>
+  </div>
+
+  <div class="cortina arriba"></div>
+  <div class="cortina abajo"></div>
+
+  <div id="logo-wrap">
+    <div id="svg-container"></div>
+    <div id="loading-text">Cargando...</div>
+  </div>
+
+<script>
+(function () {
+  // --- Configuracion --------------------------------------------------
+  var SVG_URL = "https://edgarzr54.github.io/CandelaDigital/AnimatedLogo2.svg";
+  var CONSTRUCTION_END = 59;   // ultimo frame de la construccion (0-indexed)
+  var FPS = 60;                // velocidad de reproduccion del logo animado
+  var HOLD_MS = 750;           // pausa estatica mostrando el logo ya terminado
+  var FADE_OVERLAP_MS = 220;   // la cortina empieza a abrirse un poco antes de que el logo termine de desvanecerse
+  var CURTAIN_STAGGER_MS = 70; // la mitad de abajo arranca un poco despues que la de arriba (rompe la simetria perfecta)
+  // ---------------------------------------------------------------------
+
+  var svgContainer = document.getElementById("svg-container");
+  var logoWrap = document.getElementById("logo-wrap");
+  var contenido = document.getElementById("contenido");
+  var secuenciaIniciada = false;
+
+  // --- Secuencia de cierre: pausa -> fade del logo -> apertura de cortina -
+  //     + fade-in del contenido -----------------------------------------
+  // Se dispara una sola vez, cuando el loop de rotacion del logo
+  // completa su primera vuelta entera (ver advanceFrame mas abajo).
+  // Nunca por un tiempo fijo desde que carga la pagina.
+
+  function iniciarSecuenciaDeCierre() {
+    if (secuenciaIniciada) return;
+    secuenciaIniciada = true;
+
+    // 1) El logo se queda quieto un momento, ya terminado, para que se
+    //    alcance a ver bien antes de que pase cualquier otra cosa.
+    setTimeout(function () {
+      // 2) Fundido del logo + texto (con un leve "pop" antes de irse).
+      logoWrap.classList.add("fade-out");
+
+      // 3) La cortina arranca un poco antes de que el fade termine del
+      //    todo: ese pequeño solape es lo que hace que la transicion se
+      //    sienta continua en vez de "paso 1, paso 2".
+      setTimeout(function () {
+        var arriba = document.querySelector(".cortina.arriba");
+        var abajo = document.querySelector(".cortina.abajo");
+
+        arriba.classList.add("abrir");
+        // El contenido empieza a aparecer en el mismo instante en que la
+        // cortina se empieza a mover, no antes: asi se siente revelado,
+        // no como algo que ya estaba ahi esperando.
+        contenido.classList.add("mostrar");
+
+        // La mitad de abajo se suma un poquito despues: el pequeño
+        // desfasaje evita que las dos mitades se muevan como una sola
+        // pieza perfectamente simetrica.
+        setTimeout(function () {
+          abajo.classList.add("abrir");
+        }, CURTAIN_STAGGER_MS);
+      }, FADE_OVERLAP_MS);
+    }, HOLD_MS);
+  }
+
+  // --- Deteccion de formas con relleno + limpieza de contornos duplicados -
+  // (igual que antes: evita que un contorno duplicado quede siempre
+  // opaco encima de una forma que respira)
+
+  function parseClassProps(styleText) {
+    var props = {};
+    var ruleRe = /([^{}]+)\{([^{}]*)\}/g;
+    var m;
+    while ((m = ruleRe.exec(styleText))) {
+      var selectors = m[1].split(",");
+      var decl = {};
+      m[2].split(";").forEach(function (pair) {
+        var idx = pair.indexOf(":");
+        if (idx > -1) {
+          var k = pair.slice(0, idx).trim();
+          var v = pair.slice(idx + 1).trim();
+          if (k) decl[k] = v;
+        }
+      });
+      selectors.forEach(function (sel) {
+        sel = sel.trim();
+        if (sel.charAt(0) === ".") {
+          var name = sel.slice(1);
+          props[name] = props[name] || {};
+          for (var key in decl) { props[name][key] = decl[key]; }
+        }
+      });
+    }
+    return props;
+  }
+
+  function resolveFill(el, classProps) {
+    var classAttr = el.getAttribute("class") || "";
+    var classes = classAttr.split(/\s+/).filter(Boolean);
+    var fill = "none";
+    classes.forEach(function (c) {
+      if (classProps[c] && classProps[c].fill !== undefined) {
+        fill = classProps[c].fill;
+      }
+    });
+    return fill;
+  }
+
+  function geometryKey(el) {
+    var tag = el.tagName.toLowerCase();
+    var raw = tag === "path" ? el.getAttribute("d") : el.getAttribute("points");
+    return (raw || "").replace(/\s+/g, "");
+  }
+
+  function tagBreathingElements(svg) {
+    var styleEl = svg.querySelector("defs style");
+    var classProps = styleEl ? parseClassProps(styleEl.textContent) : {};
+
+    var frameGroups = Array.prototype.filter.call(svg.children, function (el) {
+      return el.tagName.toLowerCase() === "g";
+    });
+
+    frameGroups.forEach(function (g) {
+      var seenFilledGeometry = {};
+      Array.prototype.forEach.call(g.children, function (el) {
+        var tag = el.tagName.toLowerCase();
+        if (tag !== "path" && tag !== "polyline" && tag !== "circle") return;
+
+        var fill = resolveFill(el, classProps);
+        var key = geometryKey(el);
+
+        if (fill && fill !== "none") {
+          el.classList.add("breathe");
+          if (key) seenFilledGeometry[key] = true;
+        } else if (key && seenFilledGeometry[key]) {
+          el.style.display = "none";
+        }
+      });
+    });
+  }
+
+  // --- Carga del SVG y reproduccion de frames ----------------------------
+
+  fetch(SVG_URL)
+    .then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.text();
+    })
+    .then(function (svgText) {
+      // El SVG original pinta todo con "#000000" / "Black" fijos.
+      // Se reemplaza por currentColor para poder pintarlo de blanco
+      // desde el CSS (svg { color: #ffffff }), sin tocar los fill:none.
+      svgText = svgText
+        .replace(/#000000/g, "currentColor")
+        .replace(/\bBlack\b/g, "currentColor");
+
+      svgContainer.innerHTML = svgText;
+      initPlayer();
+    })
+    .catch(function (err) {
+      svgContainer.innerHTML = '<div id="error-msg">No se pudo cargar el SVG (' + err.message + ').<br>Revisa la URL en SVG_URL.</div>';
+      console.error("Error cargando el SVG:", err);
+    });
+
+  function initPlayer() {
+    var svg = svgContainer.querySelector("svg");
+    if (!svg) {
+      svgContainer.innerHTML = '<div id="error-msg">El contenido cargado no es un SVG valido.</div>';
+      return;
+    }
+
+    tagBreathingElements(svg);
+
+    var frames = Array.prototype.filter.call(svg.children, function (el) {
+      return el.tagName.toLowerCase() === "g";
+    });
+    if (frames.length === 0) {
+      console.warn("No se encontraron grupos <g> de frames dentro del SVG.");
+      return;
+    }
+
+    if (typeof svg.pauseAnimations === "function") {
+      svg.pauseAnimations();
+    }
+
+    var LOOP_START = CONSTRUCTION_END + 1;
+    var LOOP_END = frames.length - 1;
+    var FRAME_DURATION = 1000 / FPS;
+    var phase = "construction";
+    var idx = 0;
+    var detenido = false;
+
+    function showFrame(i) {
+      for (var k = 0; k < frames.length; k++) {
+        frames[k].style.visibility = (k === i) ? "visible" : "hidden";
+      }
+    }
+
+    function advanceFrame() {
+      showFrame(idx);
+      if (phase === "construction") {
+        if (idx < CONSTRUCTION_END) {
+          idx++;
+        } else {
+          phase = "loop";
+          idx = LOOP_START;
+        }
+      } else {
+        if (idx >= LOOP_END) {
+          // El indice acaba de "dar la vuelta" por primera vez: se
+          // completo la construccion + una rotacion entera del loop.
+          // Se congela ahi mismo (no se reinicia el loop) y arranca la
+          // secuencia de cierre.
+          detenido = true;
+          iniciarSecuenciaDeCierre();
+        } else {
+          idx++;
+        }
+      }
+    }
+
+    var lastTime = null;
+    var acc = 0;
+    function tick(now) {
+      if (detenido) return; // el logo quedo congelado en su frame final; no hace falta seguir el rAF
+      if (lastTime === null) lastTime = now;
+      var delta = now - lastTime;
+      lastTime = now;
+      acc += delta;
+      while (acc >= FRAME_DURATION) {
+        acc -= FRAME_DURATION;
+        advanceFrame();
+      }
+      requestAnimationFrame(tick);
+    }
+    showFrame(0);
+    requestAnimationFrame(tick);
+  }
+})();
+</script>
+</body>
+</html>

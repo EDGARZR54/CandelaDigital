@@ -81,6 +81,8 @@ import {
     getScrollDelta
 } from "./galeria-scroll.js";
 
+import { ESTADO_COLOR } from "./galeria-config.js";
+
 
 const MAPLIBRE_JS_URL =
     "https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.js";
@@ -221,27 +223,32 @@ function buildPinSVG(color) {
 
 
 /*
-    Colores de la etiqueta de estado en el popup — mismos
-    4 tonos que ya usa colorPorEstado() en galeria-config.js
-    para los conos 3D, pasados a hex para CSS inline (ese
-    mapa vive en {r,g,b} para THREE, no reusable acá tal
-    cual). Vocabulario cerrado, mismo criterio que
-    colorPorEstado: fuera de esas 4 categorías, gris
-    neutro.
+    Hex de la etiqueta de estado en el popup, derivado en vivo de
+    ESTADO_COLOR (galeria-config.js) — antes este archivo mantenía su
+    propia copia manual de esos mismos 4 tonos convertidos a hex
+    (COLOR_ESTADO_HEX), con el riesgo de que alguno se actualizara en
+    un archivo y no en el otro. ESTADO_COLOR sigue siendo la ÚNICA
+    fuente de verdad (vive en {r,g,b} para los conos 3D en THREE);
+    acá solo se convierte a "#rrggbb" para poder usarlo en CSS
+    inline del popup. El fallback ("#666666") para categorías fuera
+    del vocabulario cerrado se mantiene igual que antes.
 */
-const COLOR_ESTADO_HEX = {
-    bueno: "#6cbf87",
-    regular: "#e8b84a",
-    riesgo: "#e38149",
-    perdido: "#c44c4c"
-};
+function rgbObjAHex({ r, g, b }) {
+
+    return '#' + [r, g, b]
+        .map(c => c.toString(16).padStart(2, '0'))
+        .join('');
+
+}
 
 function colorEstadoHex(categoria) {
 
     const clave =
         (categoria || "").toLowerCase();
 
-    return COLOR_ESTADO_HEX[clave] || "#666666";
+    const rgb = ESTADO_COLOR[clave];
+
+    return rgb ? rgbObjAHex(rgb) : "#666666";
 
 }
 

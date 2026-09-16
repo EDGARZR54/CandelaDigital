@@ -210,14 +210,13 @@ export function createParamPanel(
         const { bbox } =
             normalizarGeometriaElemento(nuevaGeometria);
 
-        const [mallaFrontal, mallaTrasera] =
+        const [malla] =
             group.userData.mallas;
 
         const geometriaVieja =
-            mallaFrontal.geometry;
+            malla.geometry;
 
-        mallaFrontal.geometry = nuevaGeometria;
-        mallaTrasera.geometry = nuevaGeometria;
+        malla.geometry = nuevaGeometria;
 
         geometriaVieja.dispose();
 
@@ -229,7 +228,7 @@ export function createParamPanel(
         // en el lugar.
         posicionarPivote(
             group.userData.pivote,
-            mallaFrontal, mallaTrasera,
+            malla,
             bbox
         );
 

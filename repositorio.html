@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="assets/favicon.ico" type="image/x-icon">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Repositorio · Cascarones</title>
+<meta name="description" content="Repositorio de documentación digital de los seis cascarones de concreto del modernismo mexicano: fichas técnicas, nubes de puntos y modelos tridimensionales.">
+
+<!-- Google Fonts: Spectral (display) + Lato (cuerpo / datos), coherente con el resto del proyecto -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&display=swap" rel="stylesheet">
+
+<!-- Aplica el tema guardado (o la preferencia del sistema) antes del primer frame,
+     usando la misma clave de localStorage que el resto del sitio ('cascarones:tema'). -->
+<script>
+  (function () {
+    var CLAVE_TEMA = 'cascarones:tema';
+    var guardado = localStorage.getItem(CLAVE_TEMA);
+    var tema = (guardado === 'oscuro' || guardado === 'claro')
+      ? guardado
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+    document.documentElement.setAttribute('data-tema', tema);
+  })();
+</script>
+
+<!-- Si esta página vive dentro del proyecto, hereda los estilos globales -->
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/footer.css">
+<link rel="stylesheet" href="css/componentes.css">
+<link rel="stylesheet" href="css/footer-logos.css">
+
+<!-- CSS propio de esta página, autocontenido: funciona incluso sin los
+     archivos globales de arriba, definiendo sus propias variables de tema. -->
+<style>
+  /* Antes esta página redefinía --repo-fondo/--repo-texto/--repo-borde a
+     mano por tema (blanco/negro puros), ignorando la paleta real del sitio
+     (naranja óxido / rojo terracota) que index.html y el resto de las
+     páginas heredan de css/variables.css. Acá se toman esos mismos
+     tokens en vez de duplicar la lógica de claro/oscuro: variables.css ya
+     resuelve --color-fondo/--color-texto/--color-borde/--color-primario
+     según data-tema, así que no hace falta un bloque por tema aquí. El
+     fallback (segundo valor de var()) solo cubre el caso de que esta
+     página se use algún día sin los CSS globales. */
+  :root {
+    --repo-fondo:           var(--color-fondo, #ffffff);
+    --repo-texto:           var(--color-texto, #222222);
+    --repo-borde:           var(--color-borde, rgba(34, 34, 34, 0.14));
+    --repo-fondo-invertido: var(--color-primario, #BF3B0B);
+    --repo-texto-invertido: rgb(var(--color-blanco, 245, 245, 245));
+  }
+
+  .repositorio {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+    font-family: 'Lato', sans-serif;
+    color: var(--repo-texto);
+  }
+  .repositorio__encabezado {
+    margin-bottom: 2.5rem;
+  }
+  .repositorio__eyebrow {
+    font-family: 'Lato', sans-serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 0 0 0.5rem;
+    opacity: 0.7;
+  }
+  .repositorio__titulo {
+    font-family: 'Spectral', serif;
+    font-weight: 500;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    margin: 0 0 1rem;
+  }
+  .repositorio__intro {
+    font-size: 1rem;
+    line-height: 1.6;
+    max-width: 60ch;
+    opacity: 0.85;
+  }
+  .repositorio__intro a {
+    color: inherit;
+    text-decoration: underline;
+  }
+
+  .repo-tabla {
+    border-top: 1px solid var(--repo-borde);
+    background: var(--repo-fondo);
+  }
+  .repo-fila {
+    border-bottom: 1px solid var(--repo-borde);
+    color: var(--repo-texto);
+    background: var(--repo-fondo);
+    cursor: pointer;
+    padding: 0.9rem 0;
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .repo-fila:hover,
+  .repo-fila.abierta {
+    background: var(--repo-fondo-invertido);
+    color: var(--repo-texto-invertido);
+  }
+  .repo-cabeza {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: baseline;
+    padding: 0 0.25rem;
+  }
+  .repo-titulo {
+    flex: 1.6;
+    min-width: 220px;
+    font-family: 'Spectral', serif;
+    font-style: italic;
+    font-size: 1.05rem;
+  }
+  .repo-meta {
+    flex: 1;
+    min-width: 160px;
+    font-size: 0.85rem;
+    opacity: 0.85;
+  }
+  .repo-cuerpo {
+    max-height: 0;
+    overflow: hidden;
+    padding: 0 0.25rem;
+    transition: max-height 0.25s cubic-bezier(0.8, 0, 0.2, 1),
+                padding 0.25s cubic-bezier(0.8, 0, 0.2, 1);
+  }
+  .repo-cuerpo.abierta {
+    max-height: 480px;
+    padding: 0.75rem 0.25rem 1rem;
+  }
+  .repo-descripcion {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin: 0 0 0.75rem;
+    padding-right: 2rem;
+  }
+  .repo-datos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    font-size: 0.8rem;
+    opacity: 0.85;
+    margin: 0 0 0.75rem;
+  }
+  .repo-descargas {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .repo-descarga {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+  }
+  .repo-descarga a {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid currentColor;
+  }
+  .repo-descarga__formato {
+    opacity: 0.7;
+    font-size: 0.75rem;
+  }
+
+  .repo-grupo {
+    margin-bottom: 3rem;
+  }
+  .repo-grupo__titulo {
+    font-family: 'Spectral', serif;
+    font-style: italic;
+    font-size: 1.1rem;
+    margin: 0 0 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--repo-borde);
+  }
+  .repo-estado {
+    font-size: 0.9rem;
+    opacity: 0.7;
+    padding: 1rem 0;
+  }
+  .repo-estado--error {
+    opacity: 1;
+    color: #b00020;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================== NAV ============================== -->
+<div id="navbar-placeholder"></div>
+
+<main>
+  <section class="repositorio">
+    <header class="repositorio__encabezado">
+      <p class="repositorio__eyebrow">Documentación técnica</p>
+      <h1 class="repositorio__titulo">Repositorio</h1>
+      <p class="repositorio__intro">
+        Descarga del material generado para cada cascarón: análisis formal en PDF, modelo
+        tridimensional, nube de puntos en bruto y ortofoto aérea. Para visualizar los modelos
+        y las fichas en línea, consulta la <a href="galeria.html">galería</a>. Da clic sobre
+        una fila para desplegar los enlaces de descarga.
+      </p>
+    </header>
+
+    <!-- El contenido se genera leyendo data/repositorio-datos.xlsx (la lógica
+         de lectura vive inline, al final de esta página, en cargarRepositorio):
+         cada valor de la columna "edicion" agrupa sus propios cascarones,
+         dejando abierta la estructura para sumar ediciones futuras sin tocar
+         el código. -->
+    <div id="repo-contenedor"></div>
+  </section>
+</main>
+
+<!-- ============================== FOOTER ============================== -->
+<div id="footer-placeholder"></div>
+
+<script src="js/navbar.js"></script>
+
+<!-- SheetJS: lee el .xlsx del repositorio en el navegador. Classic <script>,
+     sin defer/module, para que termine de ejecutarse ANTES del módulo de
+     abajo y "window.XLSX" ya exista cuando cargarRepositorio() lo busque. -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<script type="module">
+
+  /* ==================================================
+     Carga la hoja "Repositorio" de un archivo .xlsx y la
+     convierte en un array de "ediciones" agrupadas, con
+     la forma que necesita esta página para renderizar la
+     tabla-acordeón.
+
+     Usa la librería global SheetJS (XLSX), cargada antes
+     de este módulo vía <script src=".../xlsx.full.min.js">
+     — sin ese script, "window.XLSX" no existe y esta
+     función lanza un error claro en vez de fallar en
+     silencio más adelante.
+
+     Esta función no sabe nada de cascarones específicos:
+     solo sabe leer una tabla con columnas fijas y
+     agruparla por su columna "edicion". Espera la fila 1
+     como nota/leyenda y la fila 2 como encabezados (ver
+     repositorio-datos.xlsx).
+  ================================================== */
+  async function cargarRepositorio(dataUrl) {
+
+    if (typeof window.XLSX === "undefined") {
+
+        throw new Error(
+            "SheetJS (XLSX) no está cargado. Agrega " +
+            "<script src=\"https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js\"><" + "/script> " +
+            "antes de este módulo."
+        );
+
+    }
+
+
+    const respuesta =
+        await fetch(dataUrl);
+
+
+    if (!respuesta.ok) {
+
+        throw new Error(
+            "No se pudo cargar " + dataUrl +
+            " (HTTP " + respuesta.status + ")"
+        );
+
+    }
+
+
+    const buffer =
+        await respuesta.arrayBuffer();
+
+    const libro =
+        window.XLSX.read(buffer, { type: "array" });
+
+    const hoja =
+        libro.Sheets[libro.SheetNames[0]];
+
+    // range: 1 salta la fila 1 (nota/leyenda) y toma la fila 2 como encabezado.
+    const filas =
+        window.XLSX.utils.sheet_to_json(hoja, { range: 1, defval: "" });
+
+
+    const agrupado = new Map();
+
+    filas.forEach((fila) => {
+
+        // Filas totalmente vacías (huecos que deja Excel al editar) se ignoran.
+        if (!fila.titulo && !fila.edicion) return;
+
+        const edicion =
+            String(fila.edicion || "Sin edición").trim();
+
+        if (!agrupado.has(edicion)) {
+            agrupado.set(edicion, []);
+        }
+
+        agrupado.get(edicion).push({
+            titulo: fila.titulo || "",
+            ubicacion: fila.ubicacion || "",
+            anio: fila.anio || "",
+            tecnica: fila.tecnica || "",
+            descripcion: fila.descripcion || "",
+            analisis: {
+                url: fila.analisis_url || "#",
+                formato: fila.analisis_formato || "",
+                peso: fila.analisis_peso || "",
+            },
+            modelo: {
+                url: fila.modelo_url || "#",
+                formato: fila.modelo_formato || "",
+                peso: fila.modelo_peso || "",
+            },
+            nube: {
+                url: fila.nube_url || "#",
+                formato: fila.nube_formato || "",
+                peso: fila.nube_peso || "",
+            },
+            ortofoto: {
+                url: fila.ortofoto_url || "#",
+                formato: fila.ortofoto_formato || "",
+                peso: fila.ortofoto_peso || "",
+            },
+        });
+
+    });
+
+
+    return Array.from(
+        agrupado,
+        ([edicion, cascarones]) => ({ edicion, cascarones })
+    );
+
+  }
+
+  const contenedorPrincipal = document.getElementById('repo-contenedor');
+
+  // Ruta al Excel editable por el equipo. Cambia solo esta línea si lo
+  // mueven de carpeta o le cambian el nombre — el resto del código no
+  // necesita tocarse.
+  const RUTA_DATOS = 'data/repositorio-datos.xlsx';
+
+  contenedorPrincipal.innerHTML =
+    '<p class="repo-estado">Cargando repositorio…</p>';
+
+  cargarRepositorio(RUTA_DATOS)
+    .then((investigaciones) => {
+      contenedorPrincipal.innerHTML = '';
+      renderizarInvestigaciones(investigaciones, contenedorPrincipal);
+    })
+    .catch((error) => {
+      console.error(error);
+      contenedorPrincipal.innerHTML =
+        '<p class="repo-estado repo-estado--error">No se pudo cargar el repositorio ('
+        + error.message + ').</p>';
+    });
+
+  function renderizarInvestigaciones(investigaciones, contenedorPrincipal) {
+
+    investigaciones.forEach((investigacion) => {
+      const grupo = document.createElement('div');
+      grupo.className = 'repo-grupo';
+
+      const tituloGrupo = document.createElement('h2');
+      tituloGrupo.className = 'repo-grupo__titulo';
+      tituloGrupo.textContent = investigacion.edicion;
+      grupo.appendChild(tituloGrupo);
+
+      const tabla = document.createElement('div');
+      tabla.className = 'repo-tabla';
+      grupo.appendChild(tabla);
+
+      investigacion.cascarones.forEach((doc) => {
+        const fila = document.createElement('div');
+        fila.className = 'repo-fila';
+
+        const cabeza = document.createElement('div');
+        cabeza.className = 'repo-cabeza';
+        cabeza.innerHTML = `
+          <span class="repo-titulo">${doc.titulo}</span>
+          <span class="repo-meta">${doc.ubicacion}</span>
+        `;
+
+        const cuerpo = document.createElement('div');
+        cuerpo.className = 'repo-cuerpo';
+        cuerpo.innerHTML = `
+          <p class="repo-descripcion">${doc.descripcion}</p>
+          <div class="repo-datos">
+            <span>Año: ${doc.anio}</span>
+            <span>Técnica: ${doc.tecnica}</span>
+          </div>
+          <div class="repo-descargas">
+            <div class="repo-descarga">
+              <a href="${doc.analisis.url}" download>Descargar análisis formal</a>
+              <span class="repo-descarga__formato">${doc.analisis.formato} · ${doc.analisis.peso}</span>
+            </div>
+            <div class="repo-descarga">
+              <a href="${doc.modelo.url}" download>Descargar modelo 3D</a>
+              <span class="repo-descarga__formato">${doc.modelo.formato} · ${doc.modelo.peso}</span>
+            </div>
+            <div class="repo-descarga">
+              <a href="${doc.nube.url}" download>Descargar nube de puntos</a>
+              <span class="repo-descarga__formato">${doc.nube.formato} · ${doc.nube.peso}</span>
+            </div>
+            <div class="repo-descarga">
+              <a href="${doc.ortofoto.url}" download>Descargar ortofoto</a>
+              <span class="repo-descarga__formato">${doc.ortofoto.formato} · ${doc.ortofoto.peso}</span>
+            </div>
+          </div>
+        `;
+
+        fila.appendChild(cabeza);
+        fila.appendChild(cuerpo);
+        tabla.appendChild(fila);
+
+        fila.addEventListener('click', (e) => {
+          if (e.target.tagName === 'A') return;
+          const yaAbierta = fila.classList.contains('abierta');
+          document.querySelectorAll('.repo-fila.abierta').forEach((f) => {
+            f.classList.remove('abierta');
+            f.querySelector('.repo-cuerpo').classList.remove('abierta');
+          });
+          if (!yaAbierta) {
+            fila.classList.add('abierta');
+            cuerpo.classList.add('abierta');
+          }
+        });
+      });
+
+      contenedorPrincipal.appendChild(grupo);
+    });
+
+  }
+</script>
+</body>
+</html>

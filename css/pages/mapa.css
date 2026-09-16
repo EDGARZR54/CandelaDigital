@@ -1,0 +1,59 @@
+/* ==================================================
+   pages/mapa.css
+
+   Estilos exclusivos de mapa.html. Reutiliza las clases
+   compartidas de componentes.css (.hero__texto,
+   .hero__parrafo, .eyebrow, .contenedor, .seccion,
+   .boton, etc.) y solo aporta los ajustes puntuales de
+   ancho/margen que esta página necesita encima de ellas
+   — antes vivían como estilos inline en el HTML.
+
+   No declara ningún color propio: todo pasa por las
+   variables --color-* de variables.css (bordes, radio),
+   igual que el resto del sitio.
+================================================== */
+
+/* Encabezado: bloque de texto un poco más ancho que el
+   límite por defecto de .hero__texto (640px en
+   componentes.css), porque acá no compite con el lienzo
+   3D del home. */
+.mapa-cabecera__texto {
+  max-width: 52rem;
+}
+
+/* Ancho de lectura compartido por todos los párrafos de
+   esta página (62ch). Se combina con .hero__parrafo, que
+   ya trae color/tamaño base desde componentes.css. */
+.mapa-parrafo {
+  max-width: 62ch;
+}
+
+/* Párrafo de apertura: un poco más grande y pegado al
+   h1, sin el margen inferior por defecto. */
+.mapa-parrafo--intro {
+  font-size: var(--tam-h3);
+  margin-bottom: 0;
+}
+
+/* Párrafo introductorio de la sección del atlas. */
+.mapa-parrafo--atlas {
+  margin: 1rem 0 2rem;
+}
+
+/* Lista de próximos pasos. */
+.mapa-parrafo--pasos {
+  margin-top: 1.25rem;
+}
+
+/* Marco del mapa embebido (atlas.html en iframe). El
+   borde y el radio usan las mismas variables que
+   .marco-visor en componentes.css, para que se vea
+   consistente con el resto del sitio. */
+.mapa-visor {
+  width: 100%;
+  height: 85vh;
+  min-height: 520px;
+  display: block;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+}

@@ -36,6 +36,12 @@ const ESTADO_COLOR = {
     perdido: { r: 196, g: 76, b: 76 }
 };
 
+/* Exportada para que galeria-mapa.js pueda derivar el hex de la
+   etiqueta de estado del popup a partir de ESTA MISMA tabla, en vez
+   de mantener una segunda copia manual convertida a hex (ver
+   colorEstadoHex() en galeria-mapa.js). */
+export { ESTADO_COLOR };
+
 const ESTADO_RANGO = {
     bueno: 0,
     regular: 1,
@@ -444,6 +450,27 @@ function normalizarElemento(feature, indice) {
 }
 
 
+/*
+    Color de los pines del mapa embebido, leído en vivo de
+    --color-terracota (variables.css) en vez de un hex propio —
+    mismo criterio que ya se aplicó en atlas.html y
+    mapadinamico.html: usa el token FIJO (--color-terracota), no
+    --color-primario (que en modo oscuro pasa por un color-mix()),
+    para que el pin se vea igual en los dos temas. Si por algún
+    motivo variables.css no llegó a cargar en la página que use
+    este CONFIG, cae al tono que estaba calibrado a mano antes.
+*/
+function colorPinDesdeVariables() {
+
+    const valor = getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-terracota')
+        .trim();
+
+    return valor ? `rgb(${valor})` : "#db6a40";
+
+}
+
+
 export const CONFIG = {
 
     /*
@@ -539,61 +566,95 @@ export const CONFIG = {
         distancia centro-a-centro.
     */
     row: {
-        spacing: 2.2
+        spacing: 1.5
     },
 
 
     /*
-        Piso/mesa: YA NO es una superficie visible (era
-        un disco de color fijo, ver historial más abajo)
-        sino un plano INVISIBLE que solo existe para
-        recibir sombra (THREE.ShadowMaterial — ver
-        galeria-escena.js). Como es invisible, no hace
-        falta que su tamaño sea generoso "a ojo": se
-        calcula en vivo a partir del bounding box REAL
-        de la fila (ancho en X, profundidad en Z — ver
-        "loFila/hiFila"/"zsFila" en galeria-escena.js),
-        no de un radio fijo — así cubre exactamente a
-        todos los elementos sin importar cuántos sean ni
-        qué tan ancha/profunda termine la fila, en vez
-        de quedar recortado para filas más anchas que el
-        radio fijo de antes (7.4) o desfasado en Z
-        (el disco viejo estaba centrado en z=0, pero la
-        fila NO es simétrica en Z: la cara frontal de
-        cada elemento está en z=0, ver
-        "desplazamientoFrente" en prepararGeometria(), y
-        se extiende hacia atrás en Z negativo — un disco
-        centrado en 0 dejaba buena parte de su área
-        "de más" hacia +Z, del lado de la cámara, donde
-        no hay nada que cubrir, y de menos hacia -Z).
-
-        "padding": margen extra más allá del bbox real,
-        para que la sombra no quede recortada justo en
-        el borde del plano (mismo criterio que
-        lights.key.shadowCameraPadding, más abajo).
-
-        "shadowOpacity": qué tan oscura se ve la sombra
-        proyectada (0 = invisible del todo, 1 = negro
-        sólido). No es "color de mesa": ShadowMaterial
-        no tiene una superficie visible propia, sólo
-        tiñe de este tono la zona donde cae sombra —
-        por eso ya no sigue el tema claro/oscuro del
-        sitio (no hay superficie de fondo que "matchear")
-        y queda fijo.
-
-        Historial: antes era un CylinderGeometry visible
-        (radius/thickness/roughness/metalness), con su
-        color calculado en vivo a partir de
-        --color-fondo-alt (colorMesaEscena(), ya
-        eliminada de galeria-escena.js) para seguir el
-        tema del sitio. Se lo reemplaza por completo (no
-        sólo se ajusta el tamaño) porque además de
-        quedar mal dimensionado, no se quería una
-        superficie visible bajo los elementos.
+        SACADA (ver Maqueta.html, y el comentario grande en
+        galeria-escena.js junto a la creación de
+        "habitacion"): esta sección alimentaba la "mesa"
+        (plano ShadowMaterial invisible), retirada porque
+        "roomFloor" (galeria-habitacion.js) ya es el único
+        receptor de la sombra real de "keyLight" — un
+        ShadowMaterial solo puede oscurecer, nunca mostrar la
+        "piscina de luz" que sí se ve sobre el
+        MeshPhysicalMaterial real de roomFloor.
     */
-    table: {
-        padding: 1.5,
-        shadowOpacity: 0.35
+
+    /*
+        Habitación atmosférica ("cyclorama": piso + pared
+        como una sola malla continua por pieza, perfil
+        radial revolucionado con esquinas redondeadas —
+        ver galeria-habitacion.js). Portado de Maqueta.html,
+        valores sin cambios.
+
+        "geometry": radio total de la sala, radio del
+        fillet (curva que conecta piso plano con pared
+        recta), altura de pared, "n" (cuántas esquinas
+        redondeadas tiene el contorno — 4 da una silueta
+        cuadrada suavizada, no un círculo) y segmentos
+        angulares de la malla.
+
+        "floorDropMargin": en layout vertical (ver
+        actualizarPisoSegunGeometria), cuánto más abajo del
+        elemento más bajo de la fila se deja caer el piso
+        — evita que quede tangente/clipeando contra la
+        base del elemento.
+    */
+    room: {
+        geometry: {
+            radius: 40,
+            filletR: 30,
+            wallHeight: 30,
+            n: 4,
+            angSegs: 10
+        },
+        floorDropMargin: 0.02,
+
+        /*
+            Margen de seguridad (unidades de mundo) que se le
+            suma al radio real de la fila (el punto más lejano
+            de cualquier elemento, medido desde el centro de la
+            sala) antes de decidir cuánto agrandar la sala — ver
+            "factor" en actualizarPisoSegunGeometria,
+            galeria-habitacion.js. Mismo espíritu que
+            table.padding (arriba): ninguno de los dos valores
+            reemplaza al otro, cada uno protege una superficie
+            distinta (mesa/sombra de contacto vs. piso/pared de
+            la sala).
+        */
+        floorFlatMargin: 1.5
+    },
+
+
+    /*
+        Sombra de contacto: un plano circular con degradado
+        radial (canvas, no una sombra real) por elemento,
+        pegado al piso justo debajo — ver
+        galeria-sombra-contacto.js. Complementa (no
+        reemplaza) la sombra real que proyecta "key": sirve
+        para que CUALQUIER elemento se sienta "apoyado" en el
+        piso aunque esté lejos del alcance real del cono de
+        luz (que solo cubre al que está en foco).
+    */
+    contactShadow: {
+        // Resolución de la textura de degradado radial
+        // (canvas cuadrado, lado en px).
+        texSize: 256,
+        // El plano es cuadrado, de lado = diagonal del bbox
+        // (X/Z) del elemento por este factor — 1.6 deja aire
+        // alrededor del contacto real, mismo valor que la
+        // maqueta.
+        escalaDiagonal: 1.6,
+        // Opacidad EN REPOSO (k=1, día/claro) — el sistema
+        // día/noche (config.tema) la atenúa hacia la noche,
+        // ver actualizarTema() en galeria-sombra-contacto.js.
+        opacityBase: 0.9,
+        // Se suma a roomGroup.position.y (galeria-habitacion.js)
+        // para el plano — apenas por encima del piso, evita
+        // z-fighting contra la propia geometría del piso.
+        offsetY: 0.003
     },
 
 
@@ -614,165 +675,130 @@ export const CONFIG = {
             (ver galeria.js).
         */
         /*
-            "nearFactor"/"farFactor": igual que
-            camera.position o shadowCameraBounds (ver
-            comentarios más abajo), near/far fijos
-            (12/26) estaban calibrados para cuando la
-            cámara quedaba cerca de la fila. Con el
-            bounding box real, la distancia
-            cámara→elemento más lejano creció a ≈29.4 —
-            más allá de "far: 26" — así que el extremo
-            de la fila quedaba directamente devorado
-            por la niebla.
+            HISTORIAL (sistema viejo, ya retirado): antes de
+            portar la maqueta esto era Fog lineal con
+            near/far fijos (12/26), que con el bounding box
+            real de la fila (distancia cámara→elemento más
+            lejano ≈29.4) dejaba el extremo de la fila
+            devorado por la niebla — se había resuelto con
+            "nearFactor"/"farFactor" relativos a la distancia
+            real. Ver el FIX debajo: ahora es FogExp2 (density,
+            no near/far), igual que la maqueta — el mismo
+            riesgo de fondo (niebla calibrada a una escala que
+            no es la del contenido real) sigue latente, pero
+            con otra forma.
+        */
+        /*
+            FIX: pasó de Fog lineal (near/far, con
+            "nearFactor"/"farFactor" relativos a la distancia
+            real cámara→fila — sistema viejo, del proyecto
+            real antes de portar la maqueta) a FogExp2
+            (density), igual que Maqueta.html — ver el
+            comentario grande junto a la construcción de
+            scene.fog en galeria-escena.js.
 
-            Se reemplaza por dos factores relativos a
-            "distMax" (la distancia real de la cámara
-            al punto más lejano del bounding box de la
-            fila, calculada en galeria-escena.js):
-            fog.near = nearFactor * distMax, fog.far =
-            farFactor * distMax. Los valores 0.879/1.905
-            replican la MISMA proporción que tenía el
-            ajuste original a mano (near=12, far=26,
-            sobre una distMax original de ≈13.65).
+            0.038 es el valor literal de la maqueta, calibrado
+            contra SU escala de prueba (cajas chicas, fila
+            angosta). Con contenido real más grande esto puede
+            necesitar bajarse (mismo riesgo que motivó en su
+            momento el sistema nearFactor/farFactor dinámico
+            que reemplaza: con distancias reales más grandes
+            que las de prueba, una niebla calibrada al tamaño
+            chico "devora" el fondo de la fila antes de
+            tiempo) — se deja igual a la maqueta por ahora, a
+            revisar a ojo.
         */
         fog: {
-            nearFactor: 0.879,
-            farFactor: 1.905
+            density: 0.038
         }
     },
 
 
     /*
         Cámara de "alineación" (lineup shot): fija,
-        pegada al primer elemento, sin
-        OrbitControls. El punto de mira en X se
-        calcula solo (ver findCenteredLookAtX en
-        galeria-utils.js) para que la fila quede
-        centrada sin importar cuántos elementos haya
-        — acá solo se configuran la posición y la
-        altura/profundidad del punto de mira.
+        pegada al primer elemento, sin OrbitControls. El
+        punto de mira en X se calcula solo (ver
+        findCenteredLookAtX en galeria-utils.js) para que
+        la fila quede centrada sin importar cuántos
+        elementos haya — acá solo se configuran la
+        posición y la altura/profundidad del punto de mira.
 
-        "position.x" YA NO es la posición real que usa
-        la escena: es sólo un valor de respaldo para el
-        caso límite de una fila vacía (0 elementos). La
-        posición X real de la cámara se calcula en
-        galeria-escena.js (verticesMundoDeFila +
-        cameraXDesdeAnchoFila) a partir del bounding box
-        REAL de la fila — necesario porque los
-        parámetros de las fórmulas procedurales todavía
-        son placeholders (ver encuadre-camara.md) y
-        pueden dar bounding boxes bastante más anchos o
-        angostos de una tanda de valores a otra. Un
-        "position.x" fijo (como éste, calibrado a mano
-        para el cono simple original) queda desactualizado
-        apenas cambia la escala de las geometrías, y en
-        el peor caso deja a la cámara PARADA ADENTRO de
-        la fila en vez de más allá de su extremo —
-        rompiendo por completo el "lineup shot" (fue
-        justo el bug reportado y confirmado con
-        diagnóstico en vivo: fila real de ancho ≈24.66,
-        cámara fija en x=-8, bien adentro del rango
-        [-12.33, 12.33]).
+        "position.x/z" y "lookAtY" (más abajo) NO son los
+        valores que usa la escena de verdad: son solo el
+        respaldo para el caso límite de fila vacía. Los
+        reales se calculan en vivo en galeria-escena.js a
+        partir del bounding box REAL de la fila —necesario
+        porque los parámetros de las fórmulas procedurales
+        son placeholders (ver encuadre-camara.md) y el
+        ancho/alto de la fila varía bastante entre tandas
+        de valores; un número fijo queda desactualizado
+        apenas cambia la escala de las geometrías (llegó a
+        dejar la cámara parada ADENTRO de la fila).
 
-        "margenRasante" y "anguloVistaGrados"
-        reemplazan juntos a lo que hubiera sido un
-        "margenEscorzo" de un solo componente (sólo en
-        X): la posición real de la cámara (calculada en
-        galeria-escena.js, ver cameraXZDesdeAnchoFila)
-        se arma como un desplazamiento POLAR desde el
-        extremo izquierdo de la fila —
+        "margenRasante"/"anguloVistaGrados" arman la
+        posición real como un desplazamiento POLAR desde
+        el extremo izquierdo de la fila:
             dx = margenRasante * anchoFila * cos(ángulo)
             dz = margenRasante * anchoFila * sin(ángulo)
-        — así, al cambiar el ancho de la fila (los
-        parámetros de las fórmulas son placeholders,
-        van a seguir cambiando), el ÁNGULO de vista se
-        mantiene, en vez de aplanarse. Aplanarse fue
-        justo el bug reportado en la segunda ronda:
-        escalar sólo el margen en X (y dejar
-        position.z fijo, como esta cámara tenía
-        calibrado a mano) reduce el ángulo cuanto más
-        ancha es la fila — con fila ancha, casi
-        cualquier z fijo queda demasiado rasante y los
-        elementos se ocluyen por completo entre sí.
+        así el ÁNGULO de vista se mantiene sea cual sea el
+        ancho de la fila (con un margen fijo solo en X, el
+        ángulo se achata cuanto más ancha es la fila, y los
+        elementos terminan ocluyéndose entre sí).
 
-        "anguloVistaGrados": 70 (medido desde el eje X
-        de la fila; 0° = rasante total/perfil por el
-        pasillo, 90° = vista de perfil pura — fuera de
-        alcance, el .md pide explícitamente que NO sea
-        una vista de perfil).
+        "anguloVistaGrados": 70° (medido desde el eje X;
+        0°=pasillo, 90°=perfil puro — se busca evitar el
+        perfil puro). Valor de partida para ajustar a ojo,
+        rango razonable 65°-80°.
 
-        Historial: el diseño original (camera.position =
-        (-8, 0.5, 2), extremo en -5.5) equivalía a
-        ≈38.7°; se subió a 55° porque a ese ángulo la
-        fila real (más elementos, más ancha) seguía
-        ocluyéndose por completo. Con 55° confirmado en
-        vivo, la oclusión bajó pero seguía siendo alta:
-        a ese ángulo la línea de vista todavía es más
-        parecida al "pasillo" (0°) que al perfil (90°),
-        así que muchas geometrías seguían tapándose entre
-        sí y no se llegaba a ver la cara LARGA del
-        bounding box de la fila (el lado con el ancho
-        total, no el frente de cada elemento) — se sube a
-        70° para correr la vista bastante más hacia el
-        perfil, sin llegar a él. Sigue siendo un valor de
-        partida para ajustar a ojo (rango razonable para
-        seguir moviéndolo: 65°-80°), no un cálculo
-        derivado de nada.
-
-        "margenRasante": 0.291 replicaría la MAGNITUD
-        diagonal EXACTA del margen original (√(2.5² +
-        2²) ≈ 3.20, sobre un ancho total de 11 ≈ 29.1%)
-        — con el ángulo ya fijado por
-        anguloVistaGrados, esto controla qué tan LEJOS
-        queda la cámara del extremo de la fila (más
-        magnitud = plano más general/alejado, todo se
-        ve más chico; menos = cámara más cerca, todo se
-        ve más grande, a costa de que el extremo lejano
-        de la fila se achique todavía MÁS en relación
-        al cercano — la razón distFar/distNear NO
-        depende del ancho de la fila, sólo de este
-        factor y del ángulo).
-
-        Se deja en 0.19 (no en el 0.291 "fiel al
-        original") porque, con el ancho real de la fila
-        (~24.66), el valor fiel dejaba todo el conjunto
-        muy chico en pantalla — bajarlo agranda sobre
-        todo la mitad cercana a la cámara, que es la
-        que más peso visual tiene en el encuadre. Es el
-        primer número para seguir ajustando a ojo si
-        hace falta más o menos tamaño.
+        "margenRasante": 0.19 controla qué tan lejos queda
+        la cámara del extremo de la fila (más alto = plano
+        más general/alejado; más bajo = cámara más cerca, a
+        costa de que el extremo lejano se achique más en
+        relación al cercano). Primer número para ajustar si
+        hace falta más o menos tamaño en pantalla.
     */
     camera: {
         fov: 56,
         near: 0.1,
-        far: 100,
+        /*
+            far=100 alcanzaba de sobra para la fila de
+            elementos sola, pero desde que existe la
+            habitación (config.room.geometry, ver
+            galeria-habitacion.js) ya no: con radius=40,
+            filletR=30, wallHeight=30, el punto más lejano de
+            la sala (borde superior de la pared) está a
+            sqrt(40² + 60²) ≈ 72 unidades del CENTRO de la
+            sala — y la cámara no siempre está centrada, así
+            que la distancia real cámara→pared lejana puede
+            superar eso. Con far=100 esa distancia se cruzaba
+            fácil, y Three.js recorta (culling por far plane)
+            todo lo que quede más allá: la pared se veía
+            "cortada".
+
+            200 dejo margen de sobra para el tamaño DEFAULT de
+            la sala. Ojo: galeria-habitacion.js además escala
+            la sala en vivo (XZ) para que el piso plano siempre
+            cubra el punto más lejano de la fila real (ver
+            "factor" en actualizarPisoSegunGeometria) — con
+            filas muy anchas ese factor puede crecer bastante,
+            agrandando la sala más allá de lo que este valor
+            fijo cubre. No se resuelve acá (mantener este ajuste
+            acotado); si vuelve a verse "cortada" con contenido
+            grande, hay que volver a este número o atarlo al
+            mismo factor dinámico.
+        */
+        far: 200,
         position: { x: -8.0, y: 0.5, z: 2.0 },
         margenRasante: 0.19,
         anguloVistaGrados: 70,
         /*
-            "lookAtY" YA NO es el valor real que usa la
-            escena (mismo patrón que position.x/z, ver
-            arriba): es sólo el respaldo para el caso
-            límite de fila vacía. El valor real se
-            calcula en galeria-escena.js como el centro
-            vertical (Y) real del bounding box de TODA
-            la fila — 0.65 estaba calibrado para el
-            ConeGeometry simple original (bajito) y
-            quedaba muy por debajo del centro real de
-            estas geometrías paramétricas (bastante más
-            altas): la cámara apuntaba casi al piso, así
-            que la mayor parte de cada elemento quedaba
-            por ENCIMA del borde superior de pantalla —
-            cortada, invisible — y sólo se veía una
-            franja angosta cerca del centro/abajo del
-            cuadro. Confirmado con datos reales: con
-            0.65 fijo, el NDC Y de la fila daba
-            [-0.01, 2.71] (pantalla visible es [-1, 1]);
-            con el centro real (~2.75 para esta fila)
-            pasa a [-0.67, 1.36] — mucho más aprovechado,
-            aunque el tope siga levemente recortado (ver
-            "cameraX y cameraZ" en galeria-escena.js
-            para el próximo ajuste fino si hace falta).
+            "lookAtY": mismo patrón que position.x/z de
+            arriba (respaldo para fila vacía). El valor real
+            es el centro vertical (Y) del bounding box de
+            toda la fila (galeria-escena.js): con geometrías
+            más altas que el cono original, un lookAtY fijo
+            apunta casi al piso y deja buena parte de cada
+            elemento fuera de cuadro por arriba.
         */
         lookAtY: 0.65,
         lookAtZ: 0
@@ -782,37 +808,557 @@ export const CONFIG = {
     lights: {
 
         ambient: {
-            color: 0xffffff,
-            intensity: 0.55
+            // FIX: 0x11131c, no 0xffffff — valor real de la
+            // maqueta. En la práctica esto casi no se nota
+            // porque actualizarTemaLuces() pisa ambient.color
+            // en cada frame (lerp WARM.ambient/COLD.ambient) ya
+            // desde el primer tick, pero el valor de
+            // construcción debe coincidir de todos modos.
+            //
+            // FIX (compat r128 — ver galeria-compat-r128.js):
+            // faltaba el mismo reescalado ×π que ya tienen
+            // key/rim/calidoFrio/porCaja — se había dejado
+            // en 0.55 tal cual la maqueta, sin escalar. Bajo
+            // el modo legacy de r128 (el que calibró la
+            // maqueta, y el que reproduce el shim), TODA luz
+            // puntual/spot/ambient/hemisférica lleva el
+            // mismo "irradiance *= PI" — no solo las
+            // puntuales/spot. 0.55 × π ≈ 1.728.
+            color: 0x11131c,
+            intensity: 1.728
         },
 
+        /*
+            "key" pasa de DirectionalLight a SpotLight —
+            único shadow caster de toda la escena, igual que
+            antes, pero ahora su posición/target/ángulo/
+            distancia se recalculan en vivo cada frame (ver
+            galeria-cono-luz.js) para seguir al foco vigente,
+            en vez de quedar fijos.
+
+            "position" queda como RESPALDO (fila vacía,
+            mismo patrón que camera.position.x/table.padding):
+            createConoLuz() nunca lo toca si elementCount es
+            0 — con contenido real, la posición real sale
+            siempre del cálculo dinámico.
+
+            El frustum de sombra YA NO necesita
+            recalibrarse a mano (actualizarFrustumSombra()
+            se retira): SpotLightShadow deriva su FOV
+            automáticamente de "angle" en cada actualización
+            del shadow map — a diferencia de
+            DirectionalLight, que sí necesitaba left/right/
+            top/bottom calculados a mano contra el ancho real
+            de la fila.
+        */
         key: {
-            color: 0xffffff,
-            intensity: 1.0,
-            position: { x: -6, y: 9, z: 3 },
-            shadowMapSize: 1024,
             /*
-                Igual que camera.position.x (ver
-                comentario más arriba): valor de
-                respaldo para el caso límite de fila
-                vacía. El frustum real de la sombra se
-                calcula en galeria-escena.js como
-                semiancho real de la fila +
-                shadowCameraPadding, para que la sombra
-                no quede recortada si la fila resulta
-                más ancha de lo que este número fijo
-                asumía (9, calibrado para un semiancho
-                de ≈5.5 — padding implícito de 3.5).
+                FIX (auditoría contra Maqueta.html línea 1473):
+                estos valores tenían varios errores de
+                transcripción — quedan corregidos contra el
+                SpotLight real de la maqueta:
+
+                  new THREE.SpotLight(
+                      0xfff1de, 6.5,
+                      LIGHT_CONE_CONFIG.distance,   // 30
+                      LIGHT_CONE_CONFIG.angleMax,   // Math.PI/2.05
+                      LIGHT_CONE_CONFIG.penumbra,   // 0.55
+                      1
+                  );
+                  keyLight.position.set(3.2, 5.2, -2.4);
+                  keyLight.shadow.bias = -0.0004;
+                  keyLight.shadow.normalBias = 0.0015;
+                  keyLight.shadow.camera.far = 25;
+
+                "intensity" en particular estaba en 3.4 — ese
+                es en realidad INTENSIDAD_FOCO_MAX de
+                lucesPorCaja (config.lightsAdicionales.porCaja.
+                intensidadMax), no de keyLight: quedó pisado
+                por error al escribir esta sección.
+
+                REESCALADO por unidades fotométricas — ver
+                galeria-compat-r128.js. El factor real entre
+                r128 (physicallyCorrectLights=false, con el
+                que se calibró TODA Maqueta.html) y three
+                0.169 SIN el shim de compat es ×4π; CON el
+                shim (que reproduce el modo legacy de r128,
+                que también trae su propio ×π implícito) el
+                factor correcto es solo ×π: 6.5 (valor real
+                de la maqueta) × π ≈ 20.42.
+
+                Este valor (81.68 = ×4π) quedó de una pasada
+                anterior, ANTES de tener el shim — estaba
+                sobrecorrigiendo por 4× para compensar a
+                mano la pérdida real, que en realidad tenía
+                dos causas distintas (ver
+                galeria-compat-r128.js): la fórmula de
+                atenuación por distancia (ahora resuelta por
+                el shim + keyLight.distance fijo, ver
+                galeria-cono-luz.js) y el factor ×π (ahora
+                resuelto acá). SIN VERIFICAR visualmente
+                todavía (no hay forma de renderizar WebGL
+                acá) — punto de partida razonado, no un
+                valor confirmado con los ojos.
             */
-            shadowCameraBounds: 9,
-            shadowCameraPadding: 3.5,
-            shadowBias: -0.0015
+            color: 0xfff1de,
+            intensity: 20.42,
+            position: { x: 3.2, y: 5.2, z: -2.4 },
+            target: { x: 0, y: 0, z: 0 },
+
+            // "distance" es solo el valor inicial/de
+            // respaldo — createConoLuz() lo recalcula cada
+            // frame como (altura del cono + margenDistancia).
+            distance: 30,
+            angleMin: 0.25,
+            angleMax: Math.PI / 2.05,
+            penumbra: 0.55,
+            decay: 1,
+
+            shadowMapSize: 1024,
+            shadowBias: -0.0004,
+            shadowNormalBias: 0.0015,
+            // Perspective shadow camera de SpotLight: solo
+            // necesita near/far (el fov lo deriva "angle"
+            // solo) — a diferencia del frustum ortográfico de
+            // DirectionalLight (left/right/top/bottom), que
+            // ya no aplica.
+            shadowCameraNear: 1,
+            // 25 es el valor real de la maqueta. OJO: ahí la
+            // sala/fila eran chicas (mismo motivo por el que
+            // hubo que subir config.camera.far de 100 a 200,
+            // ver el comentario ahí) — si con contenido real
+            // más grande el cono de luz llega a necesitar más
+            // de 25 unidades de alcance (keyLight.distance =
+            // altura del cono + margenDistancia, ver
+            // galeria-cono-luz.js), la sombra se recorta por
+            // este far plane. Se deja igual a la maqueta por
+            // ahora, a revisar si se nota recorte.
+            shadowCameraFar: 25
         },
 
-        fill: {
-            color: 0x88aaff,
-            intensity: 0.25,
-            position: { x: 6, y: 4, z: -4 }
+        /*
+            Parámetros del cono de luz en sí (dónde apunta,
+            qué tan grande es) — ver galeria-cono-luz.js.
+            Portado de Maqueta.html (LIGHT_CONE_CONFIG/
+            alturaPuntoFinalLineaRosa/FACTOR_SUAVIZADO).
+
+            FIX: "alturaApex" pasa a ser "alturaApexFactor"
+            — auditado contra Maqueta.html línea 1397/1400:
+            ahí NO es un valor directo, es
+            "extensionEjeSecundario * 1.5" (la extensión
+            real de los bboxes en el eje secundario, ×1.5),
+            recalculado por galeria-cono-luz.js contra
+            "bboxesPorIndice" (ver alturaApexMinimo() ahí).
+            Un valor directo fijo (6, lo que había acá antes)
+            solo coincidía por la escala chica de las cajas
+            de prueba de la maqueta — con geometría real más
+            grande, la distancia horizontal apex→fila crece
+            con el ancho de la fila mientras la altura del
+            ápice quedaba fija, y la intersección del cono
+            con el piso deja de ser una elipse cerrada
+            (pasa a parábola/hipérbola, abierta hacia el
+            horizonte).
+
+            FIX #2: lo de arriba (alturaApexFactor, atado a
+            la altura del elemento) NO ALCANZABA por sí solo
+            — seguía viéndose parábola con contenido real.
+            Auditado de nuevo, esta vez contra la posición
+            real del ápice (Maqueta.html línea ~1710): el
+            ápice es el REFLEJO de la cámara a través del
+            punto en foco — su offset horizontal ES la
+            distancia 3D completa cámara→target, que crece
+            con el ANCHO de la fila (la cámara se aleja para
+            que entre todo en cuadro), no con la altura de un
+            elemento. "alturaApexRatio"/"distanceMargenFactor"
+            (abajo) agregaban una componente PROPORCIONAL a
+            esa distancia para compensarlo.
+
+            REVERTIDO A PEDIDO: ese FIX #2 corregía la forma
+            de la piscina de luz en el piso, pero cambiaba
+            demasiado la ALTURA real de la luz respecto a
+            cómo se veía antes (el ápice terminaba muy por
+            encima de la escena en filas anchas). Se
+            revierte en galeria-cono-luz.js — "apex.y" vuelve
+            a ser solo "alturaApexMinimo()" (el FIX #1, de
+            arriba). "alturaApexRatio"/"distanceMargenFactor"
+            quedan declarados más abajo, SIN USO, por si se
+            retoma este camino con otro enfoque (p. ej. un
+            ratio más chico, o solo aplicado en algunas fases).
+        */
+        conoLuz: {
+            // Multiplicador sobre la extensión real de los
+            // elementos en el eje secundario vigente (altura
+            // del elemento más alto, en horizontal) — no una
+            // altura directa. 1.5 es el valor real de
+            // Maqueta.html (alturaPuntoFinalLineaRosa =
+            // extensionEjeSecundario * 1.5). Único término
+            // que fija "apex.y" ahora mismo — ver el FIX #2
+            // revertido en el comentario grande de arriba.
+            alturaApexFactor: 1.5,
+            // SIN USO (ver el FIX #2 revertido, comentario
+            // grande de arriba). NUEVO (FIX #2, ver el
+            // comentario grande de arriba): tan(elevación
+            // deseada del eje del cono sobre el piso),
+            // aplicado sobre "distancia"
+            // (cámara→target), no sobre el ancho de la fila
+            // directamente — ese es justo el punto: no hace
+            // falta saber el ancho real de la fila porque
+            // "distancia" ya lo refleja (la cámara se aleja
+            // en proporción al ancho para mantener todo en
+            // cuadro). 1.0 ≈ elevación de 45°: valor de
+            // partida razonado a partir de la escena real de
+            // Maqueta.html (ratio implícito ~0.47, elevación
+            // ~25°, apenas por encima del rango de
+            // keyLight.angle observado en la escena real —
+            // 21°..32°), con margen extra a propósito porque
+            // el ratio de la maqueta ya andaba al límite
+            // incluso en SU propia escala chica. Mismo tipo
+            // de constante "ajustar a ojo" que el resto del
+            // proyecto (radioFactor, levelSeparationFactor...)
+            // — subir el número sube la luz (piscina más
+            // redonda, sombras más cortas); bajarlo la acerca
+            // al piso (piscina más alargada, más parecida a
+            // lo que se veía antes de este FIX). SIN
+            // VERIFICAR visualmente todavía.
+            alturaApexRatio: 1.0,
+            /*
+                NUEVO (FIX #3 — el FIX #2 de arriba resolvía
+                la ELEVACIÓN del eje del cono, pero subir el
+                ápice también alarga la distancia real
+                ápice→elementos; "config.lights.key.distance"
+                (30, fijo, portado literal de Maqueta.html)
+                dejó de alcanzar: con los números reales —
+                ápice a y≈24, elementos a distApex 34-36 —
+                TODOS quedaban más allá del alcance de la
+                luz bajo la fórmula LINEAL del shim
+                (distance = donde la luz llega a cero), así
+                que solo se veía la porción de la elipse más
+                cercana al ápice, no la elipse completa.
+
+                "distanceMargenFactor" multiplica el largo
+                real del eje del cono (apex→target, "height"
+                en galeria-cono-luz.js) para dar el nuevo
+                keyLight.distance, tomando el MAYOR entre eso
+                y el piso fijo de la maqueta (config.lights.
+                key.distance — sigue sirviendo en escenas
+                chicas/cámara cerca, donde "height" es menor
+                a 30). 1.6 dejaría el corte ~60% más allá del
+                punto en foco — no hay una talla única (la
+                fila real se extiende a los costados del eje,
+                así que el elemento MÁS lejano del ápice queda
+                más allá de "height" solo): mismo tipo de
+                constante "ajustar a ojo" que alturaApexRatio,
+                subir el número extiende el alcance (más
+                elementos bien iluminados, pool más completo);
+                bajarlo lo vuelve a acercar al corte que se ve
+                en la imagen reportada. Es seguro subirlo sin
+                límite práctico bajo la fórmula LINEAL del
+                shim (a diferencia de antes del shim, con la
+                ventana Frostbite, donde un "distance" generoso
+                apagaba todo por otro motivo — ver el FIX #1
+                más abajo).
+            */
+            // SIN USO (FIX #2 revertido — ver el comentario
+            // grande junto a "alturaApexFactor", arriba). Con
+            // "apex.y" de vuelta en "alturaApexMinimo()" solo,
+            // "height" (el largo del eje apex→target) vuelve a
+            // ser chico y "config.lights.key.distance" (30)
+            // alcanza de sobra sin necesitar este margen.
+            distanceMargenFactor: 1.6,
+            // SIN USO desde el FIX de compat r128 (ver
+            // galeria-compat-r128.js): keyLight.distance ya
+            // no se deriva de la geometría del cono, queda
+            // fijo en config.lights.key.distance (30, igual
+            // que Maqueta.html) — la fórmula de atenuación
+            // LINEAL que reproduce el shim necesita esa
+            // distancia fija como la rampa completa 0→1, no
+            // como un margen sobre un corte físico. Se deja
+            // declarado por si algún día se vuelve a
+            // necesitar un margen real (p. ej. si se
+            // abandona el shim), para no perder el valor de
+            // referencia de la maqueta.
+            margenDistancia: 4,
+            // Suavizado exponencial del radio mientras NO
+            // está congelado (ver FACTOR_SUAVIZADO en la
+            // maqueta) — 0..1, más alto = sigue al objetivo
+            // más rápido.
+            suavizadoRadio: 0.35,
+
+            /*
+                Margen sobre la distancia real ápice→cámara
+                que se le da a "keyLight.distance" (ver el
+                FIX actual en galeria-cono-luz.js). 1.0 =
+                el corte esférico de la luz pasa exactamente
+                por la cámara; 1.1 = 10% más allá, para
+                cubrir cualquier punto visible que quede un
+                poco por detrás de la cámara respecto del
+                ápice. Valores más altos dan más cobertura
+                pero aplanan más la rampa de atenuación
+                (todo se ve más parejo, menos "spot") —
+                1.05–1.15 es el rango sano; subir solo si
+                con la cámara muy lejos todavía se ve
+                recorte.
+            */
+            toleranciaDistancia: 1.10,
+
+
+            /*
+                Haz visible (la malla del cono en sí, no la
+                luz) — ver galeria-cono-luz.js. "color"/
+                "opacity" acá son la base WARM en reposo (k=1,
+                día/claro) — el sistema día/noche
+                (config.tema, ver más abajo) los recalcula en
+                vivo a partir de warm/cold y de la intensidad
+                del preset vigente; estos valores solo importan
+                como respaldo antes del primer
+                actualizarTemaSuave() (galeria.js).
+            */
+            beam: {
+                color: 0xffeedd,
+                opacity: 0.105
+            },
+
+            /*
+                Polvo en suspensión dentro del haz — ver
+                galeria-cono-luz.js (mismo módulo que el haz:
+                comparten posición/eje/radio/largo del cono,
+                no vale la pena separarlos en otro archivo).
+
+                "count" gateado por dispositivo (mismo
+                precedente que shadowMapSize en config.lights.key
+                — 900/450, valores de la maqueta).
+
+                "umbralFoco"/"limiteFreeze"/"limiteOcultar":
+                cuantas más "cajas en foco" haya a la vez (ver
+                pesoFoco, mismo umbral que
+                lightsAdicionales.porCaja más abajo), más caro
+                sale seguir animando el polvo sin que se note
+                — con más de "limiteOcultar" en foco simultáneo
+                se oculta directamente, y con más de
+                "limiteFreeze" se deja de avanzar el tiempo del
+                shader (queda quieto, pero visible).
+            */
+            dust: {
+                countMobile: 450,
+                countDesktop: 900,
+                umbralFoco: 0.05,
+                limiteFreeze: 2,
+                limiteOcultar: 3
+            }
+        }
+
+    },
+
+
+    /*
+        Sistema día/noche — portado de Maqueta.html
+        (DARK/BRIGHT/WARM/COLD/refresh(k)). Ahí era un
+        <input type="range"> que el visitante arrastraba a
+        mano (la suavidad la daba el propio gesto); acá lo
+        dispara el botón de tema del navbar (oscuro/claro,
+        discreto, dos estados) — así que la transición suave
+        hay que armarla en código: "k" (0..1, 0=oscuro/DARK,
+        1=claro/BRIGHT) se anima con suavizado exponencial
+        hacia el objetivo en vez de saltar de golpe (ver
+        actualizarTemaSuave en galeria.js, mismo criterio de
+        suavizado que "constanteDeTiempo" en
+        galeria-rotacion.js).
+
+        NO toca scene.background/scene.fog: eso lo sigue
+        manejando actualizarColoresTema() (galeria-escena.js),
+        que ya lee las variables CSS reales del sitio — son
+        dos sistemas separados que conviven porque atacan
+        cosas distintas (paleta general de la página vs.
+        luces/materiales específicos de la escena 3D). Si acá
+        también se tocara fog/background, competirían por
+        escribir el mismo valor cada frame y una de las dos
+        fuentes quedaría de adorno.
+
+        "dark"/"bright": mismos presets que la maqueta
+        (warmth/intensity/day, 0..1 cada uno) — no son
+        colores, son FACTORES que después "refresh"
+        multiplica/mezcla contra las bases reales de cada luz
+        (config.lights.key.intensity, etc.) y contra
+        warm/cold.
+    */
+    tema: {
+
+        dark: { warmth: 0.0, intensity: 0.75, day: 0.0 },
+        bright: { warmth: 1.0, intensity: 0.90, day: 0.60 },
+
+        warm: {
+            keyColor: 0xfff1de,
+            beamColor: 0xffeedd,
+            ambientColor: 0x1a1410
+        },
+        cold: {
+            keyColor: 0xbfd4ff,
+            beamColor: 0xaec6ff,
+            ambientColor: 0x0d1420
+        },
+
+        roomNight: 0x000000,
+        roomDay: 0x3a3a42,
+
+        // Mismos hex que floorMat.color/FLOOR_NIGHT en
+        // galeria-habitacion.js — se duplica acá (en vez de
+        // importar desde ahí) para no acoplar ese módulo a
+        // este sistema; si alguno de los dos cambia, hay que
+        // revisar el otro a mano.
+        floorNight: 0x2a231b,
+        floorDay: 0xF5E6D3,
+
+        hemiMax: 1.15,
+        wallLightMax: 1.55,
+
+        // Constante de tiempo (ms) del suavizado exponencial
+        // de "k" — más alto, transición más lenta/pareja.
+        suavizadoMs: 500
+
+    },
+
+
+    /*
+        Luces ADICIONALES portadas de Maqueta.html — no
+        reemplazan nada de "lights" arriba (ambient/key/fill
+        siguen intactas). Ninguna de estas proyecta sombra
+        (solo "key", arriba, es shadow caster en toda la
+        escena — ver galeria-escena.js).
+
+        "rim"/"roomLight" iluminan TODO (elementos + sala,
+        capa por defecto). "wallLight" está restringida a la
+        capa 1 (layers.set(1)) — la misma que ya activan
+        roomWall/roomFloor en galeria-habitacion.js — así que
+        solo afecta a la sala, nunca a los elementos, aunque
+        ambas capas convivan en el mismo grupo de luces.
+
+        "calidoFrio": el par de PointLight cálido/frío cambia
+        de comportamiento según ejePrincipal (ver
+        actualizarLucesSegunCamara en galeria-luces.js): en
+        horizontal quedan fijas en su posición/intensidad de
+        siempre; en vertical se atenúan y seguido la altura de
+        la cámara (siguen "subiendo" con la columna a medida
+        que se recorre scroll).
+
+        REESCALADO FOTOMÉTRICO (afecta "rim" y "calidoFrio"
+        acá abajo, y config.lights.key más arriba — NO a
+        "roomLight"/"wallLight", HemisphereLight, ni a
+        config.lights.ambient, AmbientLight: ninguna de esas
+        dos tiene esta reinterpretación fotométrica):
+
+        La maqueta corre en three r128, donde "intensity" de
+        PointLight/SpotLight era un multiplicador arbitrario
+        sin unidad física fija. Este proyecto corre en
+        three@0.169.0 (ver import map de galeria.html), donde
+        esa propiedad "useLegacyLights"/"physicallyCorrectLights"
+        que permitía volver al comportamiento viejo YA NO
+        EXISTE (confirmado contra el código fuente real de
+        0.169.0: PointLight/SpotLight.intensity se interpreta
+        siempre en candela — ver "power = intensity × 4π" en
+        PointLight.js) — no alcanza con cargar el mismo CDN
+        que la maqueta para que esto coincida solo: aunque se
+        pudiera (no es práctico: todo este proyecto ya está
+        escrito contra la sintaxis de módulos ES y los chunks
+        de shader de una versión moderna de three, r128 es un
+        script global de otra era), la propiedad en sí fue
+        removida, no solo deprecada.
+
+        Se reescalan entonces los valores de intensidad
+        portados literal de la maqueta por ×4π (≈12.566, la
+        conversión que Three.js documentó al retirar el flag)
+        — un punto de partida razonado, SIN VERIFICAR
+        visualmente (no hay forma de renderizar WebGL en este
+        entorno). El valor original de la maqueta queda en
+        comentario al lado de cada uno, para ajustar a ojo sin
+        tener que rehacer la cuenta.
+    */
+    lightsAdicionales: {
+
+        // FIX (compat r128 — ver galeria-compat-r128.js y su
+        // comentario en config.lights.key): TODAS las
+        // intensidades de este bloque quedan reescaladas
+        // ×π (no ×4π, que era el factor sin el shim de
+        // compat) contra el valor real de Maqueta.html.
+        rim: {
+            color: 0x2b4a6b,
+            // Maqueta (r128): 0.65. ×π ≈ 2.042.
+            intensity: 2.042,
+            distance: 15,
+            position: { x: -3, y: 1.6, z: -3 }
+        },
+
+        roomLight: {
+            skyColor: 0x8ba8c8,
+            groundColor: 0x2a2418,
+            // 0 en la maqueta — sin cambio, ×π de 0 sigue
+            // siendo 0.
+            intensity: 0.0
+        },
+
+        wallLight: {
+            skyColor: 0xd4e0ee,
+            groundColor: 0x8c7c64,
+            // FIX: faltaba el ×π — se había dejado en 105.0
+            // tal cual la maqueta, sin escalar (mismo olvido
+            // que "ambient" más arriba). Maqueta (r128):
+            // 105.0. ×π ≈ 329.87.
+            intensity: 329.87
+        },
+
+        calidoFrio: {
+            calidoColor: 0xff8a3d,
+            frioColor: 0x4fd8ff,
+            distance: 14,
+            decay: 2,
+            calidoPos: { x: -3.5, xFactor: -0.44, y: 1.6, z: 1.5 },
+            frioPos:   { x: 2.5,  xFactor:  0.31, y: 2.0, z: -3.0 },
+            // Maqueta (r128): 2. ×π ≈ 6.283.
+            intensidadHorizontal: 6.283,
+            // Maqueta (r128): 0.35. ×π ≈ 1.0996.
+            intensidadVertical: 1.0996
+        },
+
+        /*
+            Un PointLight hijo de cada malla (ver
+            createLucesPorCaja, galeria-luces.js). Colores
+            alternados par/impar — decorativo, no ligado al
+            estado de conservación ni a ningún otro dato real
+            del elemento (mismo criterio que la maqueta).
+
+            "alturaFraccion"/"zOffset" posicionan la luz
+            relativa al CENTRO real del bbox local de cada
+            elemento (ver bboxesPorIndice) — 0.65/0.7 son los
+            valores de la maqueta, medidos ahí también desde
+            el centro de la caja (createLucesPorCaja recompone
+            ese centro y los aplica relativos a él, no al
+            origen local de la malla — ver el comentario junto
+            a "luz.position.set", galeria-luces.js: el origen
+            local acá es la base/cara frontal, no el centro,
+            a diferencia de la maqueta). Con geometría
+            paramétrica real de otra escala pueden necesitar
+            ajuste igual, pero al menos ahora parten del mismo
+            punto de referencia que la maqueta.
+
+            "umbral"/"ancho" arman la banda de pesoFoco()
+            (smoothstep alrededor de w=umbral, ancho de
+            transición "ancho") — no una rampa lineal: por
+            debajo de umbral-ancho/2 la luz queda apagada,
+            por encima de umbral+ancho/2 a full.
+        */
+        porCaja: {
+            colorPar: 0xff8a3d,
+            colorImpar: 0x4fd8ff,
+            distance: 7,
+            decay: 2,
+            alturaFraccion: 0.65,
+            zOffset: 0.7,
+            // Reescalado fotométrico ×π (compat r128 — ver
+            // galeria-compat-r128.js). Maqueta (r128):
+            // 0.12/3.4. ×π ≈ 0.377 / 10.681.
+            intensidadMin: 0.377,
+            intensidadMax: 10.681,
+            umbral: 0.35,
+            ancho: 0.3
         }
 
     },
@@ -828,25 +1374,17 @@ export const CONFIG = {
 
     /*
         Fase "hero": fundido del texto principal +
-        indicador de scroll. Ya NO comparte tiempo con
-        la cascada de conos (antes, "heroFadeOutAt" y
-        "scrollHintFadeAt" eran fracciones del mismo
-        progreso que también movía los conos — ver
-        galeria-revelado.js). Ahora son fracciones del
-        progreso PROPIO de esta fase, que solo dura lo
-        que dura el fundido del hero.
+        indicador de scroll, con progreso propio (no
+        comparte tiempo con la cascada de conos —
+        "heroFadeOutAt"/"scrollHintFadeAt" son fracciones
+        de ESTA fase, no de galeria-revelado.js).
 
-        "hiddenDrop" YA NO es el valor real (mismo
-        patrón que camera.position.x/z o lookAtY más
-        arriba): es solo el respaldo para el caso
-        límite de fila vacía. El valor real se calcula
-        en galeria-escena.js (findHiddenDrop(), ver
-        galeria-utils.js) a partir del encuadre real de
-        la cámara —FOV, distancia, aspecto de
-        ventana—, así que se ajusta solo en cualquier
-        dispositivo en vez de depender de un número
-        fijo calibrado a mano para escritorio (ver el
-        comentario grande junto a su cálculo).
+        "hiddenDrop": respaldo para fila vacía (mismo
+        patrón que camera.position.x/z). El valor real sale
+        de findHiddenDrop() (galeria-utils.js) a partir del
+        encuadre real de la cámara, así se ajusta solo en
+        cualquier dispositivo en vez de depender de un
+        número fijo calibrado para escritorio.
     */
     reveal: {
         hiddenDrop: 7,
@@ -1039,7 +1577,7 @@ export const CONFIG = {
             comportamiento idéntico al de antes de este
             campo existir.
         */
-        seamOffset: 0.03,
+        seamOffset: 0.00,
 
         /*
             Factor sobre el peso de rotación del cono
@@ -1169,33 +1707,16 @@ export const CONFIG = {
 
     /*
         Presupuesto de scroll de cada "parada", en
-        "alturas de ventana" (vh). YA NO son 5 números
-        sueltos calibrados en momentos distintos (hero/
-        proyecto/revelado/orden por un lado, fichas por
-        otro, multiplicado recién al final por la
-        cantidad de elementos) — eso hacía que el scroll
-        se sintiera repartido de forma dispareja: con el
-        GeoJSON real (5 elementos), las 4 fases fijas se
-        llevaban ~47% del total y las 5 fichas el ~53%
-        restante, y ADENTRO de las fijas tampoco era
-        parejo (proyecto duraba el doble que orden) — para
-        alguien scrolleando sin ver estos números, no hay
-        forma de anticipar cuánto falta para la próxima
-        parada.
-
-        Ahora TODAS las paradas —las 4 fases fijas y
-        CADA ficha individual, no el bloque de fichas
-        entero— duran lo mismo por defecto:
-        "vhPorParada" vh cada una (ver getBudgetPorParada
-        en galeria-fases.js, que multiplica esto por
-        "pesos" antes de convertir a píxeles). 1.2 replica
-        aproximadamente la escala total que ya tenía la
-        galería con el GeoJSON real (10.8vh con 9 paradas —
-        4 fijas + 5 fichas— contra los ~10.95vh que daban
-        los 5 valores viejos), así que el largo total del
-        scroll no pega un salto grande de golpe; es sólo
-        el reparto ADENTRO de ese total el que pasa a ser
-        parejo.
+        "alturas de ventana" (vh). TODAS las paradas —las
+        4 fases fijas y CADA ficha individual, no el
+        bloque de fichas entero— duran lo mismo por
+        defecto: "vhPorParada" vh cada una (ver
+        getBudgetPorParada en galeria-fases.js, que
+        multiplica esto por "pesos" antes de convertir a
+        píxeles). Antes eran 5 números sueltos calibrados
+        por separado, con un reparto bastante dispar entre
+        fases (y entre fichas y fases fijas); ahora el
+        único número a tocar para el largo total es este.
 
         "pesos": multiplicador opcional por parada, todos
         en 1 = perfectamente equidistante (comportamiento
@@ -1281,8 +1802,8 @@ export const CONFIG = {
         // Margen (km) del bounding box que limita el centro de cámara.
         bboxOffsetKm: 1,
 
-        // Color de los pines (mismo tono que ya se calibró a ojo).
-        colorPin: "#db6a40"
+        // Color de los pines: ver colorPinDesdeVariables() arriba.
+        colorPin: colorPinDesdeVariables()
 
     }
 

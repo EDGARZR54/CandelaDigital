@@ -15,8 +15,8 @@
    en un sólido, hay que rellenarlo"). Las geometrías
    paramétricas de esta galería (ver protomartir.js,
    acceso-cardenas.js) son SUPERFICIES ABIERTAS —una sola capa,
-   sin volumen cerrado, ya renderizada como dos mallas
-   front/back para simular espesor sin culling (ver
+   sin volumen cerrado, ya renderizada como una malla
+   DoubleSide para simular espesor sin culling (ver
    armarGroup3D en galeria-escena.js)—, no sólidos: no hay
    ningún "adentro" real que rellenar, y el conteo de stencil
    del ejemplo da resultados basura sobre geometría no cerrada
@@ -24,8 +24,9 @@
    con un plano simplemente le saca un pedazo, sin nada
    "detrás" que tapar — es el resultado geométricamente
    correcto para este tipo de contenido, así que esta versión
-   NO arma stencil ni tapas: solo asigna "clippingPlanes" a los
-   materiales que ya existen (mallaFrontal/mallaTrasera) y listo.
+   NO arma stencil ni tapas: solo asigna "clippingPlanes" al
+   material que ya existe (una sola malla DoubleSide, ver
+   armarGroup3D en galeria-escena.js) y listo.
    Si en algún momento se suma geometría CERRADA de verdad a la
    galería, ahí sí valdría la pena reincorporar la técnica de
    tapa — para lo que hay hoy, sería complejidad sin beneficio
@@ -309,16 +310,13 @@ export function createCorteController(
                 cono, bboxesPorIndice[id]
             );
 
-        const [mallaFrontal, mallaTrasera] =
+        const [malla] =
             cono.userData.mallas;
 
         const planosArray =
             EJES.map(eje => info.planosMundo[eje]);
 
-        mallaFrontal.material.clippingPlanes =
-            planosArray;
-
-        mallaTrasera.material.clippingPlanes =
+        malla.material.clippingPlanes =
             planosArray;
 
         activoId = id;
@@ -335,11 +333,10 @@ export function createCorteController(
 
         if (cono) {
 
-            const [mallaFrontal, mallaTrasera] =
+            const [malla] =
                 cono.userData.mallas;
 
-            mallaFrontal.material.clippingPlanes = [];
-            mallaTrasera.material.clippingPlanes = [];
+            malla.material.clippingPlanes = [];
 
             /*
                 Vuelve el ESTADO (no solo los materiales) a
@@ -451,7 +448,7 @@ export function createCorteController(
             if (activoId === null) return;
 
             const cono = cones[activoId];
-            const [mallaFrontal] = cono.userData.mallas;
+            const [malla] = cono.userData.mallas;
 
             /*
                 Fuerza el recálculo de matrixWorld a partir de
@@ -463,13 +460,13 @@ export function createCorteController(
                 que se computan a continuación reflejen este
                 mismo frame y no el anterior.
             */
-            mallaFrontal.updateWorldMatrix(true, false);
+            malla.updateWorldMatrix(true, false);
 
             EJES.forEach(eje => {
 
                 activoInfo.planosMundo[eje]
                     .copy(activoInfo.planosLocales[eje])
-                    .applyMatrix4(mallaFrontal.matrixWorld);
+                    .applyMatrix4(malla.matrixWorld);
 
             });
 

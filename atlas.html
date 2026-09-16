@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
+<link rel="icon" href="assets/favicon.ico" type="image/x-icon">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StreetData Insight – Mapa</title>
 
@@ -10,11 +11,15 @@
        ('cascarones:tema') que mapa.html/galeria.html/navbar.js. Esta
        página vive normalmente dentro de un <iframe> (ver mapa.html),
        pero también puede abrirse suelta, así que arranca con el tema
-       correcto en cualquiera de los dos casos. Solo decide qué
-       "MapStyle*.json" cargar (ver estiloSegunTema() más abajo); el
-       resto del look de esta página (fondo #111 de carga, texto
-       blanco) queda fijo a propósito, es la "sala de carga" del mapa,
-       no contenido del sitio. -->
+       correcto en cualquiera de los dos casos. Decide qué
+       "MapStyle*.json" cargar (ver estiloSegunTema() más abajo) — el
+       basemap del mapa SÍ puede variar entre claro/oscuro. El resto
+       del look de esta página (fondo/texto de la "sala de carga" y el
+       color del pin) ahora sale de variables.css, pero de los tokens
+       fijos (--color-oscuro, --color-blanco, --color-terracota), no de
+       los que cambian con el tema (--color-fondo, --color-primario) —
+       así se conecta a la paleta del sitio sin que la sala de carga
+       cambie de aspecto entre modo claro y oscuro. -->
   <script>
     (function () {
       var CLAVE_TEMA = 'cascarones:tema';
@@ -28,6 +33,7 @@
 
   <link href="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/variables.css" />
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -36,8 +42,8 @@
       height: 100%;
       overflow: hidden; /* no hay scroll: el mapa es la única vista */
       font-family: 'DM Sans', sans-serif;
-      background: #111;
-      color: #fff;
+      background: rgb(var(--color-oscuro));
+      color: rgb(var(--color-blanco));
     }
 
     #map {
@@ -60,8 +66,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #111;
-      color: #888;
+      background: rgb(var(--color-oscuro));
+      color: rgba(var(--color-blanco), 0.55);
       font-size: 0.95rem;
       letter-spacing: 0.05em;
       pointer-events: none;
@@ -166,7 +172,17 @@
       }
 
       // --- Color del pin ---
-      const PIN_COLOR = '#db6a40';
+      // Se lee de --color-terracota (variables.css) en vez de traer un
+      // hex propio: así el pin usa el MISMO terracota que el resto del
+      // sitio y se actualiza solo si ese valor cambia. A propósito lee
+      // --color-terracota (el token fijo) y NO --color-primario (que en
+      // modo oscuro sale de un color-mix()): el pin debe verse igual en
+      // los dos temas.
+      const PIN_COLOR = `rgb(${
+        getComputedStyle(document.documentElement)
+          .getPropertyValue('--color-terracota')
+          .trim()
+      })`;
 
       // Genera el SVG de un pin clásico (forma de gota) con el "hole"
       // (círculo blanco) característico de los pines de mapa.

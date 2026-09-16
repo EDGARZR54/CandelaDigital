@@ -6,26 +6,39 @@
 
 :root {
   /* ---- Color base (modo claro, por defecto) -------------------------- */
-  --color-blanco: 238, 241, 243;   /* #EEF1F3 — fondo principal */
-  --color-negro:  21, 21, 21;      /* #151515 — texto principal */
+  --color-blanco: 245, 245, 245;   /* #F5F5F5 — Blanco Cal, fondo principal */
+  --color-negro:  34, 34, 34;      /* #222222 — Negro Carbón, texto principal */
 
-  --color-terracota: 150, 74, 61;  /* #964A3D — impermeabilización, tierra */
-  --color-azul:       30, 88, 162; /* #1E58A2 — cielo, geometría */
+  --color-naranja-oxido:  255, 87, 51;  /* #FF5733 — Naranja Óxido */
+  --color-rojo-terracota: 191, 59, 11;  /* #BF3B0B — Rojo Terracota, primario en modo claro */
+  --color-gris-concreto:  89, 107, 129; /* #596B81 — Gris Concreto */
 
-  /* Rol semántico de cada color. Terracota = primario (material del
-     objeto de estudio); azul = secundario (acento de interacción:
-     enlaces activos, capas del mapa, controles del visor). */
-  --color-primario:      rgb(var(--color-terracota));
-  --color-primario-rgb:  var(--color-terracota);
-  --color-secundario:    rgb(var(--color-azul));
-  --color-secundario-rgb: var(--color-azul);
+  /* Rol semántico de cada color. Rojo Terracota = primario en modo claro
+     (el naranja óxido resultaba demasiado saturado sobre fondo claro;
+     se reserva como base del degradado del primario en modo oscuro, ver
+     el bloque [data-tema="oscuro"] más abajo). Gris Concreto = secundario
+     (acento de interacción: enlaces activos, capas del mapa, controles
+     del visor). --color-primario-oscuro es una variante aún más oscura
+     del terracota, para estados de hover/presionado sobre fondo claro. */
+  --color-primario:       rgb(var(--color-rojo-terracota));
+  --color-primario-rgb:   var(--color-rojo-terracota);
+  --color-primario-oscuro: color-mix(in oklch, rgb(var(--color-rojo-terracota)) 82%, black 18%);
+  --color-secundario:     rgb(var(--color-gris-concreto));
+  --color-secundario-rgb: var(--color-gris-concreto);
 
   --color-fondo:       rgb(var(--color-blanco));
   --color-fondo-alt:   rgb(228, 231, 233);   /* tarjetas, franjas */
   --color-texto:       rgb(var(--color-negro));
-  --color-texto-suave: rgba(var(--color-negro), 0.66);
+  --color-texto-suave: rgba(var(--color-negro), 0.72);
   --color-borde:       rgba(var(--color-negro), 0.14);
   --color-sombra:      rgba(var(--color-negro), 0.10);
+
+  /* Base cruda del modo oscuro. No es un derivado de --color-negro (ese
+     sigue siendo el texto); es su propio token para que fondo oscuro,
+     tarjetas oscuras y el navbar fijo en modo oscuro (navbar.css) lean
+     siempre del mismo lugar y nunca se repita "18, 18, 18" a mano. */
+  --color-oscuro:     18, 18, 18;
+  --color-oscuro-alt: 27, 27, 27;
 
   /* ---- Tipografía ------------------------------------------------------ */
   --fuente-display: 'Spectral', Georgia, 'Times New Roman', serif;
@@ -50,29 +63,37 @@
 }
 
 /* ---- Modo oscuro ------------------------------------------------------- */
+/* --color-primario parte de naranja óxido puro pero se desatura un poco
+   mezclándolo con un gris neutro (no blanco): a diferencia de mezclar con
+   blanco (que sube la claridad y da un efecto "pastel/lavado"), mezclar
+   con gris reduce el croma casi sin mover la claridad — el naranja se
+   siente menos "encendido" sin aclararse. El 12% es el punto de partida;
+   subir ese número desatura más, bajarlo se acerca al naranja óxido puro
+   (0% = idéntico a --color-naranja-oxido sin tocar). --color-secundario
+   sigue su propio color-mix con blanco (partiendo de --color-gris-
+   concreto), sin cambios — esa mezcla nunca generó la misma objeción. */
 [data-tema="oscuro"] {
-  --color-fondo:       rgb(18, 18, 18);
-  --color-fondo-alt:   rgb(27, 27, 27);
+  --color-fondo:       rgb(var(--color-oscuro));
+  --color-fondo-alt:   rgb(var(--color-oscuro-alt));
   --color-texto:       rgb(var(--color-blanco));
   --color-texto-suave: rgba(var(--color-blanco), 0.68);
   --color-borde:       rgba(var(--color-blanco), 0.16);
   --color-sombra:      rgba(0, 0, 0, 0.45);
 
-  /* Versiones más claras para mantener contraste sobre fondo oscuro */
-  --color-primario:   rgb(201, 122, 99);   /* terracota aclarada */
-  --color-secundario: rgb(111, 163, 222);  /* azul aclarado */
+  --color-primario:   color-mix(in oklch, rgb(var(--color-naranja-oxido)) 88%, gray 20%);
+  --color-secundario: color-mix(in oklch, rgb(var(--color-gris-concreto)) 78%, white 20%);
 }
 
 /* Respeta el sistema operativo si el usuario no ha elegido manualmente */
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="claro"]) {
-    --color-fondo:       rgb(18, 18, 18);
-    --color-fondo-alt:   rgb(27, 27, 27);
+    --color-fondo:       rgb(var(--color-oscuro));
+    --color-fondo-alt:   rgb(var(--color-oscuro-alt));
     --color-texto:       rgb(var(--color-blanco));
     --color-texto-suave: rgba(var(--color-blanco), 0.68);
     --color-borde:       rgba(var(--color-blanco), 0.16);
     --color-sombra:      rgba(0, 0, 0, 0.45);
-    --color-primario:   rgb(201, 122, 99);
-    --color-secundario: rgb(111, 163, 222);
+    --color-primario:   color-mix(in oklch, rgb(var(--color-naranja-oxido)) 88%, gray 12%);
+    --color-secundario: color-mix(in oklch, rgb(var(--color-gris-concreto)) 78%, white 22%);
   }
 }

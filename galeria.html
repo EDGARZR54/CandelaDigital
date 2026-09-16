@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="assets/favicon.ico" type="image/x-icon">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Galeria · Cascarones</title>
@@ -329,19 +330,24 @@
 
          · "Visualización" (ex "Corte" — se
            renombró porque ya no es solo cortes): switch
-           "Autorotado" (ver galeria-autorotar.js —
-           FUNCIONAL: prende/apaga el giro sobre el centroide
-           de la geometría en foco, el mismo que ya manejaba
-           "rotation" en galeria-rotacion.js) + sliders de
-           corte X/Y/Z del modelo 3D activo (id
-           "ficha-controles", igual que antes; la lógica real
-           de CORTE —mover los planos de clipping— todavía
-           está pendiente de escribir, eso sigue siendo
-           maqueta visual) + el material GLOBAL (sólido/
-           estado/normales + mostrar malla,
-           "#panel-material", mudado acá desde su propia
-           sección — HTML nativo, select + switch, ver
-           galeria-panel-material.js). Subió al
+           "Autorotado" (ver galeria-autorotar.js: prende/
+           apaga el giro sobre el centroide de la geometría
+           en foco, el mismo que ya manejaba "rotation" en
+           galeria-rotacion.js) + sliders de corte X/Y/Z del
+           modelo 3D activo con sus botones de invertir (id
+           "ficha-controles", cableados en
+           galeria-corte-controles.js contra el corte real
+           —clippingPlanes— de galeria-corte.js) + switches
+           "Mostrar rejilla" (galeria-rejilla.js, GLOBAL de
+           escena, no por elemento), "Mostrar plano de
+           corte" (galeria-plano-corte.js) y "Mostrar
+           intersección" (galeria-corte-interseccion.js —
+           ver el comentario junto a esos tres botones, más
+           abajo, para el estado por defecto de cada uno) +
+           el material GLOBAL (sólido/estado/normales +
+           mostrar malla, "#panel-material", mudado acá
+           desde su propia sección — HTML nativo, select +
+           switch, ver galeria-panel-material.js). Subió al
            2do lugar (antes 3ro, después de "Vista"): a
            diferencia de "Geometría" de acá abajo, nada de
            esto depende de la geometría puntual enfocada —
@@ -483,12 +489,14 @@
                    cortes, ver el comentario grande de más
                    arriba para el detalle completo del porqué
                    de la fusión y de por qué subió de lugar):
-                   switch "Autorotado" (FUNCIONAL, ver
+                   switch "Autorotado" (ver
                    galeria-autorotar.js) + sliders de corte
-                   X/Y/Z del modelo 3D activo (todavía
-                   maqueta) + material GLOBAL, HTML nativo
-                   (select + switch, no lil-gui)
-                   (mudado acá desde su propia sección, ver
+                   X/Y/Z + switches "Mostrar plano de corte"/
+                   "Mostrar intersección" (ver el comentario
+                   grande más abajo, junto a esos botones) +
+                   material GLOBAL, HTML nativo (select +
+                   switch, no lil-gui) (mudado acá desde su
+                   propia sección, ver
                    galeria-panel-material.js). Arranca
                    COLAPSADA: sigue siendo control secundario,
                    no info primaria como Ubicación. -->
@@ -525,6 +533,32 @@
                                   </span>
                               </button>
 
+                              <!-- "Mostrar rejilla": switch GLOBAL de
+                                   escena (GridHelper + ejes X/Y/Z, ver
+                                   galeria-rejilla.js), no por elemento —
+                                   a diferencia de "Mostrar plano de
+                                   corte"/"Mostrar intersección" de acá
+                                   abajo, no depende de qué cono esté en
+                                   foco. Mismo patrón de switch que
+                                   "Autorotado" (role="switch" +
+                                   aria-checked). Arranca desactivado, y
+                                   NO se apaga sola al salir de "fichas"
+                                   (ver galeria-rejilla.js sobre por qué:
+                                   es una referencia de la escena entera,
+                                   no un control por elemento). -->
+                              <button
+                                  type="button"
+                                  class="ficha__switch"
+                                  id="boton-mostrar-rejilla"
+                                  role="switch"
+                                  aria-checked="false"
+                              >
+                                  <span class="ficha__campo-label">Mostrar rejilla</span>
+                                  <span class="ficha__switch-pista" aria-hidden="true">
+                                      <span class="ficha__switch-perilla"></span>
+                                  </span>
+                              </button>
+
                               <!-- "Mostrar plano de corte" / "Mostrar
                                    intersección": mismo patrón de switch
                                    que "Autorotado" arriba (role="switch"
@@ -534,17 +568,19 @@
                                    propio usa esa semántica y no la de
                                    los botones de invertir de más abajo).
 
-                                   TODAVÍA SIN LÓGICA (arrancan
-                                   aria-checked="false"): igual que los 3
-                                   sliders de corte X/Y/Z, son maqueta —
-                                   el corte real (mover los planos de
-                                   clipping) todavía está pendiente de
-                                   escribir. Cuando se escriba esa
-                                   lógica, van a necesitar su propio
-                                   módulo (mismo criterio de separación
-                                   que galeria-autorotar.js: este HTML no
-                                   importa "three", solo expone el
-                                   switch). -->
+                                   "Mostrar plano de corte"
+                                   (galeria-plano-corte.js) arranca
+                                   desactivado.
+
+                                   "Mostrar intersección" (galeria-corte-
+                                   interseccion.js) arranca ACTIVADO — es
+                                   el único de los dos que vuelve a
+                                   prenderse solo en cada reset, mismo
+                                   criterio que "Autorotado" (ver los 4
+                                   puntos en galeria.js donde se sale de
+                                   "fichas": ahí es donde vive el default
+                                   real; este aria-checked="true" es solo
+                                   el estado antes del primer reset). -->
                               <button
                                   type="button"
                                   class="ficha__switch"

@@ -20,12 +20,17 @@
 
 import * as THREE from 'three';
 import {
-    findCenteredLookAtX,
+    findCenteredLookAtPrincipal,
     findFittedMagnitude,
     findHiddenDrop,
-    projectToNdc
+    projectToNdc,
+    smoothstep
 } from "./galeria-utils.js";
 import { obtenerFuncionConstructora } from "./galeria-generadores.js";
+import { IS_MOBILE_TIER } from "./galeria-dispositivo.js";
+import { createHabitacion } from "./galeria-habitacion.js";
+import { createLucesAdicionales, createLucesPorCaja } from "./galeria-luces.js";
+import { createSombraContacto } from "./galeria-sombra-contacto.js";
 
 
 // Generador de respaldo: se usa si un elemento no
@@ -49,15 +54,7 @@ function cargarGenerador(generadorId) {
 
     const promesa =
         import(`./geometrias/${id}.js`)
-            .catch(err => {
-
-                console.error(
-                    "galeria-escena.js: no se pudo " +
-                    "cargar el generador \"" + id +
-                    "\", se usa el de respaldo " +
-                    "(" + GENERADOR_RESPALDO + "):",
-                    err
-                );
+            .catch(() => {
 
                 return cargarGenerador(
                     GENERADOR_RESPALDO
@@ -107,22 +104,45 @@ function colorFondoEscena() {
     Normaliza una geometría RECIÉN CONSTRUIDA por un
     generador:
 
-    - ALINEACIÓN FRONTAL (Z): la traslada para que su
-      cara MÁS CERCANA A LA CÁMARA (bbox.max.z — la
-      cámara está del lado +Z, mirando hacia lookAtZ=0)
-      quede en z=0 en su propio espacio local. Necesario
-      porque nada garantiza que dos generadores centren
-      su fórmula igual en Z: si dos elementos de
-      profundidad distinta se pararan con su ORIGEN (no
-      su cara frontal) en el mismo slot.z, sus caras
-      frontales quedarían a distinta distancia de la
-      cámara y, con la cámara en escorzo, eso se ve como
-      una diferencia de tamaño/posición en pantalla. Al
-      hornear el ajuste en la geometría misma, el resto
-      del código (calculatePositions, verticesMundoDeFila,
-      galeria-reordenar.js, las cajas de debug) no
-      necesita saber nada: la cara frontal de cada
-      elemento ya está en su slot.z tal cual la leen.
+    - ALINEACIÓN POR CENTROIDE EN Z (reemplaza a la
+      alineación "cara frontal a z=0" anterior): la
+      traslada para que el CENTRO de su bbox en Z caiga
+      en z=0 en su propio espacio local, en vez de su
+      cara MÁS CERCANA A LA CÁMARA (bbox.max.z).
+
+      Por qué el cambio: la alineación a cara frontal
+      desplazaba el centroide en Z por
+      -(bbox.min.z + bbox.max.z)/2, así que el slot —que
+      vive siempre en z=0— dejaba de coincidir con el
+      centroide de la geometría que lo ocupa. Todo el
+      código que "apunta al elemento" desde su slot
+      (empezando por el cono de luz, ver puntoDeDescanso
+      en galeria-cono-luz.js, que copia pos.z tal cual,
+      sin corrección alguna) quedaba descentrado en Z por
+      esa diferencia. Con la alineación por centroide,
+      slot.z ES el centroide: no hace falta ninguna
+      corrección extra aguas abajo.
+
+      Efecto colateral aceptado: las CARAS FRONTALES de
+      elementos de distinta profundidad ya no quedan a
+      paño entre sí (antes sí, por construcción). Se ven
+      "escalonadas" en Z según la profundidad de cada
+      uno. Para la composición de esta escena —donde la
+      cámara mira mayormente de frente o levemente
+      escorzada, y los elementos son volúmenes de
+      cascarón, no placas— ese escalonamiento no molesta
+      y a cambio se gana un anclaje coherente en las
+      tres dimensiones.
+
+      Nada más del pipeline depende de que la cara
+      frontal esté en z=0: calculatePositions y
+      verticesMundoDeFila leen bbox.min.z/bbox.max.z como
+      EXTENSIÓN (siguen siendo correctos), y los pivotes
+      de rotación (posicionarPivote, más abajo en este
+      archivo, y el equivalente en galeria-carrusel.js)
+      ya calculaban (min.z + max.z)/2 como centro — con
+      la alineación nueva ese valor da 0, que es
+      exactamente el centroide.
 
     - Recalcula bbox (ya alineado) y bounding sphere —
       Three.js nunca los recalcula solo por reemplazar
@@ -136,17 +156,52 @@ function colorFondoEscena() {
 
     Exportada para que galeria-panel-parametros.js
     aplique el mismo criterio al reconstruir la geometría
-    del elemento enfocado (sliders de "Geometría") — ver
-    geometria-recalculo-centroide.md.
+    del elemento enfocado (sliders de "Geometría"): al
+    reemplazar la geometría de una malla en vivo, hay que
+    volver a correr esta misma normalización para que el
+    bbox/desplazamientoBase vigentes sigan coincidiendo
+    con los que usa el resto de la escena.
 */
 export function normalizarGeometriaElemento(geometry) {
 
     geometry.computeBoundingBox();
 
-    const desplazamientoFrente =
-        -geometry.boundingBox.max.z;
+    /*
+        ALINEACIÓN POR CENTROIDE EN Z (reemplaza a la
+        alineación "cara frontal a z=0" anterior): se
+        traslada la geometría para que el CENTRO de su bbox
+        en Z caiga en z=0 local, en vez de su cara MÁS
+        CERCANA A LA CÁMARA (bbox.max.z).
 
-    geometry.translate(0, 0, desplazamientoFrente);
+        Por qué el cambio: la alineación a cara frontal
+        desplazaba el centroide en Z por
+        -(bbox.min.z + bbox.max.z)/2, así que el slot
+        (que vive siempre en z=0) dejaba de coincidir con
+        el centroide de la geometría que lo ocupa. Todo el
+        código que "apunta al elemento" desde su slot
+        —empezando por el cono de luz (puntoDeDescanso en
+        galeria-cono-luz.js, que copia pos.z tal cual, sin
+        corrección)— quedaba descentrado en Z por esa
+        diferencia. Con la alineación por centroide, slot.z
+        ES el centroide: no hace falta ninguna corrección
+        extra aguas abajo.
+
+        Efecto colateral aceptado: las CARAS FRONTALES de
+        elementos de distinta profundidad ya no quedan a
+        paño entre sí (antes sí, por construcción). Se ven
+        "escalonadas" en Z según la profundidad de cada
+        uno. Para la composición de esta escena —donde la
+        cámara mira mayormente de frente o levemente
+        escorzada, y los elementos son volúmenes de
+        cascarón, no placas— ese escalonamiento no molesta
+        y a cambio se gana un anclaje coherente en las
+        tres dimensiones.
+    */
+    const centroZ =
+        (geometry.boundingBox.min.z +
+         geometry.boundingBox.max.z) / 2;
+
+    geometry.translate(0, 0, -centroZ);
 
     // Se recalcula DESPUÉS del translate: de acá en
     // más, todo el resto del código (desplazamientoBase,
@@ -199,7 +254,7 @@ async function prepararGeometria(elemento) {
 /*
     Coloca (o recoloca) el pivote de rotación de un
     elemento en el centro real de su bbox (X/Z), y
-    compensa las mallas para que el resultado visual con
+    compensa la malla para que el resultado visual con
     rotation.y=0 no cambie (ver el porqué de este pivote
     separado en el comentario de armarGroup3D, más abajo).
 
@@ -209,23 +264,35 @@ async function prepararGeometria(elemento) {
     correrse, y si nadie lo recalcula el pivote queda
     desalineado del bbox nuevo.
 */
-export function posicionarPivote(pivote, mallaFrontal, mallaTrasera, bbox) {
+export function posicionarPivote(pivote, malla, bbox) {
 
     const pivotX = (bbox.min.x + bbox.max.x) / 2;
     const pivotZ = (bbox.min.z + bbox.max.z) / 2;
 
     pivote.position.set(pivotX, 0, pivotZ);
 
-    mallaFrontal.position.set(-pivotX, 0, -pivotZ);
-    mallaTrasera.position.set(-pivotX, 0, -pivotZ);
+    malla.position.set(-pivotX, 0, -pivotZ);
 
 }
 
 
-// Arma, para un elemento, el Group con las dos mallas
-// (frontal y trasera, sin backface culling — mismo
-// patrón que fondo-3d.js) a partir de una geometría YA
-// construida por prepararGeometria().
+// Arma, para un elemento, el Group con UNA sola malla
+// DoubleSide (sin backface culling — mismo efecto que
+// antes lograban dos mallas FrontSide/BackSide
+// superpuestas, ver fondo-3d.js para la versión vieja) a
+// partir de una geometría YA construida por
+// prepararGeometria().
+//
+// Antes eran DOS mallas por dos motivos, no uno solo:
+// (a) evitar backface culling en una superficie abierta
+// (DoubleSide lo resuelve igual de bien con una sola
+// malla), y (b) permitir que el tipo de material
+// "sólido" del panel de material pintara cada cara de un
+// color distinto (algo que un material estándar no puede
+// hacer solo — ver construirMaterialSolido() en
+// galeria-panel-material.js, que ahora lo logra con un
+// parche de shader sobre gl_FrontFacing en esta única
+// malla).
 function armarGroup3D(elemento, modulo, geometry, matCfg) {
 
     const color =
@@ -235,53 +302,49 @@ function armarGroup3D(elemento, modulo, geometry, matCfg) {
             elemento.color.b / 255
         );
 
-    function crearMaterial(side) {
-
-        return new THREE.MeshPhysicalMaterial({
+    const material =
+        new THREE.MeshPhysicalMaterial({
             color,
             roughness: matCfg.roughness,
             metalness: matCfg.metalness,
             clearcoat: matCfg.clearcoat,
             clearcoatRoughness:
                 matCfg.clearcoatRoughness,
-            side,
+            side: THREE.DoubleSide,
             transparent: true,
             opacity: 1
         });
 
-    }
+    const malla =
+        new THREE.Mesh(geometry, material);
 
-    const materialFrontal =
-        crearMaterial(THREE.FrontSide);
-
-    const materialTrasera =
-        crearMaterial(THREE.BackSide);
-
-    const mallaFrontal =
-        new THREE.Mesh(geometry, materialTrasera);
-
-    const mallaTrasera =
-        new THREE.Mesh(geometry, materialFrontal);
-
-    mallaFrontal.castShadow = true;
-    mallaTrasera.castShadow = true;
+    // Valor de ARRANQUE nomás: a partir del primer frame lo
+    // gobierna actualizarCastShadow() (más abajo, una pasada
+    // por frame) según si el elemento tiene alguna parte por
+    // encima del piso. Arranca en true para que un elemento
+    // ya asentado proyecte sombra desde el frame 0, sin
+    // esperar a la primera pasada.
+    malla.castShadow = true;
 
 
     /*
         Pivote de rotación separado del grupo de
-        posicionamiento: "group" (más abajo) se coloca
-        vía cone.position.set(x, restY, z) con origen en
-        el punto de ANCLAJE de la geometría (base en
-        y=0, cara frontal en z=0 — ver prepararGeometria),
-        no en el centro del bbox. Girar "group"
+        posicionamiento: "group" (más abajo) se coloca vía
+        cone.position.set(x, desplazamientoBase + slot.y, z)
+        (ver galeria-revelado.js/galeria-reordenar.js/
+        galeria-carrusel.js — cada uno usa la base propia de
+        ESTE elemento, no un "restY" compartido) con origen
+        en el punto de ANCLAJE de la geometría (cara frontal
+        en z=0 — ver prepararGeometria), no en el centro del
+        bbox. Girar "group"
         directamente rotaría alrededor de ese anclaje, y
         si no coincide con el centro real, el objeto
         "orbita" en vez de girar en el lugar.
 
-        Las mallas cuelgan de un grupo intermedio
+        La malla cuelga de un grupo intermedio
         ("pivote"), corrido al centro real del bbox en
-        X/Z, y compensado en sentido contrario en las
-        mallas — así el resultado visual con rotación 0
+        X/Z, y compensado en sentido contrario en la
+        malla — así el resultado visual con rotación 0
         no cambia, pero rotation.y gira alrededor del
         centro real.
 
@@ -292,12 +355,11 @@ function armarGroup3D(elemento, modulo, geometry, matCfg) {
     const pivote = new THREE.Group();
 
     posicionarPivote(
-        pivote, mallaFrontal, mallaTrasera,
+        pivote, malla,
         geometry.boundingBox
     );
 
-    pivote.add(mallaTrasera);
-    pivote.add(mallaFrontal);
+    pivote.add(malla);
 
 
     const group = new THREE.Group();
@@ -308,18 +370,26 @@ function armarGroup3D(elemento, modulo, geometry, matCfg) {
     /*
         Referencias que usa galeria-panel-parametros.js
         para reconstruir geometría y material en vivo
-        (sliders de "Geometría", overlay de malla) sin
-        que este módulo sepa nada de paneles. "indice"
-        (= elemento.indice, el mismo cupID que indexa
-        bboxesPorIndice más abajo) le permite a ese panel
-        actualizar la entrada correspondiente tras
+        (sliders de "Geometría", overlay de malla), y
+        galeria-corte.js para el corte por planos, sin que
+        este módulo sepa nada de ninguno de los dos.
+        "indice" (= elemento.indice, el mismo cupID que
+        indexa bboxesPorIndice más abajo) le permite a ese
+        panel actualizar la entrada correspondiente tras
         reconstruir — si no, galeria-carrusel.js/
         galeria-zoom.js/las cajas de debug seguirían
         viendo el bbox con el que se armó la escena la
         primera vez.
+
+        "mallas" sigue siendo un ARRAY (de un solo
+        elemento) a propósito, no "malla" a secas: minimiza
+        el diff en los módulos que ya lo desestructuran
+        como "const [mallaFrontal, mallaTrasera] =
+        group.userData.mallas" — ahora es
+        "const [malla] = group.userData.mallas".
     */
     group.userData.modulo = modulo;
-    group.userData.mallas = [mallaFrontal, mallaTrasera];
+    group.userData.mallas = [malla];
     group.userData.pivote = pivote;
     group.userData.color = color;
     group.userData.matCfg = matCfg;
@@ -327,53 +397,22 @@ function armarGroup3D(elemento, modulo, geometry, matCfg) {
 
 
     /*
-        Proxy de ".material.opacity": galeria-revelado,
-        galeria-reordenar y galeria-carrusel siguen
-        escribiendo "cone.material.opacity = x" sin saber
-        que por dentro hay dos mallas. Lee/escribe el
-        material VIGENTE de cada mesh (no las variables
-        capturadas arriba), para seguir funcionando si el
-        panel de parámetros reemplaza el material más
-        adelante.
-
-        También empuja el overlay de malla (ver
-        galeria-panel-material.js) si el grupo tiene uno
-        puesto: el overlay debe atenuarse con la distancia
-        al foco igual que la superficie sólida, así que se
-        multiplica el mismo fundido por distancia por
-        "overlay.userData.opacidadBase" (la opacidad base
-        que decide galeria-panel-material.js según el tipo
-        de material — este módulo solo compone, no conoce
-        esos números). Default 1 si "opacidadBase" aún no
-        se seteó, para no dejar la malla en 0 por un frame.
+        YA NO HAY proxy ".material" acá: existía para que
+        galeria-revelado/galeria-carrusel pudieran escribir
+        "cone.material.opacity = x" sin saber que por dentro
+        hay un Group con una malla, no un Mesh directo, y de
+        paso empujaba ese mismo valor al overlay de malla
+        (ver galeria-panel-material.js). Ninguna fase le
+        escribe hoy un valor distinto de 1 (el gradiente de
+        opacidad por distancia al foco se sacó del carrusel;
+        revelado ya la fija en 1 sin animarla), así que el
+        proxy quedó multiplicando siempre por 1 — código
+        muerto. Si algún día vuelve a hacer falta animar
+        opacidad por fase, se escribe directo sobre
+        "group.userData.mallas[0].material.opacity" (el
+        mismo camino que ya usa galeria-panel-material.js
+        para sus propios cambios de tipo de material).
     */
-    group.material = {
-
-        get opacity() {
-
-            return mallaFrontal.material.opacity;
-
-        },
-
-        set opacity(valor) {
-
-            mallaFrontal.material.opacity = valor;
-            mallaTrasera.material.opacity = valor;
-
-            const overlay = group.userData.overlayMalla;
-
-            if (overlay) {
-
-                overlay.material.opacity =
-                    valor *
-                    (overlay.userData.opacidadBase ?? 1);
-
-            }
-
-        }
-
-    };
-
 
 
     return group;
@@ -383,30 +422,55 @@ function armarGroup3D(elemento, modulo, geometry, matCfg) {
 
 /*
     Arma, para TODA la fila, la lista de vértices de
-    bounding box en coordenadas de MUNDO (8 por
-    elemento) que necesita findCenteredLookAtX() para
-    centrar el conjunto por su silueta proyectada real,
-    no por el punto central de cada slot.
+    bounding box en coordenadas de MUNDO (8 por elemento)
+    que necesita findCenteredLookAtPrincipal() para centrar
+    el conjunto por su silueta proyectada real, no por el
+    punto central de cada slot.
 
-    "preparados[i].bbox" está en el espacio LOCAL de
-    cada geometría; para llevarlo a mundo se le suma la
-    posición del slot en X/Z (positions[i]) y "restY" en
-    Y — mismo criterio de posicionamiento que usan
+    "preparados[i].bbox" está en el espacio LOCAL de cada
+    geometría; para llevarlo a mundo se le suma la posición
+    del slot (positions[i]) y la altura de PISO PROPIA de
+    ESE elemento (preparados[i].desplazamientoBase) en Y —
+    mismo criterio de posicionamiento que usan
     galeria-revelado.js/galeria-reordenar.js cuando un
-    elemento está en su lugar de reposo.
+    elemento está en su lugar de reposo (ver el comentario
+    grande en normalizarGeometriaElemento sobre por qué no
+    se puede usar un "restY" único compartido: no todas las
+    geometrías nacen con su punto más bajo en y=0, así que
+    un restY global —el peor caso entre todas— dejaba
+    flotando a cualquier elemento menos "profundo" que ese
+    peor caso). Se arma sobre TODOS los elementos sin
+    importar fase/visibilidad: el reencuadre es por el
+    conjunto completo, nunca por objeto. "positions" ya trae
+    el reparto en el eje principal vigente ("x" fila
+    horizontal / "y" columna vertical, ver
+    calculatePositions), así que esta función sirve para los
+    dos modos sin distinción.
 
-    Se arma sobre TODOS los elementos sin importar
-    fase/visibilidad: el reencuadre es por el conjunto
-    completo, nunca por objeto.
+    El eje secundario ("ejeSecundario") se centra distinto
+    según cuál sea: en Y (modo horizontal) es un PAÑO físico
+    real — cada elemento aporta su coordenada local cruda
+    encima de SU PROPIA base, sin centrar ("apoyado en el
+    piso"). En X (modo vertical) no hay equivalente físico de
+    piso para el costado, así que se centra por CENTROIDE: se
+    resta a cada coordenada local su propio pivote en ese eje,
+    para que el centro real del bbox de cada elemento —no su
+    origen local, que puede no coincidir si la geometría es
+    asimétrica— caiga sobre la misma línea (slot.x, compartida
+    por todos).
 */
-function verticesMundoDeFila(preparados, positions, restY) {
+function verticesMundoDeFila(preparados, positions, ejeSecundario) {
 
     const vertices = [];
 
     preparados.forEach((preparado, i) => {
 
-        const { bbox } = preparado;
+        const { bbox, desplazamientoBase } = preparado;
         const slot = positions[i];
+
+        const pivotSecundario =
+            (bbox.min[ejeSecundario] +
+                bbox.max[ejeSecundario]) / 2;
 
         [bbox.min.x, bbox.max.x].forEach(lx => {
 
@@ -414,11 +478,20 @@ function verticesMundoDeFila(preparados, positions, restY) {
 
                 [bbox.min.z, bbox.max.z].forEach(lz => {
 
-                    vertices.push({
+                    const punto = {
                         x: slot.x + lx,
-                        y: restY + ly,
+                        y: desplazamientoBase + slot.y + ly,
                         z: slot.z + lz
-                    });
+                    };
+
+                    if (ejeSecundario === "x") {
+
+                        punto.x =
+                            slot.x + (lx - pivotSecundario);
+
+                    }
+
+                    vertices.push(punto);
 
                 });
 
@@ -490,7 +563,32 @@ function crearCajaDebug(min, max, color, opacidad) {
 }
 
 
-export async function createScene(container, elementos, config) {
+export async function createScene(
+    container, elementos, config,
+    // Getter opcional: devuelve { top, bottom } en PÍXELES
+    // CSS del espacio que NO puede ocupar la geometría —
+    // navbar arriba, botones de orden (+ su margen) abajo.
+    // Se lee en vivo (mismo criterio que getHiddenDrop()):
+    // esos elementos de UI pueden cambiar de alto con el
+    // tema/viewport. Sin esto (default), se comporta
+    // exactamente como antes — margen 0, banda completa.
+    // Solo importa en modo vertical (retrato): en
+    // horizontal la fila nunca usó el alto completo, así
+    // que este margen no tiene nada que recortar ahí.
+    getMargenVerticalPx = () => ({ top: 0, bottom: 0 }),
+    // Getter opcional: devuelve { left, right } en PÍXELES
+    // CSS del espacio que el navbar reserva a los costados
+    // para que su propio texto/botón tengan margen — NO es
+    // "hasta dónde llega el navbar en pantalla" (eso casi
+    // siempre es el ancho completo), es el margen INTERNO
+    // que ese contenido necesita. Se lee en vivo, mismo
+    // criterio que getMargenVerticalPx. Sin esto (default),
+    // se comporta exactamente como antes — margen 0, fila
+    // ajustada borde a borde de pantalla. Solo importa en
+    // modo horizontal: en vertical el ancho nunca fue la
+    // restricción (ver calcularTargetPrincipal más abajo).
+    getMargenHorizontalPx = () => ({ left: 0, right: 0 })
+) {
 
     const scene =
         new THREE.Scene();
@@ -502,15 +600,36 @@ export async function createScene(container, elementos, config) {
     scene.background =
         colorFondoEscena();
 
-    // near/far se fijan más abajo ("distMax"), una vez
-    // conocida la distancia real cámara-fila (depende
-    // del bbox real, sólo disponible tras el Promise.all
-    // de los generadores).
+    /*
+        FIX: la maqueta usa FogExp2 (caída exponencial suave
+        desde la cámara), no Fog lineal (sin efecto hasta
+        "near", full opaco recién en "far") — son curvas de
+        caída distintas, se notaba sobre todo en los
+        elementos del fondo de la fila.
+
+        RIESGO A VIGILAR (motivo por el que existía el
+        sistema anterior de near/far dinámico, ver
+        config.scene.fog): con las cajas de prueba de la
+        maqueta, distMax (cámara → punto más lejano de la
+        fila) rondaba las 13-14 unidades; con contenido real
+        más grande la distancia real puede superar eso por
+        bastante (mismo motivo por el que hubo que subir
+        camera.far y agrandar la sala dinámicamente, ver
+        esos comentarios) — con una density FIJA calibrada al
+        tamaño de prueba de la maqueta, una fila real mucho
+        más ancha podría quedar "devorada" por la niebla antes
+        de tiempo, igual que pasaba con el near/far fijo viejo
+        (ver el comentario que reemplaza este, más abajo en
+        config.scene.fog). Se deja igual a la maqueta por
+        ahora, a revisar a ojo con contenido real.
+    */
     scene.fog =
-        new THREE.Fog(
+        new THREE.FogExp2(
             scene.background.getHex(),
-            0, 1
+            config.scene.fog.density
         );
+
+    const FOG_DENSITY_BASE = config.scene.fog.density;
 
 
     const aspect =
@@ -537,18 +656,99 @@ export async function createScene(container, elementos, config) {
     );
 
 
+    const PIXEL_RATIO =
+        Math.min(window.devicePixelRatio, 2);
+
+    /*
+        Mismo criterio que Maqueta.html: con devicePixelRatio
+        ya en 2 (la mayoría de las pantallas de celular), el
+        antialiasing por MSAA es en gran parte redundante con
+        el supersampling que ya da ese pixelRatio, y cuesta
+        caro. Se apaga en ese caso — depende del pixelRatio
+        real de la pantalla, no de IS_MOBILE_TIER (un monitor
+        de escritorio con pixelRatio 1 sigue queriendo
+        antialias aunque el hardware sea modesto).
+    */
+    const USE_ANTIALIAS =
+        PIXEL_RATIO < 2;
+
     const renderer =
         new THREE.WebGLRenderer({
-            antialias: true
+            antialias: USE_ANTIALIAS
         });
 
-    renderer.setPixelRatio(
-        Math.min(window.devicePixelRatio, 2)
-    );
+    renderer.setPixelRatio(PIXEL_RATIO);
+
+    /*
+        FIX: faltaba por completo — la maqueta sí lo seteaba
+        explícito (renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;). Sin esto el
+        renderer queda con NoToneMapping (el default de
+        Three.js) — highlights de las luces (sobre todo el
+        keyLight a intensidad 6.5, ver config.lights.key) se
+        recortan en vez de comprimirse con curva ACES, y el
+        color sale en el espacio de trabajo lineal en vez de
+        sRGB — se ve más plano/lavado que en la maqueta.
+
+        "outputColorSpace"/"SRGBColorSpace", no
+        "outputEncoding"/"sRGBEncoding": esta versión de three
+        (0.169.0, ver import map de galeria.html) ya renombró
+        esa API — "outputEncoding" fue removida, no solo
+        deprecada.
+    */
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
 
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type =
-        THREE.PCFSoftShadowMap;
+        IS_MOBILE_TIER
+            ? THREE.PCFShadowMap
+            : THREE.PCFSoftShadowMap;
+
+    /*
+        SOMBRA "DIRTY": por defecto Three.js recalcula el
+        shadow map completo en CADA renderer.render(), sin
+        importar si algo que proyecta sombra se movió desde
+        el frame anterior. Con autoUpdate=false, el shadow map
+        queda CONGELADO salvo que alguien pida explícitamente
+        un recálculo con needsUpdate=true.
+
+        "marcarSombraDirty()" la llama cualquier código que
+        mueva/rote/escale una malla con castShadow=true (ver
+        los call sites en galeria.js: reveal/rotation/reorder/
+        carousel). "prepararRenderDeSombra()" hay que llamarla
+        SIEMPRE, inmediatamente antes de cada
+        renderer.render(scene, camera) — nunca en otro
+        momento, o un needsUpdate pendiente queda sin aplicar
+        y la sombra se ve vieja/pegada hasta el próximo marcado.
+
+        Arranca en `true` (sombraDirty) porque el primer frame
+        sí necesita un shadow map real: todavía no se pintó
+        ninguno.
+    */
+    renderer.shadowMap.autoUpdate = false;
+    renderer.shadowMap.needsUpdate = true;
+
+    let sombraDirty = true;
+
+    function marcarSombraDirty() {
+
+        sombraDirty = true;
+
+    }
+
+    function prepararRenderDeSombra() {
+
+        if (sombraDirty) {
+
+            renderer.shadowMap.needsUpdate = true;
+            sombraDirty = false;
+
+        }
+
+    }
 
     // Habilita que "material.clippingPlanes" (ver
     // galeria-corte.js) recorte geometría — sin esto
@@ -564,78 +764,126 @@ export async function createScene(container, elementos, config) {
 
 
     /*
+        Habitación atmosférica (piso + pared, ver
+        galeria-habitacion.js). Se crea acá porque necesita
+        "renderer" (para el anisotropy máximo de las
+        texturas) ya armado, y "scene" para poder agregarse.
+
+        SACADA (ver Maqueta.html): la "mesa" (plano
+        ShadowMaterial invisible que existía acá antes,
+        aparte de la habitación) — "roomFloor" es ahora el
+        ÚNICO receptor de la sombra real de "keyLight"
+        (receiveShadow=true, ver galeria-habitacion.js). Un
+        ShadowMaterial invisible solo puede OSCURECER, nunca
+        mostrar la "piscina de luz" (el parche más iluminado
+        donde el cono del spot toca el piso, que sí puede
+        verse en un MeshPhysicalMaterial real como
+        roomFloor) — y al convivir casi coincidente con
+        roomFloor, duplicaba el receptor de sombra sobre
+        (casi) el mismo plano sin aportar nada.
+    */
+    const habitacion =
+        createHabitacion(scene, renderer, config);
+
+    /*
+        Luces adicionales (rim/hemisferios/cálido-frío, ver
+        galeria-luces.js) — puramente aditivas, no tocan
+        ambient/key/fill de más abajo.
+    */
+    const lucesAdicionales =
+        createLucesAdicionales(scene, config);
+
+
+    /*
         Luces
     */
 
     const ambientCfg = config.lights.ambient;
 
-    scene.add(
+    const ambient =
         new THREE.AmbientLight(
             ambientCfg.color,
             ambientCfg.intensity
-        )
-    );
+        );
+
+    scene.add(ambient);
 
 
     const keyCfg = config.lights.key;
 
     const keyLight =
-        new THREE.DirectionalLight(
+        new THREE.SpotLight(
             keyCfg.color,
-            keyCfg.intensity
+            keyCfg.intensity,
+            keyCfg.distance,
+            keyCfg.angleMax,
+            keyCfg.penumbra,
+            keyCfg.decay
         );
 
+    // Posición/target de RESPALDO (fila vacía) — con
+    // contenido real, createConoLuz() (galeria-cono-luz.js)
+    // los recalcula cada frame; ver el comentario grande en
+    // config.lights.key.
     keyLight.position.set(
         keyCfg.position.x,
         keyCfg.position.y,
         keyCfg.position.z
     );
 
-    keyLight.castShadow = true;
-
-    keyLight.shadow.mapSize.set(
-        keyCfg.shadowMapSize,
-        keyCfg.shadowMapSize
+    keyLight.target.position.set(
+        keyCfg.target.x,
+        keyCfg.target.y,
+        keyCfg.target.z
     );
 
-    // Límites provisorios (valor de respaldo, ver
-    // shadowCameraBounds en galeria-config.js) — se
-    // recalculan más abajo con el ancho real de la fila.
-    keyLight.shadow.camera.left =
-        -keyCfg.shadowCameraBounds;
-    keyLight.shadow.camera.right =
-        keyCfg.shadowCameraBounds;
-    keyLight.shadow.camera.top =
-        keyCfg.shadowCameraBounds;
-    keyLight.shadow.camera.bottom =
-        -keyCfg.shadowCameraBounds;
+    keyLight.castShadow = true;
+
+    /*
+        Gama media/baja: mapa de sombra más chico (mismo
+        precedente que Maqueta.html, 1024->512). Se usa
+        Math.min contra el valor de config en vez de un 512
+        fijo, para que si algún día config.lights.key.
+        shadowMapSize baja de 512 por otro motivo, el tier
+        móvil no lo suba de nuevo.
+    */
+    const shadowMapSize =
+        IS_MOBILE_TIER
+            ? Math.min(512, keyCfg.shadowMapSize)
+            : keyCfg.shadowMapSize;
+
+    keyLight.shadow.mapSize.set(
+        shadowMapSize,
+        shadowMapSize
+    );
+
+    /*
+        A diferencia de DirectionalLight (frustum ortográfico
+        manual, left/right/top/bottom, que este proyecto
+        calibraba a mano contra el ancho real de la fila —
+        función ya retirada), el shadow camera de SpotLight
+        es una PerspectiveCamera cuyo FOV deriva
+        AUTOMÁTICAMENTE de "keyLight.angle" en cada
+        actualización del shadow map — no hace falta
+        recalcularlo a mano. Solo hacen falta near/far.
+    */
+    keyLight.shadow.camera.near =
+        keyCfg.shadowCameraNear;
+    keyLight.shadow.camera.far =
+        keyCfg.shadowCameraFar;
 
     keyLight.shadow.bias =
         keyCfg.shadowBias;
+    keyLight.shadow.normalBias =
+        keyCfg.shadowNormalBias;
 
     scene.add(keyLight);
+    scene.add(keyLight.target);
 
 
-    const fillCfg = config.lights.fill;
-
-    const fillLight =
-        new THREE.DirectionalLight(
-            fillCfg.color,
-            fillCfg.intensity
-        );
-
-    fillLight.position.set(
-        fillCfg.position.x,
-        fillCfg.position.y,
-        fillCfg.position.z
-    );
-
-    scene.add(fillLight);
-
-
-    // El piso/mesa se arma más abajo, tras conocer el
-    // bbox real de la fila (se ajusta exactamente a él,
-    // ver config.table en galeria-config.js).
+    // El piso real (roomFloor, ver createHabitacion más
+    // arriba) ya existe a esta altura — no hace falta armar
+    // nada más acá.
 
     // Geometrías: un módulo procedural por elemento (ver
     // prepararGeometria arriba). Se resuelven todas en
@@ -675,59 +923,6 @@ export async function createScene(container, elementos, config) {
             0
         );
 
-    /*
-        DEBUG TEMPORAL (agregado para investigar por qué
-        el centrado de bbox en "fichas" —galeria-carrusel.js—
-        sólo parece funcionar en 2 de 5 elementos): además
-        de desplazamientoBase, ahora también se loguea el
-        bbox COMPLETO (min/max en X/Y/Z) y su centro en
-        X/Z —los mismos valores que usa
-        createCarouselController vía "bboxesPorIndice"
-        para calcular pivotX/pivotY/pivotZ—, para poder
-        comparar los 5 elementos de un vistazo y detectar
-        cualquier bbox degenerado (min≈max≈0), repetido
-        entre índices, o sospechosamente simétrico en X
-        cuando no debería serlo. Sacar este bloque (dejar
-        sólo el de arriba) una vez resuelto.
-    */
-    console.log(
-        "[debug bbox] desplazamientoBase por " +
-        "elemento:",
-        preparados.map((p, i) => ({
-            i,
-            generadorId: elementos[i].generadorId,
-            desplazamientoBase: p.desplazamientoBase
-        }))
-    );
-
-    console.log(
-        "[debug bbox] bbox completo por elemento " +
-        "(min/max y centro X/Z — mismos valores que " +
-        "usa galeria-carrusel.js para pivotX/Y/Z):",
-        preparados.map((p, i) => ({
-            i,
-            generadorId: elementos[i].generadorId,
-            min: {
-                x: p.bbox.min.x,
-                y: p.bbox.min.y,
-                z: p.bbox.min.z
-            },
-            max: {
-                x: p.bbox.max.x,
-                y: p.bbox.max.y,
-                z: p.bbox.max.z
-            },
-            centroX: (p.bbox.min.x + p.bbox.max.x) / 2,
-            centroY: (p.bbox.min.y + p.bbox.max.y) / 2,
-            centroZ: (p.bbox.min.z + p.bbox.max.z) / 2
-        }))
-    );
-
-    console.log(
-        "[debug bbox] restY global " +
-        "(máximo de arriba):", restY
-    );
-
 
     /*
         Posiciones de la fila para el orden CRUDO
@@ -747,243 +942,223 @@ export async function createScene(container, elementos, config) {
         elementos lo justo y necesario sin colisionar —
         ver calculatePositions al final del archivo.
     */
-    const positions =
-        calculatePositions(
-            preparados.map(p => p.bbox),
-            config.row.spacing
-        );
 
     /*
-        Layout real de la fila para un "order" dado —
-        misma calculatePositions() de arriba, pero
-        alimentada con los bbox de quien ocupa cada slot
-        en ESE order, no en el crudo.
+        Eje principal del layout ("x" = fila horizontal;
+        "y" = columna vertical, portrait) y eje secundario
+        de CÁMARA (el que queda casi fijo en
+        cameraPosFromMagnitud, más abajo — ver tabla de
+        ejes en notas-encuadre-3d.md).
+
+        CONECTADO a "aspect < 1" — mismo criterio ("retrato")
+        que ya usa calcularMagnitudRasante más abajo.
+
+        "ejePrincipal" y todo lo que depende de él (ver
+        calcularLayoutDeFila, más abajo) son mutables:
+        manejarPosibleCambioDeOrientacion(), expuesta en el
+        retorno de createScene, los recalcula cuando
+        galeria.js detecta (en cada resize/orientationchange/
+        fullscreenchange, con debounce) un cruce real
+        horizontal↔vertical.
+    */
+    let ejePrincipal;
+    let ejeSecundarioCamara;
+    let positions;
+    let worldVertices;
+    let magnitudPrincipal;
+    let centroPrincipal;
+    let lookAtYReal;
+
+    // Semiancho real de la fila (X literal, no
+    // "ejePrincipal") — ya no lo consume nada: antes
+    // alimentaba actualizarFrustumSombra() (retirada, ver el
+    // comentario junto al keyLight: con SpotLight el shadow
+    // camera ya no necesita un frustum ortográfico calibrado
+    // a mano). Se deja calculado por si vuelve a hacer falta
+    // (p. ej. para calibrar algo del cono de luz a futuro),
+    // no cuesta nada mantenerlo.
+    let anchoFilaActual = 0;
+
+    /*
+        Layout real de la fila para un "order" dado — usa el
+        "ejePrincipal" VIGENTE (variable mutable, ver arriba):
+        quien reordena/revela/arma el carrusel llama siempre
+        a ESTA función (nunca a "positions" crudo) para que un
+        cruce de orientación se refleje solo, sin que
+        galeria-reordenar.js/galeria-revelado.js/
+        galeria-carrusel.js tengan que enterarse de nada — su
+        propio "ejePrincipal" (recibido como prop en su
+        construcción) sigue siendo el que decide CÓMO leer
+        estas posiciones (from/to, dirección de cascada,
+        etc.), pero el layout FÍSICO en sí ya viene resuelto
+        con el eje correcto.
 
         Hace falta porque el gap entre vecinos que arma
-        calculatePositions depende del ancho real de
-        quien ocupa cada slot: en cuanto otro elemento
-        (de ancho distinto) pasa a ocupar ese slot —cosa
-        que ya pasa desde el arranque, ver
-        galeria-reordenar.js— "positions" (arriba) deja
-        de ser válido para ese order. Quien reordena debe
-        llamar a esta función cada vez que "order" cambia
-        y usarla también como fuente de "positions", no
-        solo de "order".
+        calculatePositions depende del ancho real de quien
+        ocupa cada slot: en cuanto otro elemento (de ancho
+        distinto) pasa a ocupar ese slot —cosa que ya pasa
+        desde el arranque, ver galeria-reordenar.js—
+        "positions" (más abajo) deja de ser válido para ese
+        order. Quien reordena debe llamar a esta función cada
+        vez que "order" cambia y usarla también como fuente
+        de "positions", no solo de "order".
     */
     function computeRowPositions(order) {
 
         return calculatePositions(
             order.map(cupID => bboxesPorIndice[cupID]),
-            config.row.spacing
+            config.row.spacing,
+            ejePrincipal
         );
 
     }
 
-
-    // Vértices de bounding box de TODA la fila, en
-    // mundo — insumo del solver de centrado
-    // (verticesMundoDeFila). No dependen del aspecto de
-    // la ventana: se calculan una vez y se reutilizan
-    // acá y en cada resize().
-    const worldVertices =
-        verticesMundoDeFila(
-            preparados, positions, restY
-        );
-
-
     /*
-        Posición real de la cámara: más allá del extremo
-        izquierdo del bbox real de la fila, en un
-        desplazamiento POLAR (dx, dz) — magnitud
-        proporcional al ancho total, ángulo fijo respecto
-        al eje de la fila (ver "margenRasante"/
-        "anguloVistaGrados" en galeria-config.js).
-        Reemplaza a config.camera.position.x/z, que
-        quedan solo como respaldo para fila vacía.
-
-        Tiene que ser POLAR (no solo escalar la distancia
-        en X con Z fijo): si no, el ángulo de vista se
-        achata cuanto más ancha es la fila, y con una fila
-        muy ancha los elementos terminan ocluyéndose entre
-        sí. Escalar dx y dz juntos mantiene el mismo grado
-        de escorzo sin importar cuánto crezca la fila.
-
-        Se guarda en "cameraPos" (no en
-        config.camera.position) para que todo lo que
-        necesite la posición real de la cámara use
-        siempre el mismo valor.
+        calcularLayoutDeFila(): arma/rearma TODO lo que
+        depende de "ejePrincipal" — se llama una vez al
+        iniciar la escena y de nuevo cada vez que
+        manejarPosibleCambioDeOrientacion() detecta un cruce
+        real horizontal↔vertical. NO toca "preparados"/
+        "bboxesPorIndice"/"restY" (arriba): esas son
+        propiedades intrínsecas de la GEOMETRÍA de cada
+        elemento (cargada async, una sola vez), no del
+        layout — no dependen de para qué lado crece la fila.
     */
-    const xsFila =
-        worldVertices.map(v => v.x);
+    function calcularLayoutDeFila() {
 
-    const loFila = Math.min(...xsFila);
-    const hiFila = Math.max(...xsFila);
-    const anchoFila = hiFila - loFila;
+        const aspectVigente =
+            container.clientWidth /
+            container.clientHeight;
 
-    /*
-        lookAtY real (reemplaza a config.camera.lookAtY,
-        que queda solo como respaldo para fila vacía): se
-        usa la MEDIANA de la altura de cada elemento, no
-        el punto medio entre el Y mínimo y máximo de toda
-        la fila. Las alturas son dispares entre elementos
-        (ver "protomartir", con más del doble de alto que
-        el resto — confirmable con el debug de bounding
-        boxes) y promediar extremos absolutos deja el
-        punto de mira muy arriba, empujando a la mayoría
-        de los elementos hacia la mitad inferior del
-        cuadro. La mediana es tolerante a ese outlier: el
-        costo es que su punta puede quedar recortada por
-        el borde superior de pantalla, a cambio de que la
-        mayoría quede bien encuadrada (ver
-        encuadre-camara.md).
-    */
-    const ysFila =
-        worldVertices.map(v => v.y);
+        ejePrincipal =
+            aspectVigente < 1 ? "y" : "x";
+        ejeSecundarioCamara =
+            ejePrincipal === "x" ? "y" : "x";
 
-    const zsFila =
-        worldVertices.map(v => v.z);
+        positions =
+            calculatePositions(
+                preparados.map(p => p.bbox),
+                config.row.spacing,
+                ejePrincipal
+            );
 
-    const topesPorElemento =
-        preparados.map(p => restY + p.bbox.max.y);
+        // Vértices de bounding box de TODA la fila, en
+        // mundo — insumo del solver de centrado
+        // (verticesMundoDeFila).
+        worldVertices =
+            verticesMundoDeFila(
+                preparados, positions, ejeSecundarioCamara
+            );
 
-    const topesOrdenados =
-        [...topesPorElemento].sort((a, b) => a - b);
+        /*
+            Posición real de la cámara: más allá del extremo
+            izquierdo del bbox real de la fila, en un
+            desplazamiento POLAR (dx, dz) — magnitud
+            proporcional al ancho total, ángulo fijo respecto
+            al eje de la fila (ver "margenRasante"/
+            "anguloVistaGrados" en galeria-config.js).
+            Reemplaza a config.camera.position.x/z, que
+            quedan solo como respaldo para fila vacía.
+        */
+        const xsFila =
+            worldVertices.map(v => v.x);
 
-    const n = topesOrdenados.length;
+        const loFila =
+            worldVertices.length > 0 ? Math.min(...xsFila) : 0;
+        const hiFila =
+            worldVertices.length > 0 ? Math.max(...xsFila) : 0;
 
-    const medianaTope =
-        n === 0
-            ? 0
-            : n % 2 === 1
-                ? topesOrdenados[(n - 1) / 2]
-                : (topesOrdenados[n / 2 - 1] +
-                   topesOrdenados[n / 2]) / 2;
+        anchoFilaActual = hiFila - loFila;
 
-    const baseFila =
-        worldVertices.length > 0
-            ? Math.min(...ysFila)
-            : 0;
+        /*
+            "magnitudPrincipal"/"centroPrincipal": mismo par
+            que "anchoFila" arriba, pero leídos sobre
+            "ejePrincipal" en vez de X literal — alimentan el
+            arco de cámara (cameraPosFromMagnitud, más abajo),
+            que sí necesita saber sobre qué eje crece la fila.
+            "anchoFila" (arriba) se DEJA como está (X literal):
+            lo sigue usando la mesa y el frustum de sombra, que
+            son del plano del piso (X/Z reales), no del eje de
+            layout.
+        */
+        const coordsPrincipalFila =
+            worldVertices.map(v => v[ejePrincipal]);
 
-    const lookAtYReal =
-        worldVertices.length > 0
-            ? (baseFila + medianaTope) / 2
-            : config.camera.lookAtY;
+        const loPrincipal =
+            worldVertices.length > 0 ? Math.min(...coordsPrincipalFila) : 0;
+        const hiPrincipal =
+            worldVertices.length > 0 ? Math.max(...coordsPrincipalFila) : 0;
 
-    console.log(
-        "[debug bbox] topes por elemento (Y):",
-        topesPorElemento,
-        " mediana:", medianaTope,
-        " baseFila:", baseFila,
-        " lookAtYReal:", lookAtYReal
-    );
+        magnitudPrincipal = hiPrincipal - loPrincipal;
+        centroPrincipal = (loPrincipal + hiPrincipal) / 2;
 
+        /*
+            lookAt del eje SECUNDARIO real: se usa la MEDIANA
+            de la extensión de cada elemento en ese eje, no el
+            punto medio entre el mínimo y máximo de toda la
+            fila — tolerante a outliers como "protomartir".
+        */
+        const coordsSecundarioFila =
+            worldVertices.map(v => v[ejeSecundarioCamara]);
 
-    /*
-        Piso/mesa: plano INVISIBLE (THREE.ShadowMaterial
-        — sin superficie de color propia, solo tiñe la
-        zona donde cae sombra) dimensionado al bbox real
-        de la fila (xsFila para X, zsFila para Z).
+        const topesPorElemento =
+            preparados.map(p => {
 
-        PlaneGeometry en vez de Cylinder: la fila es
-        angosta en Z (la profundidad de un elemento) y
-        ancha en X (toda la fila), así que un ancho/
-        profundidad independientes cubren mejor que un
-        único radio — sobre todo porque la cara frontal
-        de cada elemento está en z=0 (ver
-        "desplazamientoFrente" en prepararGeometria) y la
-        fila se extiende hacia Z negativo, no simétrica
-        alrededor de 0.
-    */
-    const tableCfg = config.table;
+                if (ejeSecundarioCamara === "y") {
 
-    const loFilaZ =
-        worldVertices.length > 0
-            ? Math.min(...zsFila)
-            : 0;
+                    return p.desplazamientoBase + p.bbox.max.y;
 
-    const hiFilaZ =
-        worldVertices.length > 0
-            ? Math.max(...zsFila)
-            : 0;
+                }
 
-    const tableWidth =
-        (hiFila - loFila) + tableCfg.padding * 2;
+                const pivotSecundario =
+                    (p.bbox.min[ejeSecundarioCamara] +
+                        p.bbox.max[ejeSecundarioCamara]) / 2;
 
-    const tableDepth =
-        (hiFilaZ - loFilaZ) + tableCfg.padding * 2;
+                return (
+                    p.bbox.max[ejeSecundarioCamara] -
+                    pivotSecundario
+                );
 
-    const table =
-        new THREE.Mesh(
-            new THREE.PlaneGeometry(
-                Math.max(tableWidth, tableCfg.padding),
-                Math.max(tableDepth, tableCfg.padding)
-            ),
-            new THREE.ShadowMaterial({
-                opacity: tableCfg.shadowOpacity,
-                depthWrite: false
-            })
-        );
+            });
 
-    /*
-        depthWrite:false + renderOrder:-1: los conos
-        también son "transparent" (ver crearMaterial en
-        armarGroup3D, para el fade de revelado), y
-        Three.js ordena la cola de objetos transparentes
-        de forma aproximada (por objeto, no por píxel).
-        Sin esto, el plano puede terminar dibujándose
-        DESPUÉS de partes de algún cono que caen bajo
-        y=0 y, como sí escribiría profundidad, esas
-        partes del cono quedarían ocluidas. Forzando al
-        plano a no escribir profundidad y a dibujarse
-        siempre primero, queda fuera de esa pelea por
-        completo — la sombra en sí no depende de esto
-        (sale del shadow map de la luz), así que se ve
-        igual.
-    */
-    table.renderOrder = -1;
+        const topesOrdenados =
+            [...topesPorElemento].sort((a, b) => a - b);
 
-    // PlaneGeometry nace parada en el plano XY (mirando
-    // a +Z) — se acuesta sobre XZ, mirando hacia +Y, con
-    // -90° en X.
-    table.rotation.x = -Math.PI / 2;
+        const n = topesOrdenados.length;
 
-    table.position.set(
-        (loFila + hiFila) / 2,
-        // Un pelo por debajo de 0: evita z-fighting con
-        // la base de cualquier elemento apoyado en y=0.
-        -0.001,
-        (loFilaZ + hiFilaZ) / 2
-    );
+        const medianaTope =
+            n === 0
+                ? 0
+                : n % 2 === 1
+                    ? topesOrdenados[(n - 1) / 2]
+                    : (topesOrdenados[n / 2 - 1] +
+                       topesOrdenados[n / 2]) / 2;
 
-    table.receiveShadow = true;
+        const baseFila =
+            worldVertices.length > 0
+                ? Math.min(...coordsSecundarioFila)
+                : 0;
 
-    scene.add(table);
+        lookAtYReal =
+            worldVertices.length > 0
+                ? (baseFila + medianaTope) / 2
+                : config.camera.lookAtY;
+
+    }
+
+    calcularLayoutDeFila();
 
 
     /*
-        ==================================================
-        DEBUG TEMPORAL — cajas de bounding box visibles.
-        Poner DEBUG_BOUNDING_BOXES en "false" (o borrar
-        este bloque) una vez resuelto el problema de
-        centrado reportado.
-
-        Una caja semitransparente por elemento (con el
-        bbox real que usa calculatePositions/
-        verticesMundoDeFila) más una caja para el bbox
-        TOTAL de la fila (blanca, más tenue) — así se ve
-        a ojo, en la propia escena, si lo que el código
-        entiende por "centrado" coincide con lo que se
-        espera visualmente, en vez de inferirlo indirecto
-        desde una captura de pantalla.
-
-        A diferencia de la versión anterior (un solo
-        dibujo, con el orden crudo, al armar la escena),
-        estas cajas ahora se arman/rearman con
-        dibujarCajasDebug(order) — mismo "order" que usa
-        computeLookAtX — así siguen mostrando la silueta
-        REAL, sea cual sea el criterio de orden vigente
-        en el GUI, no solo la del arranque.
-        ==================================================
+        Utilidad de debug (activar con DEBUG_BOUNDING_BOXES):
+        dibuja una caja semitransparente por elemento (bbox
+        real, el que usa calculatePositions/
+        verticesMundoDeFila) más una caja para el bbox TOTAL
+        de la fila, para verificar a ojo el centrado.
+        dibujarCajasDebug(order) se arma/rearma con el mismo
+        "order" que usa computeLookAtX, así que muestra la
+        silueta real para cualquier orden vigente en el GUI,
+        no solo la del arranque.
     */
 
     const DEBUG_BOUNDING_BOXES = false;
@@ -1043,17 +1218,37 @@ export async function createScene(container, elementos, config) {
             const bbox = bboxesPorIndice[cupID];
             const slot = slots[i];
 
+            // Base propia de ESTE elemento (misma cuenta que
+            // normalizarGeometriaElemento), no "restY"
+            // compartido — ver el comentario grande en
+            // verticesMundoDeFila.
+            const desplazamientoBase = -bbox.min.y;
+
+            const pivotSecundario =
+                (bbox.min[ejeSecundarioCamara] +
+                    bbox.max[ejeSecundarioCamara]) / 2;
+
             const min = {
                 x: slot.x + bbox.min.x,
-                y: restY + bbox.min.y,
+                y: desplazamientoBase + slot.y + bbox.min.y,
                 z: slot.z + bbox.min.z
             };
 
             const max = {
                 x: slot.x + bbox.max.x,
-                y: restY + bbox.max.y,
+                y: desplazamientoBase + slot.y + bbox.max.y,
                 z: slot.z + bbox.max.z
             };
+
+            // Mismo centrado por centroide que
+            // verticesMundoDeFila cuando el eje secundario
+            // es X (modo vertical) — ver ese comentario.
+            if (ejeSecundarioCamara === "x") {
+
+                min.x = slot.x + (bbox.min.x - pivotSecundario);
+                max.x = slot.x + (bbox.max.x - pivotSecundario);
+
+            }
 
             minsX.push(min.x); maxsX.push(max.x);
             minsY.push(min.y); maxsY.push(max.y);
@@ -1089,50 +1284,354 @@ export async function createScene(container, elementos, config) {
 
         scene.add(grupoDebugTotal);
 
-        console.log(
-            "[debug bbox] caja TOTAL de la fila " +
-            "(mundo), orden vigente:", minTotal, maxTotal
-        );
-
     }
 
     const anguloVista =
         config.camera.anguloVistaGrados *
         Math.PI / 180;
 
-    // Centro real de la fila en X — mismo punto que usa
-    // la mesa más abajo. Es el pivote del arco de cámara
+    // Centro real de la fila sobre el eje principal —
+    // ya calculado como "centroPrincipal" más arriba
+    // (junto con "magnitudPrincipal"), generalizado para
+    // no asumir X. Es el pivote del arco de cámara
     // (cameraPosFromMagnitud/setCameraLado): por
     // construcción simétrica, los puntos "más allá del
     // extremo derecho" e "izquierdo" quedan a la misma
     // distancia de este centro, sobre un mismo círculo.
-    const cxFila = (loFila + hiFila) / 2;
 
     /*
-        Lado vigente de la cámara: 0 = más allá del
-        extremo DERECHO (arranque, fases "hero"/
-        "proyecto"), 1 = más allá del extremo IZQUIERDO
-        (fases "orden"/"fichas"/"final"). Durante
-        "revelado" viaja de 0 a 1 (ver setCameraLado()).
+        Lado vigente de la cámara: 0 = más allá del extremo
+        DERECHO (arranque, fases "hero"/"proyecto"), 0.5 =
+        vista de FRENTE, sin escorzo (fases "orden" y el
+        arranque de "fichas"), 1 = alineado con el ancla del
+        carrusel YA CERRADO (resto de "fichas"/"final").
+        "revelado" recorre 0->0.5 (group shot parejo, sin
+        oclusión); 0.5->1 (giro hacia el ancla) ocurre en
+        paralelo con el doblez línea->círculo de "fichas"
+        (ver galeria.js).
+
         Se guarda acá para que resize() y
         calcularMagnitudRasante() —que llaman a
-        cameraPosFromMagnitud(m) sin pasar "t"— respeten
-        el lado vigente en vez de asumir siempre el mismo
+        cameraPosFromMagnitud(m) sin pasar "t"— respeten el
+        lado vigente en vez de asumir siempre el mismo
         extremo.
     */
     let ladoActual = 0;
 
     /*
+        Magnitud SEPARADA, calibrada específicamente para la
+        vista de FRENTE en horizontal (t=0.5, "orden") — ver
+        el comentario grande junto a calcularArcoCamara, más
+        abajo, y calcularMagnitudAnchoHorizontal(). Null hasta
+        que se calcula por primera vez (después de la
+        configuración inicial de cámara, más abajo en este
+        archivo) — mientras sea null, calcularArcoCamara no
+        mezcla nada (usa "m" tal cual), así que la primerísima
+        vez que se necesita ANTES de que esto exista (la
+        propia bisección que lo calcula, que llama a
+        cameraPosFromMagnitud/calcularArcoCamara puertas
+        adentro) no genera una dependencia circular. Solo
+        aplica en horizontal — en vertical queda null para
+        siempre, sin efecto.
+    */
+    let magnitudRasanteAncho = null;
+
+    /*
+        Geometría del CÍRCULO CERRADO del carrusel (el
+        círculo azul de galeria-carrusel.js, una vez
+        formado) y de la coordenada del ancla sobre
+        "ejePrincipal" — necesarias para el tramo EXTRA
+        del arco de cámara (t>0.5, ver
+        calcularArcoCamara()/cameraPosFromMagnitud más
+        abajo), que termina alineado con el ancla en vez
+        de seguir el arco de encuadre de siempre.
+
+        Son geometría del CARRUSEL (dependen del "order"/
+        ancla vigentes, calculados en
+        galeria-carrusel.js), no de la cámara en sí — por
+        eso se reciben desde afuera vía
+        actualizarSetupCarrusel(), más abajo, en vez de
+        calcularse acá. galeria.js la llama cada frame de
+        "fichas", justo después de carousel.update() (que
+        es quien conoce el "order" vigente).
+
+        Se cachean (no se recalculan solas) para que
+        resize()/calcularMagnitudRasante() —que pueden
+        llamar a cameraPosFromMagnitud() en cualquier
+        momento, incluso fuera de "fichas"— tengan un
+        valor razonable. "null" = todavía no se entró
+        nunca a "fichas" en esta carga: el tramo extra cae
+        de vuelta al comportamiento de siempre (alineado
+        con el extremo de encuadre de siempre, sin ningún
+        ancla que mirar) — ver el respaldo en
+        calcularArcoCamara().
+    */
+    let circuloCerradoActual = null;
+    let anclaPrincipalMundoActual = 0;
+
+    // Coordenada X real del ancla en mundo (el círculo del
+    // carrusel vive siempre en XZ) — la usa
+    // calcularAnguloFinalVerde() más abajo, exclusiva del
+    // tramo vertical t>0.5 (círculo verde). Mismo criterio de
+    // cacheo que circuloCerradoActual/anclaPrincipalMundoActual.
+    let anclaMundoXActual = 0;
+
+    // lookAt con el que arrancó el tramo verde (t>0.5,
+    // vertical) la última vez que se entró — null mientras no
+    // se está en ese tramo. setCameraLado() lo usa para que el
+    // cruce en 0.5 blendee hacia el horizonte fijo en vez de
+    // saltar de golpe.
+    let lookAtVerdeBase = null;
+
+    // E: mismo mecanismo que lookAtVerdeBase, pero para el
+    // resto del arco NARANJA (horizontal, t>0.5, o vertical
+    // antes de cruzar al círculo verde): sin esto,
+    // setCameraLado() seguía recalculando "lookAtFilaPlana"
+    // con la búsqueda por bisección (findCenteredLookAtPrincipal)
+    // en CADA llamada durante todo ese tramo, aunque el punto
+    // que mejor centra la fila ya no varía de forma monótona
+    // ahí — eso producía un salto de encuadre visible
+    // (aprox. t≈0.737→0.894 en "fichas"). Se congela el valor
+    // tal cual estaba al cruzar t=0.5 (a diferencia del tramo
+    // verde, acá no hay un segundo punto al que blendear: el
+    // acercamiento al ancla ya lo resuelve "extraBlend", más
+    // abajo, por separado). null mientras t<=0.5.
+    let lookAtNaranjaBase = null;
+
+    function actualizarSetupCarrusel({ circuloCerrado, anclaPrincipalMundo, anclaMundoX }) {
+
+        circuloCerradoActual = circuloCerrado;
+        anclaPrincipalMundoActual = anclaPrincipalMundo;
+        anclaMundoXActual = anclaMundoX;
+
+    }
+
+    /*
+        calcularAnguloFinalVerde(radio): EQUIVALENTE a
+        "anguloFinal" (ver calcularArcoCamara, más abajo),
+        pero resuelto en el plano X-Z REAL, no en
+        "(ejePrincipal, Z)".
+
+        "anguloFinal" resuelve la alineación asumiendo que la
+        cámara vive en el plano (ejePrincipal, Z) — cierto
+        siempre en horizontal (donde ejePrincipal="x" YA ES
+        ese plano), pero solo cierto en vertical HASTA
+        "anguloIzquierda": después, la cámara pasa a vivir en
+        el plano X-Z real (ver cameraPosFromMagnitud). El
+        círculo del carrusel (y la línea centro-azul->ancla)
+        vive SIEMPRE en X-Z, sea cual sea "ejePrincipal" — así
+        que la alineación para el tramo verde tiene que
+        resolverse con la coordenada X real de la ancla
+        ("anclaMundoXActual", ver más arriba), no con
+        "ejePrincipal".
+    */
+    function calcularAnguloFinalVerde(radio) {
+
+        const cosAlineadoVerde =
+            Math.max(-1, Math.min(1, anclaMundoXActual / radio));
+
+        const anguloAlineadoFrenteVerde = Math.acos(cosAlineadoVerde);
+
+        let anguloFinalVerde =
+            Math.PI * 2 - anguloAlineadoFrenteVerde;
+
+        while (anguloFinalVerde <= Math.PI / 2) {
+            anguloFinalVerde += Math.PI * 2;
+        }
+
+        return anguloFinalVerde;
+
+    }
+
+    /*
+        calcularArcoCamara(m): geometría del arco de
+        cámara (radio + los tres ángulos de referencia)
+        para la magnitud "m" — factorizado fuera de
+        cameraPosFromMagnitud (antes vivía mezclado ahí
+        adentro, calculado una sola vez con un solo uso)
+        para poder reusar radio/ángulos también en la
+        mezcla del lookAt (ver setCameraLado más abajo)
+        sin repetir la fórmula dos veces.
+
+        "Mismos radios" (solo HORIZONTAL): el radio del arco
+        no sale de la fórmula de encuadre
+        (magnitud·cos/sin(anguloVista) sobre
+        magnitudPrincipal/2) sino que es la distancia real
+        entre el centro del propio arco ("centroPrincipal",
+        z=0) y el centro del círculo YA CERRADO del carrusel
+        ("circuloCerradoActual"). La DIRECCIÓN del arco
+        (anguloDerecha/Izquierda) no depende del radio — el
+        ángulo de atan2 depende solo de la RAZÓN
+        vz/vPrincipal, no de su escala. Sin círculo cerrado
+        conocido todavía, se usa la fórmula de encuadre como
+        respaldo.
+
+        En VERTICAL el radio sigue siendo el de siempre
+        (hypot(vPrincipal, vz)): no hay "mismos radios" ahí.
+
+        anguloFinal: el ángulo donde la cámara queda
+        ALINEADA con la línea que une el centro del
+        círculo cerrado con el centroide del ancla —
+        resuelto como intersección de esa recta (vertical
+        en el sistema ejePrincipal/Z, pasa siempre por
+        "ejePrincipal = anclaPrincipalMundoActual") con el
+        círculo que recorre la cámara (centro
+        "centroPrincipal", radio "radio"). Se toma el
+        cruce que sigue el mismo sentido de giro creciente
+        en el que la cámara ya venía barriendo desde
+        "anguloIzquierda". Sin círculo cerrado conocido
+        todavía, no hay nada con qué alinear: respaldo =
+        "anguloIzquierda" (el tramo extra no gira nada,
+        t>0.5 se queda clavado en el extremo de encuadre
+        de siempre).
+    */
+    /*
+        "margenRasante" es la distancia fija de cámara
+        calibrada para la composición angulada de "hero"/
+        "proyecto" (t≈0), donde por escorzo la fila ocupa
+        poco ancho en pantalla. En "orden" (t=0.5, vista de
+        FRENTE, sin escorzo) la misma fila necesita más ancho
+        de cuadro para la misma distancia de cámara, así que
+        "margenRasante" no alcanza ahí.
+
+        "magnitudRasanteAncho" (calculada más abajo por
+        bisección, igual que el fit-to-navbar vertical pero
+        ajustando al ANCHO y evaluada en t=0.5) reemplaza a
+        "m" de forma progresiva a medida que "t" se acerca a
+        0.5: en t=0 da exactamente "m"; en t=0.5 ya es
+        completamente "magnitudRasanteAncho". Más allá de
+        t=0.5 ("fichas") se queda en ese valor hasta que
+        "mismos radios" (ver "radio" más abajo) lo reemplaza
+        apenas "circuloCerradoActual" esté disponible.
+
+        En vertical "magnitudRasanteAncho" nunca se calcula
+        (queda null) y el blend no se activa: el ajuste es
+        específico del ancho en horizontal.
+    */
+    function calcularArcoCamara(m, t = ladoActual) {
+
+        const mEfectiva =
+            ejePrincipal === "x" && magnitudRasanteAncho !== null
+                ? m + (magnitudRasanteAncho - m) *
+                  smoothstep(Math.min(1, Math.max(0, t) / 0.5))
+                : m;
+
+        const magnitud = mEfectiva * magnitudPrincipal;
+
+        const dx = magnitud * Math.cos(anguloVista);
+        const dz = magnitud * Math.sin(anguloVista);
+
+        const vPrincipal = magnitudPrincipal / 2 + dx;
+        const vz = dz;
+
+        const anguloDerecha = Math.atan2(vz, vPrincipal);
+        const anguloIzquierda = Math.PI - anguloDerecha;
+
+        /*
+            "radio" usa siempre "radioAncho" (el de encuadre
+            por ancho) para t<=0.5 ("orden" y antes), y recién
+            para t>0.5 lo mezcla, con un smoothstep en la
+            mitad opuesta del recorrido de "mEfectiva", hacia
+            la distancia real al círculo cerrado del carrusel
+            ("circuloCerradoActual"). "orden" queda así
+            desacoplado de si ya se visitó "fichas" antes en
+            la sesión o de qué tan vigente esté
+            "circuloCerradoActual" (que solo se resetea en un
+            cruce de orientación, ver
+            manejarPosibleCambioDeOrientacion) — el radio se
+            acerca al del carrusel de forma continua a medida
+            que t avanza de 0.5 a 1, sin salto de zoom.
+        */
+        const radioAncho =
+            Math.hypot(vPrincipal, vz);
+
+        const radio =
+            ejePrincipal === "x" && circuloCerradoActual
+                ? radioAncho +
+                  (Math.hypot(
+                      centroPrincipal - circuloCerradoActual.x,
+                      0 - circuloCerradoActual.z
+                  ) - radioAncho) *
+                  smoothstep(Math.max(0, (t - 0.5) / 0.5))
+                : radioAncho;
+
+        let anguloFinal = anguloIzquierda;
+
+        if (circuloCerradoActual) {
+
+            const cosAlineado =
+                Math.max(-1, Math.min(1,
+                    (anclaPrincipalMundoActual - centroPrincipal) / radio
+                ));
+
+            const anguloAlineadoFrente = Math.acos(cosAlineado);
+
+            anguloFinal = Math.PI * 2 - anguloAlineadoFrente;
+
+            while (anguloFinal <= anguloIzquierda) {
+                anguloFinal += Math.PI * 2;
+            }
+
+        }
+
+        return { radio, anguloDerecha, anguloIzquierda, anguloFinal };
+
+    }
+
+    /*
+        Función PURA: no lee ni escribe "magnitudRasanteAncho",
+        "circuloCerradoActual" ni ningún otro estado mutable —
+        necesario porque findFittedMagnitude() la evalúa por
+        bisección, y calcularMagnitudAnchoHorizontal() calcula
+        justamente "magnitudRasanteAncho"; si esta función
+        dependiera de ese mismo valor, cada candidato de la
+        bisección devolvería la misma posición y la búsqueda
+        no convergería.
+
+        Replica exactamente la geometría que
+        "cameraPosFromMagnitud(m, 0.5)" daría para una "m"
+        cruda: a t=0.5 exacto "anguloActual" siempre es
+        "anguloMedio" (π/2), así que alcanza con "radio"
+        (independiente del blend y del círculo cerrado, que en
+        horizontal recién existe en "fichas").
+    */
+    function posVistaDeFrenteParaAncho(m) {
+
+        const magnitud = m * magnitudPrincipal;
+
+        const dx = magnitud * Math.cos(anguloVista);
+        const dz = magnitud * Math.sin(anguloVista);
+
+        const vPrincipal = magnitudPrincipal / 2 + dx;
+        const vz = dz;
+
+        const radio = Math.hypot(vPrincipal, vz);
+
+        const anguloMedio = Math.PI / 2;
+
+        const pos = { x: 0, y: 0, z: radio * Math.sin(anguloMedio) };
+        pos[ejePrincipal] = centroPrincipal + radio * Math.cos(anguloMedio);
+        pos[ejeSecundarioCamara] =
+            ejeSecundarioCamara === "y"
+                ? config.camera.position.y
+                : 0;
+
+        return pos;
+
+    }
+
+
+    /*
         cameraPosFromMagnitud(m, t): arma un ARCO real
-        alrededor de cxFila (mismo radio para cualquier
-        "t") y devuelve la posición sobre ese arco para
-        "t" (0 = extremo derecho, 1 = extremo izquierdo,
-        valores intermedios = puntos sobre el arco). "m"
-        es la magnitud (fracción del ancho de fila): la
-        usan el camino normal (escritorio,
-        m=margenRasante), el "fit to width" de celular
-        (m por bisección) y "revelado" (m=magnitudRasante
-        vigente, t=avance de la fase).
+        alrededor de centroPrincipal y devuelve la
+        posición sobre ese arco para "t" (0 = extremo
+        derecho, 0.5 = vista de frente, 1 = alineado con
+        el ancla del carrusel — ver el comentario grande
+        de "ladoActual", más arriba). "m" es la magnitud
+        (fracción del ancho de fila): la usan el camino
+        normal (escritorio, m=margenRasante), el "fit to
+        width" de celular (m por bisección) y "revelado"
+        (m=magnitudRasante vigente, t=avance de la fase).
 
         "t" por defecto toma "ladoActual", así que
         cualquier llamada que no sepa nada de "lado"
@@ -1141,14 +1640,6 @@ export async function createScene(container, elementos, config) {
         resetear al extremo derecho.
     */
     function cameraPosFromMagnitud(m, t = ladoActual) {
-
-        const magnitud = m * anchoFila;
-
-        const dx =
-            magnitud * Math.cos(anguloVista);
-
-        const dz =
-            magnitud * Math.sin(anguloVista);
 
         if (worldVertices.length === 0) {
 
@@ -1160,29 +1651,117 @@ export async function createScene(container, elementos, config) {
 
         }
 
-        // Vector cxFila -> extremo derecho, en el plano
-        // XZ: su magnitud es el radio del arco, su
-        // ángulo el punto de partida (t=0). El punto de
-        // llegada (t=1) es el reflejo especular de ese
-        // ángulo respecto al eje Z — mismo radio, lado
-        // opuesto del centro.
-        const vx = anchoFila / 2 + dx;
-        const vz = dz;
+        const { radio, anguloDerecha, anguloFinal } =
+            calcularArcoCamara(m, t);
 
-        const radio = Math.hypot(vx, vz);
+        const anguloMedio = Math.PI / 2;
 
-        const anguloDerecha = Math.atan2(vz, vx);
-        const anguloIzquierda = Math.PI - anguloDerecha;
+        /*
+            "centroArco" tiene que ser "centroPrincipal" (el
+            centro real de la fila, que escala con el
+            contenido) y no un valor fijo como
+            "config.camera.position.y": "calcularMagnitudRasante"/
+            "findFittedMagnitude" asumen que el arco está
+            anclado ahí para poder resolver, por bisección, una
+            magnitud que encuadre dentro de la banda vertical
+            real (navbar arriba, botones abajo — ver
+            calcularTargetPrincipal más abajo). Con la cámara
+            clavada en una altura arbitraria esa bisección
+            pierde sentido y la fila se sale del cuadro.
 
+            Como cos(anguloMedio)=cos(π/2)=0 exacto,
+            "pos[ejePrincipal]" en t=0.5 da "centroArco" sin
+            importar cuál sea su valor, así que usarlo acá no
+            afecta la continuidad con el tramo t>0.5.
+        */
+        const centroArco =
+            centroPrincipal;
+
+        /*
+            En vertical, más allá de la vista de frente
+            (t>0.5), la cámara deja de recorrer el arco
+            naranja (plano ejePrincipal-Z) y pasa a recorrer un
+            CÍRCULO VERDE en el plano X-Z real — mismo radio
+            "radio" (ver calcularArcoCamara, "mismos radios"),
+            centrado en el origen de ese plano. "Y" queda FIJO
+            en "centroArco" (el horizonte, ya alcanzado en
+            t=0.5): no hay que seguir bajando/subiendo, solo
+            "X"/"Z" giran.
+
+            El ángulo arranca en π/2 (mismo valor que
+            "anguloActual" trae del arco naranja en t=0.5 —
+            ahí X=0 también, por construcción: cos(π/2)=0) y
+            termina en "anguloFinalVerde" (alineado con el
+            ancla, resuelto en X-Z real — ver
+            calcularAnguloFinalVerde) en t=1, con
+            "smoothstep" para que el arranque del giro en X no
+            sea instantáneo (derivada 0 en t=0.5, continuo con
+            el reposo que traía el arco naranja).
+
+            En horizontal, sin cambios: sigue siendo el arco
+            naranja de siempre para cualquier t.
+        */
+        if (ejePrincipal === "y" && t > 0.5) {
+
+            const anguloFinalVerde =
+                calcularAnguloFinalVerde(radio);
+
+            const s = smoothstep((t - 0.5) / 0.5);
+
+            const anguloVerde =
+                anguloMedio + (anguloFinalVerde - anguloMedio) * s;
+
+            const posVerde = {
+                x: radio * Math.cos(anguloVerde),
+                y: centroArco,
+                z: radio * Math.sin(anguloVerde)
+            };
+
+            return posVerde;
+
+        }
+
+        /*
+            "t" recorre el arco en dos mitades:
+              - t<=0.5: derecho (anguloDerecha) -> FRENTE
+                (anguloMedio=π/2, "group shot" sin escorzo,
+                cos(π/2)=0 exacto — cámara centrada en el
+                medio de la fila, todo el desplazamiento en Z,
+                sin componente lateral).
+              - t>0.5: FRENTE -> alineado con el ancla
+                (anguloFinal, ver calcularArcoCamara). Solo
+                aplica en HORIZONTAL — en vertical, t>0.5 ya
+                salió por el "return" del círculo verde, más
+                arriba.
+        */
         const anguloActual =
-            anguloDerecha +
-            (anguloIzquierda - anguloDerecha) * t;
+            t <= 0.5
+                ? anguloDerecha +
+                  (anguloMedio - anguloDerecha) * (t / 0.5)
+                : anguloMedio +
+                  (anguloFinal - anguloMedio) * ((t - 0.5) / 0.5);
 
-        return {
-            x: cxFila + radio * Math.cos(anguloActual),
-            y: config.camera.position.y,
-            z: radio * Math.sin(anguloActual)
-        };
+        /*
+            El eje principal recorre el arco (varía con t); el
+            eje secundario de cámara queda FIJO. En horizontal
+            ese fijo es "y", tomado de
+            "config.camera.position.y" — un valor real,
+            calibrado a mano. "config.camera.position.x" no
+            tiene ese mismo rol (solo es placeholder para la
+            rama de fila vacía), así que cuando el secundario
+            es "x" (modo vertical) se usa 0 en vez de
+            "config.camera.position.x" — mismo valor "de
+            frente, centrado" que usa "restSecundario" en
+            galeria-carrusel.js.
+        */
+        const pos = { x: 0, y: 0, z: radio * Math.sin(anguloActual) };
+        pos[ejePrincipal] = centroArco + radio * Math.cos(anguloActual);
+        pos[ejeSecundarioCamara] =
+            ejeSecundarioCamara === "y"
+                ? config.camera.position.y
+                : 0;
+
+        return pos;
 
     }
 
@@ -1194,6 +1773,72 @@ export async function createScene(container, elementos, config) {
     // caso con solución real (ver galeria-utils.js).
     const MAGNITUD_MIN = 0.02;
     const MAGNITUD_MAX = 8;
+
+    /*
+        Banda REAL disponible para la geometría sobre el eje
+        PRINCIPAL vigente — en vez de siempre el cuadro NDC
+        completo (-1 a 1):
+
+        - ejePrincipal="y" (columna, retrato): navbar arriba,
+          botones de orden (+ su margen) abajo.
+        - ejePrincipal="x" (fila, horizontal): margen interno
+          del navbar a izquierda/derecha (el que necesita su
+          propio texto/botón) — sin este margen, ajustar la
+          fila a pantalla completa la haría invadir ese
+          espacio. "getMargenHorizontalPx" (0 por default,
+          ver createScene) permite pasar el margen real.
+
+        Conversión px -> NDC en Y: mismo sistema de
+        coordenadas que ya usa getRowBottomScreenY (más
+        abajo) al revés — NDC 1 (arriba) = píxel 0, NDC -1
+        (abajo) = píxel clientHeight. En X no hace falta
+        invertir: píxel 0 (izquierda) ya corresponde a NDC -1.
+    */
+    function calcularTargetPrincipal() {
+
+        if (ejePrincipal === "y") {
+
+            const { top, bottom } =
+                getMargenVerticalPx();
+
+            const h = container.clientHeight;
+
+            if (!(h > 0)) {
+
+                return { targetSize: 2, targetNdcCenter: 0 };
+
+            }
+
+            return {
+                targetSize: 2 * (1 - (top + bottom) / h),
+                targetNdcCenter: (bottom - top) / h
+            };
+
+        }
+
+        if (ejePrincipal === "x") {
+
+            const { left, right } =
+                getMargenHorizontalPx();
+
+            const w = container.clientWidth;
+
+            if (!(w > 0)) {
+
+                return { targetSize: 2, targetNdcCenter: 0 };
+
+            }
+
+            return {
+                targetSize: 2 * (1 - (left + right) / w),
+                targetNdcCenter: (left - right) / w
+            };
+
+        }
+
+        return { targetSize: 2, targetNdcCenter: 0 };
+
+    }
 
     /*
         Ventana VERTICAL (celular, o cualquier relación
@@ -1212,15 +1857,90 @@ export async function createScene(container, elementos, config) {
 
         if (!retrato) return config.camera.margenRasante;
 
+        const { targetSize, targetNdcCenter } =
+            calcularTargetPrincipal();
+
+        /*
+            La fase que necesita este ajuste (evitar navbar/
+            botones) es "orden", que descansa en t=0.5 (vista
+            de frente, sin escorzo) — un ángulo distinto del de
+            "hero" (t=0). Por eso se fija "t" a 0.5 siempre acá,
+            sin importar qué "ladoActual" esté vigente cuando
+            se dispare resize(): la magnitud queda resuelta
+            contra la pose que "orden" (y el arranque de
+            "fichas") necesitan que entre bien en el cuadro.
+        */
+        const cameraPosFromMagnitudVistaDeFrente =
+            (m) => cameraPosFromMagnitud(m, 0.5);
+
         return findFittedMagnitude(
-            cameraPosFromMagnitud,
+            cameraPosFromMagnitudVistaDeFrente,
             lookAtYReal,
             config.camera.lookAtZ,
             worldVertices,
             config.camera.fov,
             aspectActual,
             MAGNITUD_MIN,
-            MAGNITUD_MAX
+            MAGNITUD_MAX,
+            // cameraPosFromMagnitud y "lookAtYReal" (que se
+            // lee sobre "ejeSecundarioCamara", no solo Y —
+            // ver su cálculo más arriba) ya saben moverse/
+            // leerse sobre cualquiera de los dos ejes.
+            ejePrincipal,
+            targetSize,
+            targetNdcCenter
+        );
+
+    }
+
+    /*
+        Calcula, por bisección (mismo mecanismo que
+        calcularMagnitudRasante usa para el alto en vertical,
+        pero acá para el ANCHO en horizontal), la magnitud que
+        hace entrar la fila en el ancho de pantalla disponible
+        cuando la cámara está de FRENTE (t=0.5, fijo — la vista
+        de "orden"). El target se resuelve con
+        "calcularTargetPrincipal()", que en horizontal usa el
+        margen real de "getMargenHorizontalPx" (0 por default,
+        ver createScene) — mismo criterio que
+        "calcularMagnitudRasante" usa para el margen vertical
+        del modo columna.
+
+        Solo tiene sentido en horizontal — no se llama nunca en
+        vertical (ver los dos call-sites, junto a
+        magnitudRasante).
+    */
+    function calcularMagnitudAnchoHorizontal(aspectActual) {
+
+        const { targetSize, targetNdcCenter } =
+            calcularTargetPrincipal();
+
+        /*
+            Ver el comentario grande junto a
+            "posVistaDeFrenteParaAncho" (más arriba, junto a
+            calcularArcoCamara): esta bisección usa esa
+            función PURA en vez de
+            "cameraPosFromMagnitud"/"calcularArcoCamara"
+            porque esta última depende de "magnitudRasanteAncho"
+            —el mismo valor que se está calculando—, así que
+            cualquier candidato "m" que probara findFittedMagnitude
+            terminaría dando siempre la misma posición (la del
+            valor previo), con derivada nula y NaN/Infinity río
+            abajo. Con una función sin ninguna variable
+            compartida de por medio, ese ciclo no puede darse.
+        */
+        return findFittedMagnitude(
+            posVistaDeFrenteParaAncho,
+            lookAtYReal,
+            config.camera.lookAtZ,
+            worldVertices,
+            config.camera.fov,
+            aspectActual,
+            MAGNITUD_MIN,
+            MAGNITUD_MAX,
+            ejePrincipal,
+            targetSize,
+            targetNdcCenter
         );
 
     }
@@ -1228,6 +1948,20 @@ export async function createScene(container, elementos, config) {
 
     let magnitudRasante =
         calcularMagnitudRasante(aspect);
+
+    // Solo tiene sentido en horizontal (ver el comentario
+    // grande junto a calcularMagnitudAnchoHorizontal). Se
+    // calcula DESPUÉS de "magnitudRasante" (que
+    // calcularArcoCamara usa como respaldo/base del blend
+    // mientras esto sea null) pero ANTES de la primera
+    // posición de cámara real, para que ya esté disponible
+    // si el arranque llega a necesitarlo.
+    if (ejePrincipal === "x") {
+
+        magnitudRasanteAncho =
+            calcularMagnitudAnchoHorizontal(aspect);
+
+    }
 
     let cameraPos =
         cameraPosFromMagnitud(magnitudRasante);
@@ -1238,60 +1972,103 @@ export async function createScene(container, elementos, config) {
 
 
     /*
-        Fog: se deriva de la distancia real entre la
-        cámara y el punto más lejano del bbox de la fila
-        (los vértices completos, no solo "hiFila", por si
-        el punto más lejano cae en una esquina). Ver
-        "nearFactor"/"farFactor" en galeria-config.js.
-
-        Función aparte para poder llamarla de nuevo desde
-        resize(): si la ventana cambia de apaisada a
-        vertical, cameraPos hace un dolly real (no solo
-        cambia el aspecto), así que el fog también hay
-        que recalcularlo.
+        Fog: RETIRADO el recálculo de near/far contra la
+        distancia real (ver el comentario grande junto a la
+        construcción de scene.fog, más arriba) — FogExp2 no
+        tiene near/far, solo "density" (fija, salvo por el
+        propio sistema día/noche — ver actualizarTemaLuces()
+        más abajo, que la modula igual que refresh(k) en la
+        maqueta). No queda nada que recalibrar acá en resize
+        ni en cruces de orientación.
     */
-    function recalcularFog(cameraPosActual) {
-
-        const distMax =
-            worldVertices.length > 0
-                ? Math.max(
-                    ...worldVertices.map(v =>
-                        Math.hypot(
-                            v.x - cameraPosActual.x,
-                            v.y - cameraPosActual.y,
-                            v.z - cameraPosActual.z
-                        )
-                    )
-                  )
-                : config.scene.fog.farFactor;
-
-        scene.fog.near =
-            config.scene.fog.nearFactor * distMax;
-        scene.fog.far =
-            config.scene.fog.farFactor * distMax;
-
-    }
-
-    recalcularFog(cameraPos);
 
 
-    // Frustum de sombra del keyLight: semiancho real de
-    // la fila más un margen fijo (para que la sombra no
-    // quede recortada en el borde), en vez del valor fijo
-    // de respaldo. Cuadrado porque la fila es más ancha
-    // en X que profunda en Z.
-    if (worldVertices.length > 0) {
+    /*
+        Frustum de sombra del keyLight: RETIRADO. Con
+        DirectionalLight hacía falta recalcular a mano el
+        frustum ortográfico (left/right/top/bottom) contra el
+        ancho real de la fila — con SpotLight (ver el
+        comentario grande junto a la construcción de
+        keyLight, más arriba) el shadow camera es una
+        PerspectiveCamera cuyo FOV deriva solo de
+        "keyLight.angle", recalculado cada frame por
+        createConoLuz() (galeria-cono-luz.js) — no queda
+        nada que recalibrar acá.
+    */
 
-        const shadowBounds =
-            anchoFila / 2 +
-            keyCfg.shadowCameraPadding;
+    /*
+        A (a pedido): recalcula el layout completo
+        (ejePrincipal, positions, worldVertices, mesa,
+        frustum de sombra) SOLO si el aspecto vigente cruzó
+        el umbral horizontal↔vertical desde la última vez —
+        pensada para que galeria.js la llame en cada
+        resize/orientationchange/fullscreenchange (con
+        debounce), y así reaccionar a girar el celular o
+        entrar/salir de pantalla completa sin recargar la
+        página.
 
-        keyLight.shadow.camera.left = -shadowBounds;
-        keyLight.shadow.camera.right = shadowBounds;
-        keyLight.shadow.camera.top = shadowBounds;
-        keyLight.shadow.camera.bottom = -shadowBounds;
+        Devuelve {cambio:false} si no cruzó (el caso normal:
+        la inmensa mayoría de los resizes —cambiar el ANCHO
+        de una ventana ya angosta, por ejemplo— no cruzan el
+        umbral) — ahí no hay nada más que hacer, el resize()
+        de siempre ya alcanza. Si cruzó, devuelve
+        {cambio:true, ejePrincipal} para que galeria.js sepa
+        que tiene que recrear reorder/reveal/carousel con el
+        eje nuevo: esos tres SÍ necesitan reconstruirse —
+        cada uno decide, en su propia construcción, varias
+        cosas que dependen del eje (dirección de cascada,
+        uHat/vHat, etc.) que no se pueden simplemente
+        "reasignar" sobre la instancia vieja sin rehacerlas
+        desde cero.
+    */
+    function manejarPosibleCambioDeOrientacion() {
 
-        keyLight.shadow.camera.updateProjectionMatrix();
+        const aspectVigente =
+            container.clientWidth /
+            container.clientHeight;
+
+        const nuevoEjePrincipal =
+            aspectVigente < 1 ? "y" : "x";
+
+        if (nuevoEjePrincipal === ejePrincipal) {
+
+            return { cambio: false };
+
+        }
+
+        calcularLayoutDeFila();
+
+        /*
+            Reset defensivo del estado de cámara ligado al
+            carrusel/orientación anterior (ver
+            "circuloCerradoActual"/"lookAtVerdeBase", más
+            abajo en este archivo): con el layout recién
+            rearmado, cualquier geometría de círculo cerrado/
+            ancla que venía de ANTES del cruce ya no
+            corresponde a nada real — galeria.js va a recrear
+            "carousel" a continuación (fuera de este archivo,
+            ver recrearControllersPorOrientacion en
+            galeria.js), que recién vuelve a poblar esto la
+            próxima vez que se entre a "fichas".
+        */
+        ladoActual = 0;
+        circuloCerradoActual = null;
+        anclaPrincipalMundoActual = 0;
+        anclaMundoXActual = 0;
+        lookAtVerdeBase = null;
+        lookAtNaranjaBase = null;
+
+        // "magnitudPrincipal"/"worldVertices" ya cambiaron en
+        // calcularLayoutDeFila (arriba); resize(), que
+        // galeria.js llama a continuación, recalcula
+        // "magnitudRasanteAncho" — se limpia acá para no usar
+        // mientras tanto un valor del eje anterior.
+        magnitudRasanteAncho = null;
+
+        return {
+            cambio: true,
+            ejePrincipal
+        };
 
     }
 
@@ -1317,27 +2094,64 @@ export async function createScene(container, elementos, config) {
 
 
     /*
+        Fase 4 (lucesPorCaja, ver galeria-luces.js): recién
+        acá existen "cones"/"bboxesPorIndice" — no se puede
+        crear junto con "lucesAdicionales" más arriba, que
+        se arma antes de que la fila exista.
+    */
+    const lucesPorCaja =
+        createLucesPorCaja(
+            config,
+            {
+                cones,
+                bboxesPorIndice,
+                elementCount: cones.length
+            }
+        );
+
+
+    /*
+        Fase 5 (sombra de contacto, ver
+        galeria-sombra-contacto.js): mismas dependencias que
+        lucesPorCaja — "bboxesPorIndice" alcanza para el
+        chequeo "sobreElPiso" (base PROPIA de cada elemento,
+        ya no un "restY" compartido).
+    */
+    const sombraContacto =
+        createSombraContacto(
+            scene,
+            config,
+            {
+                cones,
+                bboxesPorIndice,
+                elementCount: cones.length
+            }
+        );
+
+
+    /*
         El punto de mira en X se calcula solo, para
         que la fila quede centrada sin importar
         cuántos elementos haya (ver
-        findCenteredLookAtX en galeria-utils.js).
+        findCenteredLookAtPrincipal en galeria-utils.js).
     */
 
     const lookAtX =
-        findCenteredLookAtX(
+        findCenteredLookAtPrincipal(
             cameraPos,
             lookAtYReal,
             config.camera.lookAtZ,
             worldVertices,
             config.camera.fov,
-            aspect
+            aspect,
+            ejePrincipal,
+            calcularTargetPrincipal().targetNdcCenter
         );
 
-    camera.lookAt(
-        lookAtX,
-        lookAtYReal,
-        config.camera.lookAtZ
-    );
+    // Mismo criterio que setLookAtX (definida más abajo,
+    // pero function declaration = hoisted): ubicar el
+    // escalar ya resuelto en su eje de mundo correcto.
+    setLookAtX(lookAtX);
 
 
     // MARGEN_NDC_OCULTO: colchón extra por debajo del
@@ -1369,11 +2183,27 @@ export async function createScene(container, elementos, config) {
         const pos =
             computeRowPositions(order);
 
-        return order.map((cupID, i) => ({
-            x: pos[i].x,
-            y: restY + bboxesPorIndice[cupID].max.y,
-            z: pos[i].z
-        }));
+        // Mismo centrado por centroide que
+        // verticesMundoDeFila cuando el eje secundario es
+        // X — sin esto, estos puntos (insumo del cálculo
+        // de hiddenDrop) quedarían tan desalineados en X
+        // como los conos mismos.
+        return order.map((cupID, i) => {
+
+            const bbox = bboxesPorIndice[cupID];
+
+            const x =
+                ejeSecundarioCamara === "x"
+                    ? pos[i].x - (bbox.min.x + bbox.max.x) / 2
+                    : pos[i].x;
+
+            return {
+                x,
+                y: -bbox.min.y + pos[i].y + bbox.max.y,
+                z: pos[i].z
+            };
+
+        });
 
     }
 
@@ -1395,11 +2225,29 @@ export async function createScene(container, elementos, config) {
         const pos =
             computeRowPositions(order);
 
-        return order.map((cupID, i) => ({
-            x: pos[i].x,
-            y: restY + bboxesPorIndice[cupID].min.y,
-            z: pos[i].z + bboxesPorIndice[cupID].max.z
-        }));
+        return order.map((cupID, i) => {
+
+            const bbox = bboxesPorIndice[cupID];
+
+            const x =
+                ejeSecundarioCamara === "x"
+                    ? pos[i].x - (bbox.min.x + bbox.max.x) / 2
+                    : pos[i].x;
+
+            return {
+                x,
+                // -bbox.min.y + bbox.min.y == 0: el punto
+                // inferior de CUALQUIER elemento, apoyado en
+                // su propia base, siempre cae exactamente en
+                // su slot (más pos[i].y en vertical) — ya no
+                // depende de "restY" ni de qué tan "profunda"
+                // sea la geometría de este elemento en
+                // particular.
+                y: pos[i].y,
+                z: pos[i].z + bbox.max.z
+            };
+
+        });
 
     }
 
@@ -1438,13 +2286,19 @@ export async function createScene(container, elementos, config) {
     */
     function calcularHiddenDrop(cameraPosActual, lookAtXActual, order) {
 
+        // Arma el lookAt real ubicando el escalar ya
+        // resuelto ("lookAtXActual", el nombre es
+        // histórico — es la coordenada sobre ejePrincipal)
+        // y "lookAtYReal" (ídem, sobre ejeSecundarioCamara)
+        // en sus componentes de mundo correctas — mismo
+        // criterio que setLookAtX más abajo.
+        const lookAtReal = { x: 0, y: 0, z: config.camera.lookAtZ };
+        lookAtReal[ejePrincipal] = lookAtXActual;
+        lookAtReal[ejeSecundarioCamara] = lookAtYReal;
+
         return findHiddenDrop(
             cameraPosActual,
-            {
-                x: lookAtXActual,
-                y: lookAtYReal,
-                z: config.camera.lookAtZ
-            },
+            lookAtReal,
             config.camera.fov,
             camera.aspect,
             computePuntosSuperioresFila(order),
@@ -1487,16 +2341,24 @@ export async function createScene(container, elementos, config) {
 
         let peor = 1;
 
+        // Mismo criterio que calcularHiddenDrop: ubicar los
+        // dos escalares ya resueltos en su eje de mundo
+        // correcto. "peor" (NDC.y) sigue siendo NDC.y sin
+        // generalizar a propósito — es literalmente "borde
+        // inferior de PANTALLA", una noción de espacio de
+        // pantalla, no de eje de layout: projectToNdc usa
+        // siempre up=(0,1,0) de mundo, así que "abajo en
+        // pantalla" es NDC.y en los dos modos por igual.
+        const lookAtReal = { x: 0, y: 0, z: config.camera.lookAtZ };
+        lookAtReal[ejePrincipal] = lookAtXActual;
+        lookAtReal[ejeSecundarioCamara] = lookAtYReal;
+
         computePuntosInferioresFila(order).forEach(punto => {
 
             const ndc =
                 projectToNdc(
                     cameraPosActual,
-                    {
-                        x: lookAtXActual,
-                        y: lookAtYReal,
-                        z: config.camera.lookAtZ
-                    },
+                    lookAtReal,
                     punto,
                     config.camera.fov,
                     camera.aspect
@@ -1561,19 +2423,27 @@ export async function createScene(container, elementos, config) {
         lookAtWorldVertices =
             verticesMundoDeFila(
                 order.map(cupID => ({
-                    bbox: bboxesPorIndice[cupID]
+                    bbox: bboxesPorIndice[cupID],
+                    // Misma cuenta que
+                    // normalizarGeometriaElemento(): la base
+                    // propia de ESTE elemento, no un restY
+                    // compartido.
+                    desplazamientoBase:
+                        -bboxesPorIndice[cupID].min.y
                 })),
                 computeRowPositions(order),
-                restY
+                ejeSecundarioCamara
             );
 
-        return findCenteredLookAtX(
+        return findCenteredLookAtPrincipal(
             cameraPos,
             lookAtYReal,
             config.camera.lookAtZ,
             lookAtWorldVertices,
             config.camera.fov,
-            camera.aspect
+            camera.aspect,
+            ejePrincipal,
+            calcularTargetPrincipal().targetNdcCenter
         );
 
     }
@@ -1584,12 +2454,24 @@ export async function createScene(container, elementos, config) {
     // anima la cámara llame a setLookAtX() en cada frame
     // con un X intermedio interpolado, sin saltar de
     // golpe al final.
-    function setLookAtX(x) {
+    /*
+        "coordPrincipal" es el escalar que ya devolvió
+        computeLookAtX() — la coordenada sobre ejePrincipal,
+        sea cual sea. Se ubica en el eje que corresponda; el
+        eje secundario de cámara toma "lookAtYReal", que corre
+        sobre "ejeSecundarioCamara" (no siempre Y — ver su
+        cálculo más arriba).
+    */
+    function setLookAtX(coordPrincipal) {
+
+        const lookAt = { x: 0, y: 0, z: config.camera.lookAtZ };
+        lookAt[ejePrincipal] = coordPrincipal;
+        lookAt[ejeSecundarioCamara] = lookAtYReal;
 
         camera.lookAt(
-            x,
-            lookAtYReal,
-            config.camera.lookAtZ
+            lookAt.x,
+            lookAt.y,
+            lookAt.z
         );
 
     }
@@ -1612,6 +2494,16 @@ export async function createScene(container, elementos, config) {
         magnitudRasante =
             calcularMagnitudRasante(newAspect);
 
+        // Recalculada acá también porque el ancho disponible
+        // cambia con newAspect, igual que magnitudRasante (ver
+        // calcularMagnitudAnchoHorizontal).
+        if (ejePrincipal === "x") {
+
+            magnitudRasanteAncho =
+                calcularMagnitudAnchoHorizontal(newAspect);
+
+        }
+
         cameraPos =
             cameraPosFromMagnitud(magnitudRasante);
 
@@ -1619,25 +2511,41 @@ export async function createScene(container, elementos, config) {
             cameraPos.x, cameraPos.y, cameraPos.z
         );
 
-        recalcularFog(cameraPos);
+        /*
+            Un resize/rotación de pantalla en pleno tramo del
+            círculo verde (ladoActual>0.5 en vertical) es un
+            REENCUADRE INSTANTÁNEO, no una animación —a
+            diferencia de setCameraLado() (más abajo), que
+            anima el cruce con "lookAtVerdeBase". Alcanza con
+            ir directo al horizonte fijo: "findCenteredLookAtPrincipal"
+            está pensada para una cámara que se mueve sobre
+            "ejePrincipal", y en este tramo la cámara ya no lo
+            hace.
+        */
+        const enCirculoVerdeResize =
+            ejePrincipal === "y" && ladoActual > 0.5;
 
-        // El punto de mira que mejor centra la fila
-        // también cambia con el aspecto de la ventana.
+        // El punto de mira que mejor centra la fila también
+        // cambia con el aspecto de la ventana. El horizonte
+        // fijo del tramo verde es "centroPrincipal" (mismo
+        // criterio que "centroArco" en cameraPosFromMagnitud):
+        // así no rompe el fit-to-navbar, que asume la cámara
+        // anclada al centro real de la fila.
         const newLookAtX =
-            findCenteredLookAtX(
-                cameraPos,
-                lookAtYReal,
-                config.camera.lookAtZ,
-                lookAtWorldVertices,
-                config.camera.fov,
-                newAspect
-            );
+            enCirculoVerdeResize
+                ? centroPrincipal
+                : findCenteredLookAtPrincipal(
+                    cameraPos,
+                    lookAtYReal,
+                    config.camera.lookAtZ,
+                    lookAtWorldVertices,
+                    config.camera.fov,
+                    newAspect,
+                    ejePrincipal,
+                    calcularTargetPrincipal().targetNdcCenter
+                );
 
-        camera.lookAt(
-            newLookAtX,
-            lookAtYReal,
-            config.camera.lookAtZ
-        );
+        setLookAtX(newLookAtX);
 
         // Mismo disparador que cameraPos/lookAtX: el
         // drop necesario para esconder un elemento
@@ -1660,13 +2568,15 @@ export async function createScene(container, elementos, config) {
 
     /*
         Mueve la cámara a un punto "t" del arco entre el
-        extremo derecho (t=0) y el izquierdo (t=1) — ver
-        cameraPosFromMagnitud/cxFila más arriba. Misma
-        cadena de recálculo que resize() (fog, lookAtX,
-        hiddenDrop), pero disparada por el avance de la
-        fase "revelado" (galeria.js la llama en cada frame
-        de esa fase), no por un cambio de aspecto — por
-        eso NO toca camera.aspect/updateProjectionMatrix/
+        extremo derecho (t=0), la vista de frente (t=0.5)
+        y alineado con el ancla del carrusel (t=1) — ver
+        cameraPosFromMagnitud/centroPrincipal más arriba.
+        Misma cadena de recálculo que resize() (fog,
+        lookAtX, hiddenDrop), pero disparada por el avance
+        de las fases "revelado"/"fichas" (galeria.js la
+        llama en cada frame de esas fases), no por un
+        cambio de aspecto — por eso NO toca
+        camera.aspect/updateProjectionMatrix/
         renderer.setSize.
 
         "ladoActual" se guarda dentro de
@@ -1680,12 +2590,12 @@ export async function createScene(container, elementos, config) {
         /*
             galeria.js llama a esto en TODOS los frames de
             "hero"/"proyecto"/"orden"/"fichas", no solo en
-            "revelado". Durante "orden" eso es t=1 en cada
-            frame aunque la cámara ya esté asentada ahí —
-            si se recalculara el lookAt igual, cada llamada
-            pisaría con un salto la interpolación suave que
-            reorder.step() hace ese mismo frame vía
-            setLookAtX() (ver fromLookAtX/toLookAtX en
+            "revelado". Durante "orden" eso es t=0.5 en
+            cada frame aunque la cámara ya esté asentada
+            ahí — si se recalculara el lookAt igual, cada
+            llamada pisaría con un salto la interpolación
+            suave que reorder.step() hace ese mismo frame
+            vía setLookAtX() (ver fromLookAtX/toLookAtX en
             galeria-reordenar.js).
 
             Por eso: si "t" ya es el lado vigente y la
@@ -1714,23 +2624,195 @@ export async function createScene(container, elementos, config) {
             cameraPos.x, cameraPos.y, cameraPos.z
         );
 
-        recalcularFog(cameraPos);
+        // "centroArco" es siempre "centroPrincipal" (mismo
+        // criterio que cameraPosFromMagnitud): usar
+        // "config.camera.position.y" acá rompería el
+        // fit-to-navbar vertical, sin ganar nada de
+        // continuidad real (cos(π/2)=0 la garantiza igual).
+        const centroArco =
+            centroPrincipal;
+
+        const enCirculoVerde =
+            ejePrincipal === "y" && t > 0.5;
+
+        /*
+            E: el resto del arco naranja (t>0.5) que NO pasa
+            al círculo verde — hoy eso es siempre el caso en
+            horizontal (esa rama no existe ahí), y también el
+            tramo vertical con t>0.5 antes de llegar acá NO
+            aplica porque enCirculoVerde ya lo captura primero.
+            En este tramo "findCenteredLookAtPrincipal" sigue
+            siendo válida en principio (la cámara todavía se
+            mueve sobre "ejePrincipal"), pero el punto que
+            mejor centra la fila deja de variar de forma
+            monótona a medida que el ángulo de vista se achica
+            hacia el ancla — recalcularlo cada frame podía
+            saltar visiblemente. Se congela el valor tal cual
+            estaba al cruzar t=0.5, sin blendear hacia ningún
+            otro punto (a diferencia del tramo verde: acá no
+            hay un "horizonte" nuevo — el acercamiento al ancla
+            ya lo resuelve "extraBlend", más abajo, por
+            separado).
+        */
+        const congelarLookAtNaranja =
+            !enCirculoVerde && t > 0.5;
+
+        let lookAtFilaPlana;
+
+        if (enCirculoVerde) {
+
+            /*
+                "findCenteredLookAtPrincipal" —la búsqueda por
+                bisección que encuadra la columna ENTERA— está
+                pensada para una cámara que se mueve sobre
+                "ejePrincipal" (el plano naranja). Una vez que
+                la cámara pasa al círculo verde (t>0.5, ver
+                cameraPosFromMagnitud), ya no se mueve en esa
+                dirección: queda fija en altura (el horizonte,
+                "centroArco") y solo cambia su posición en X.
+                Pasar esa posición por esa búsqueda
+                reintroduciría una inclinación hacia abajo sin
+                sentido.
+
+                El horizonte fijo tampoco coincide, en general,
+                con el valor que daba "findCenteredLookAtPrincipal"
+                en t=0.5 — pasar de uno a otro de golpe sería un
+                salto de dirección (la posición de la cámara ya
+                es continua en ese cruce, ver
+                cameraPosFromMagnitud; el lookAt tiene que serlo
+                también). Por eso el tramo verde arranca desde
+                el valor con el que salió el arco naranja
+                ("lookAtVerdeBase", calculado una sola vez por
+                cada entrada a este tramo) y blendea desde ahí
+                hacia el horizonte, con el mismo cronograma
+                smoothstep que mueve la cámara por el círculo
+                verde (ver "s" en cameraPosFromMagnitud) — así
+                arranca donde lo dejó el arco naranja y termina
+                plano en el horizonte en t=1, sin salto.
+            */
+            if (lookAtVerdeBase === null) {
+
+                lookAtVerdeBase =
+                    findCenteredLookAtPrincipal(
+                        cameraPos,
+                        lookAtYReal,
+                        config.camera.lookAtZ,
+                        lookAtWorldVertices,
+                        config.camera.fov,
+                        camera.aspect,
+                        ejePrincipal,
+                        calcularTargetPrincipal().targetNdcCenter
+                    );
+
+            }
+
+            const s = smoothstep((t - 0.5) / 0.5);
+
+            lookAtFilaPlana =
+                lookAtVerdeBase + (centroArco - lookAtVerdeBase) * s;
+
+        } else if (congelarLookAtNaranja) {
+
+            if (lookAtNaranjaBase === null) {
+
+                lookAtNaranjaBase =
+                    findCenteredLookAtPrincipal(
+                        cameraPos,
+                        lookAtYReal,
+                        config.camera.lookAtZ,
+                        lookAtWorldVertices,
+                        config.camera.fov,
+                        camera.aspect,
+                        ejePrincipal,
+                        calcularTargetPrincipal().targetNdcCenter
+                    );
+
+            }
+
+            lookAtFilaPlana = lookAtNaranjaBase;
+
+            // Ya no estamos en el tramo verde (si se venía de
+            // ahí, p. ej. tras cruzar de orientación a mitad de
+            // "fichas") — se limpia esa base por el mismo
+            // motivo que se limpia lookAtNaranjaBase más abajo.
+            lookAtVerdeBase = null;
+
+        } else {
+
+            lookAtFilaPlana =
+                findCenteredLookAtPrincipal(
+                    cameraPos,
+                    lookAtYReal,
+                    config.camera.lookAtZ,
+                    lookAtWorldVertices,
+                    config.camera.fov,
+                    camera.aspect,
+                    ejePrincipal,
+                    calcularTargetPrincipal().targetNdcCenter
+                );
+
+            // t<=0.5: no estamos en ninguno de los dos tramos
+            // congelados — se limpian las dos bases para que la
+            // PRÓXIMA vez que se cruce a t>0.5 (scroll hacia
+            // adelante otra vez, tras haber retrocedido) se
+            // recalculen frescas, no una vieja de una pasada
+            // anterior que ya no corresponde a la posición
+            // actual de cámara.
+            lookAtVerdeBase = null;
+            lookAtNaranjaBase = null;
+
+        }
+
+        /*
+            "Apuntar directo al ancla" no puede pasar de golpe
+            apenas arranca el giro extra (t>0.5): antes de
+            "anguloIzquierda" (el final del arco de encuadre
+            sin el giro extra) el lookAt sigue siendo el de
+            encuadre de toda la fila; recién después se mezcla
+            de forma continua hacia "mirar al ancla", llegando
+            al 100% en "anguloFinal" (t=1).
+
+            En el tramo del círculo verde esto se fuerza a 0:
+            la alineación horizontal con el ancla ya la resuelve
+            la POSICIÓN de la cámara sobre ese círculo (ver
+            calcularAnguloFinalVerde/cameraPosFromMagnitud), no
+            el lookAt. "anguloIzquierda"/"anguloFinal"
+            (calcularArcoCamara) pertenecen al arco naranja y no
+            tienen relación con el círculo verde, que vive en su
+            propio plano con su propio cronograma (arranca
+            derecho en t=0.5, no en "anguloIzquierda").
+        */
+        const extraBlend =
+            enCirculoVerde
+                ? 0
+                : (() => {
+
+                    const { anguloDerecha, anguloIzquierda, anguloFinal } =
+                        calcularArcoCamara(magnitudRasante, t);
+
+                    const anguloMedio = Math.PI / 2;
+
+                    const anguloActualParaBlend =
+                        t <= 0.5
+                            ? anguloDerecha +
+                              (anguloMedio - anguloDerecha) * (t / 0.5)
+                            : anguloMedio +
+                              (anguloFinal - anguloMedio) * ((t - 0.5) / 0.5);
+
+                    return anguloFinal > anguloIzquierda
+                        ? Math.max(0, Math.min(1,
+                            (anguloActualParaBlend - anguloIzquierda) /
+                            (anguloFinal - anguloIzquierda)
+                          ))
+                        : 0;
+
+                })();
 
         const nuevoLookAtX =
-            findCenteredLookAtX(
-                cameraPos,
-                lookAtYReal,
-                config.camera.lookAtZ,
-                lookAtWorldVertices,
-                config.camera.fov,
-                camera.aspect
-            );
+            lookAtFilaPlana +
+            (anclaPrincipalMundoActual - lookAtFilaPlana) * extraBlend;
 
-        camera.lookAt(
-            nuevoLookAtX,
-            lookAtYReal,
-            config.camera.lookAtZ
-        );
+        setLookAtX(nuevoLookAtX);
 
         hiddenDropActual =
             calcularHiddenDrop(cameraPos, nuevoLookAtX, ordenActual);
@@ -1739,6 +2821,7 @@ export async function createScene(container, elementos, config) {
             calcularFilaBottomNdcY(cameraPos, nuevoLookAtX, ordenActual);
 
     }
+
 
 
     /*
@@ -1785,9 +2868,8 @@ export async function createScene(container, elementos, config) {
     // MutationObserver sobre data-tema del <html>, para
     // que cambiar de tema actualice la escena 3D sin
     // recargar ni reconstruir cámara/luces/elementos.
-    // Ya NO toca "table": desde que el piso es un plano
-    // invisible (ShadowMaterial, solo recibe sombra) no
-    // tiene superficie de color propia que sincronizar.
+    // No toca "roomFloor"/"roomWall": su color no sigue el
+    // tema claro/oscuro del sitio (solo fondo/niebla).
     function actualizarColoresTema() {
 
         const fondo =
@@ -1796,6 +2878,202 @@ export async function createScene(container, elementos, config) {
         scene.background = fondo;
 
         scene.fog.color.copy(fondo);
+
+    }
+
+
+    /*
+        Sistema día/noche (ver config.tema, galeria-config.js)
+        — portado de refresh(k) en Maqueta.html. A diferencia
+        de actualizarColoresTema() (arriba, instantánea, atada
+        a un evento de cambio de atributo), esta se llama cada
+        frame con un "k" YA suavizado (el propio suavizado
+        vive en galeria.js: actualizarTemaSuave) — acá adentro
+        no hay animación, solo aplicar el "k" que le llega tal
+        cual, como hacía "refresh" con el valor crudo del
+        slider.
+
+        Cubre todo lo que este closure ya posee directo
+        (keyLight/ambient) o alcanza a través de otros
+        controllers construidos ACÁ ADENTRO (lucesAdicionales,
+        habitacion) — lo único que queda afuera es el haz de
+        luz visible (beamUniforms), que vive en
+        galeria-cono-luz.js: ese módulo expone su propia
+        actualizarTema(k), con el mismo "config.tema" como
+        única fuente de verdad, para que ambas mitades del
+        sistema día/noche no puedan desincronizarse por leer
+        valores base distintos.
+
+        PENDIENTE, cuando existan (no en este pase): SSS
+        (uIntensity por elemento), polvo (uWarmth/uPower) y
+        sombra de contacto (opacity) — la maqueta también los
+        toca acá; portar esas líneas cuando esos sistemas
+        existan.
+    */
+    const temaCfg = config.tema;
+
+    const KEY_INTENSITY_BASE = keyCfg.intensity;
+    const AMBIENT_INTENSITY_BASE = ambientCfg.intensity;
+    const RIM_INTENSITY_BASE =
+        config.lightsAdicionales.rim.intensity;
+
+    const _colorTemaTmp = new THREE.Color();
+    const _warmColor = new THREE.Color(temaCfg.warm.keyColor);
+    const _coldColor = new THREE.Color(temaCfg.cold.keyColor);
+    const _warmAmbient = new THREE.Color(temaCfg.warm.ambientColor);
+    const _coldAmbient = new THREE.Color(temaCfg.cold.ambientColor);
+    const _roomNight = new THREE.Color(temaCfg.roomNight);
+    const _roomDay = new THREE.Color(temaCfg.roomDay);
+    const _floorNight = new THREE.Color(temaCfg.floorNight);
+    const _floorDay = new THREE.Color(temaCfg.floorDay);
+
+    function actualizarTemaLuces(k) {
+
+        const w =
+            temaCfg.dark.warmth +
+            (temaCfg.bright.warmth - temaCfg.dark.warmth) * k;
+
+        const i =
+            temaCfg.dark.intensity +
+            (temaCfg.bright.intensity - temaCfg.dark.intensity) * k;
+
+        const d =
+            temaCfg.dark.day +
+            (temaCfg.bright.day - temaCfg.dark.day) * k;
+
+        const wT = 1 - w;
+
+        keyLight.color.copy(
+            _colorTemaTmp.copy(_warmColor).lerp(_coldColor, wT)
+        );
+
+        ambient.color.copy(
+            _colorTemaTmp.copy(_warmAmbient).lerp(_coldAmbient, wT)
+        );
+
+        keyLight.intensity = KEY_INTENSITY_BASE * i;
+
+        ambient.intensity =
+            AMBIENT_INTENSITY_BASE * (0.4 + 0.6 * i) +
+            0.12 * d;
+
+        lucesAdicionales.roomLight.intensity =
+            temaCfg.hemiMax * d;
+
+        lucesAdicionales.wallLight.intensity =
+            temaCfg.wallLightMax * d;
+
+        lucesAdicionales.rim.intensity =
+            RIM_INTENSITY_BASE * (1 - 0.85 * d);
+
+        const roomMat = habitacion.roomWall.material;
+
+        roomMat.color.copy(_roomNight).lerp(_roomDay, d);
+        roomMat.emissive.copy(roomMat.color);
+
+        const floorMat = habitacion.roomFloor.material;
+
+        floorMat.color.copy(_floorNight).lerp(_floorDay, d);
+        floorMat.emissive
+            .copy(floorMat.color)
+            .multiplyScalar(0.18);
+
+        // FIX: faltaba por completo — la maqueta también
+        // modula la densidad de la niebla con el día/noche
+        // (más clara/lejos se ve en modo día). No tenía
+        // sentido antes con Fog lineal (sin "density"), pero
+        // con FogExp2 (ver arriba) sí aplica igual que la
+        // maqueta.
+        scene.fog.density =
+            FOG_DENSITY_BASE * (1 - 0.72 * d);
+
+    }
+
+
+    /*
+        Gating de "castShadow" por elemento (portado del
+        criterio de "sobreElPiso" en Maqueta.html) — se llama
+        una vez por frame desde galeria.js, junto a
+        actualizarPisoSegunGeometria(), sin importar la fase.
+
+        POR QUÉ CENTRALIZADO (y no en galeria-revelado.js/
+        galeria-reordenar.js/galeria-carrusel.js, que son
+        quienes mueven los conos): lo único que importa es
+        DÓNDE quedó cada cono ESTE frame, no qué fase lo puso
+        ahí. Una sola pasada acá cubre las tres fases (y
+        cualquiera futura) sin repetir la misma regla tres
+        veces ni arriesgar que una quede desincronizada.
+
+        CRITERIO LAXO (pedido explícito): NO hace falta que el
+        elemento esté ENTERO por encima del piso — alcanza con
+        que una PARTE lo esté. Por eso compara el TOPE del
+        bbox (cone.position.y + bbox.max.y), no su base ni su
+        centroide: un elemento asomando apenas por el piso ya
+        proyecta sombra, en vez de encenderla de golpe recién
+        cuando terminó de salir.
+
+        El flag va en la MALLA, no en el "cone": "cone" es un
+        Group de posicionamiento (no se renderiza), así que
+        castShadow ahí no tendría ningún efecto — three.js lo
+        lee del objeto que efectivamente dibuja. Ver
+        armarGroup3D ("group.userData.mallas").
+
+        "pisoY" es el piso VISIBLE de ahora mismo
+        (roomGroup.position.y, el mismo que ya persigue
+        actualizarPisoSegunGeometria), no una altura fija:
+        en vertical el piso sigue al elemento más bajo, así
+        que la referencia se mueve sola con él.
+    */
+    function actualizarCastShadow() {
+
+        const pisoY =
+            habitacion.roomGroup.position.y;
+
+        let huboCambio = false;
+
+        for (let id = 0; id < cones.length; id++) {
+
+            const cone = cones[id];
+            const bbox = bboxesPorIndice[id];
+
+            if (!bbox) continue;
+
+            const topeMundo =
+                cone.position.y + bbox.max.y;
+
+            const proyecta =
+                topeMundo > pisoY + 1e-3;
+
+            const mallas =
+                cone.userData.mallas;
+
+            for (let m = 0; m < mallas.length; m++) {
+
+                if (mallas[m].castShadow === proyecta) continue;
+
+                mallas[m].castShadow = proyecta;
+                huboCambio = true;
+
+            }
+
+        }
+
+        /*
+            El shadow map NO se re-renderiza solo: hay que
+            marcarlo (ver marcarSombraDirty/
+            prepararRenderDeSombra más arriba). Sin esto, un
+            elemento que acaba de asomar sobre el piso no
+            proyectaría sombra hasta que algo MÁS marcara
+            dirty por su cuenta — y uno que acaba de hundirse
+            dejaría su sombra vieja congelada en el piso.
+
+            Solo cuando hubo un cambio REAL de flag: esto
+            corre cada frame, y marcar dirty siempre forzaría
+            un re-render del shadow map en todos los frames,
+            que es justo lo que el sistema de "dirty" existe
+            para evitar.
+        */
+        if (huboCambio) marcarSombraDirty();
 
     }
 
@@ -1826,14 +3104,135 @@ export async function createScene(container, elementos, config) {
         // galeria-carrusel.js.
         bboxesPorIndice,
 
+        // "eje principal" vigente del layout ("x" fila
+        // horizontal / "y" columna vertical — ver
+        // calcularLayoutDeFila, más arriba). Lo consumen
+        // galeria-reordenar.js (assignLayers, armado de
+        // cone.position), galeria-revelado.js (orden/
+        // dirección de la cascada) y galeria-carrusel.js
+        // (plano del círculo): un SNAPSHOT al momento en que
+        // se llama a createScene(), no una referencia viva —
+        // si "manejarPosibleCambioDeOrientacion()" (más
+        // abajo) detecta un cruce real más tarde, quien
+        // consume esto tiene que releerlo del resultado de
+        // esa llamada, no asumir que este valor se actualiza
+        // solo.
+        ejePrincipal,
+
         resize,
         computeLookAtX,
         setLookAtX,
         setCameraLado,
+
+        // Accesor de debug para inspeccionar el encuadre
+        // vertical (magnitudRasante) desde afuera.
+        getMagnitudRasanteDebug: () => magnitudRasante,
+
+        // A: galeria.js la llama en cada
+        // resize/orientationchange/fullscreenchange (con
+        // debounce) para detectar un cruce real horizontal↔
+        // vertical y, si corresponde, recrear
+        // reorder/reveal/carousel con el eje nuevo — ver el
+        // comentario grande junto a su definición, más
+        // arriba.
+        manejarPosibleCambioDeOrientacion,
+
+        // B: galeria.js la llama cada frame de "fichas",
+        // justo después de carousel.update() — le pasa la
+        // geometría del círculo cerrado + coordenada del
+        // ancla que necesita calcularArcoCamara() (dentro
+        // de cameraPosFromMagnitud/setCameraLado) para el
+        // tramo t>0.5 del arco. Ver el comentario grande
+        // junto a "circuloCerradoActual", más arriba.
+        actualizarSetupCarrusel,
+
         actualizarCajasDebug: dibujarCajasDebug,
         actualizarColoresTema,
+        actualizarTemaLuces,
         getHiddenDrop,
         getRowBottomScreenY,
+
+        // Ver el comentario grande junto a su definición
+        // (arriba, junto al armado del renderer). galeria.js
+        // llama marcarSombraDirty() en cada punto donde mueve/
+        // rota/escala una malla con sombra, y
+        // prepararRenderDeSombra() justo antes de cada
+        // renderer.render().
+        marcarSombraDirty,
+        prepararRenderDeSombra,
+
+        // Fase 3 (habitación, ver galeria-habitacion.js):
+        // "cones"/"restY"/"ejePrincipal" son los mismos que ya
+        // vive este closure (no una copia) — se leen frescos
+        // en cada llamada porque "ejePrincipal" puede cambiar
+        // (cruce de orientación) y las posiciones de "cones"
+        // cambian cada frame. galeria.js la llama una vez por
+        // frame, sin importar la fase (mismo criterio que la
+        // maqueta).
+        actualizarPisoSegunGeometria: () =>
+            habitacion.actualizarPisoSegunGeometria(
+                cones, restY, ejePrincipal, bboxesPorIndice
+            ),
+
+        actualizarCastShadow,
+
+        // Fase 4 (luces adicionales, ver galeria-luces.js):
+        // mismo criterio que actualizarPisoSegunGeometria —
+        // "camera"/"ejePrincipal" son los mismos que ya vive
+        // este closure, se leen frescos en cada llamada.
+        // "anchoFilaActual" (semiancho real de la fila en X,
+        // ver calcularLayoutDeFila más arriba — no expuesto
+        // hasta ahora fuera de este archivo) permite que
+        // galeria-luces.js escale la posición X del par
+        // cálido/frío con el ancho REAL de la fila en vez de
+        // una constante calibrada a ojo para el ancho de
+        // Maqueta.html — ver el FIX en actualizarSegunCamara,
+        // galeria-luces.js.
+        actualizarLucesAdicionalesSegunCamara: () =>
+            lucesAdicionales.actualizarSegunCamara(
+                camera, ejePrincipal, anchoFilaActual
+            ),
+
+        // Fase 4 (lucesPorCaja): a diferencia de las otras
+        // dos, esta SÍ necesita datos frescos por frame desde
+        // afuera (el mapa de foco vigente, que depende de la
+        // fase — ver galeria.js), así que no se arma como un
+        // wrapper sin argumentos como los de arriba.
+        // FIX: se agrega "ejePrincipal" (leído fresco del
+        // closure, igual que en actualizarLucesAdicionalesSegunCamara)
+        // — lucesPorCaja.actualizar() lo necesita para
+        // apagarse en horizontal, igual que la maqueta.
+        actualizarLucesPorCaja: (focoWeights) =>
+            lucesPorCaja.actualizar(focoWeights, ejePrincipal),
+
+        // Fase 5 (sombra de contacto): "habitacion.roomGroup.
+        // position.y" es la MISMA Y que ya sigue el piso (ver
+        // actualizarPisoSegunGeometria más arriba) — se lee
+        // fresca en cada llamada, no capturada.
+        actualizarSombrasDeContacto: () =>
+            sombraContacto.actualizar(
+                habitacion.roomGroup.position.y
+            ),
+
+        actualizarTemaSombraContacto: (k) =>
+            sombraContacto.actualizarTema(k),
+
+        // Fase 5 (cono de luz, ver galeria-cono-luz.js): ese
+        // módulo vive AFUERA de este closure (necesita
+        // getPositions()/getOrder(), que vienen de
+        // galeria-reordenar.js, construido en galeria.js
+        // DESPUÉS de que createScene() ya devolvió) — así que
+        // no puede leer "keyLight"/"ladoActual"/"ejePrincipal"
+        // directo del closure como hacen
+        // actualizarPisoSegunGeometria/
+        // actualizarLucesAdicionalesSegunCamara. Se exponen
+        // sin envolver: "ladoActual"/"ejePrincipal" cambian
+        // con el tiempo, así que van como GETTERS (leen el
+        // valor vigente en cada llamada), no como el valor
+        // capturado en el momento de este return.
+        keyLight,
+        getLadoActual: () => ladoActual,
+        getEjePrincipal: () => ejePrincipal,
 
         // Recalcula hiddenDropActual/filaBottomNdcYActual
         // para un "order" nuevo — debe llamarse cada vez
@@ -1846,74 +3245,98 @@ export async function createScene(container, elementos, config) {
 
 
 /*
-    Calcula la posición X de cada slot de la fila a
-    partir del bounding box REAL (en X) de cada elemento.
-    "gap" es la separación mínima libre entre el borde
-    derecho de un elemento y el borde izquierdo del
-    siguiente (no distancia centro-a-centro).
+    Calcula la posición de cada slot de la fila a lo
+    largo de un ÚNICO eje principal ("eje": "x" o "y"),
+    a partir del bounding box REAL (en ese eje) de cada
+    elemento. "gap" es la separación mínima libre entre
+    el borde "final" de un elemento y el borde "inicial"
+    del siguiente (no distancia centro-a-centro).
+
+    Sirve tanto para una fila en X como para una columna
+    en Y (layout vertical) sin duplicar la función: el
+    algoritmo de acumulado+gap+centrado es idéntico, solo
+    cambia qué componente de cada bbox/posición se lee o
+    escribe (ver notas-encuadre-3d.md, "Modelo mental: eje
+    principal").
+
+    Devuelve SIEMPRE {x, y, z}: la coordenada del eje
+    principal se calcula por acumulado + gap, centrado al
+    final sobre el bbox real del conjunto; la del eje
+    secundario (el otro entre x/y) queda en 0 — la posición
+    real en ese eje, si la hay, la resuelve elemento por
+    elemento quien arma la escena (ver verticesMundoDeFila).
+    "z" queda siempre en 0: es el eje de profundidad
+    (cámara/anti-colisión), no cambia con el modo de layout.
 
     No se asume que cada geometría esté centrada en su
-    propio origen local (igual que en Y, ver
-    desplazamientoBase): se usan los bordes reales
-    bbox.min.x/max.x, así que el cálculo es correcto
+    propio origen local: se usan los bordes reales
+    bbox.min[eje]/max[eje], así que el cálculo es correcto
     incluso con geometrías asimétricas.
 
-    Se arma primero una fila "cruda" arrancando en x=0, y
-    al final se traslada en bloque para que quede
+    Se arma primero una fila/columna "cruda" arrancando en
+    0, y al final se traslada en bloque para que quede
     centrada sobre el bounding box real del conjunto.
-*/
-function calculatePositions(bboxesX, gap) {
 
-    const count = bboxesX.length;
+    El eje ("x"/"y") lo decide quien llama, no esta función
+    (agnóstica del origen del valor) — ver
+    calcularLayoutDeFila() para cómo se resuelve a partir
+    del aspect ratio, en vivo ante cualquier cambio de
+    orientación.
+*/
+function calculatePositions(bboxesPrincipal, gap, eje = "x") {
+
+    const count = bboxesPrincipal.length;
 
     if (count === 0) return [];
 
     const positions = [];
 
-    let x = 0;
+    let coord = 0;
 
-    positions.push({ x, z: 0 });
+    positions.push({ x: 0, y: 0, z: 0 });
+    positions[0][eje] = coord;
 
     for (let i = 1; i < count; i++) {
 
-        const bordeDerechoAnterior =
-            x + bboxesX[i - 1].max.x;
+        const bordeFinAnterior =
+            coord + bboxesPrincipal[i - 1].max[eje];
 
-        const bordeIzquierdoActual =
-            bboxesX[i].min.x;
+        const bordeInicioActual =
+            bboxesPrincipal[i].min[eje];
 
         /*
             Slot i: el más chico que deja, entre el
-            borde derecho del elemento anterior (ya
-            ubicado) y el borde izquierdo de éste, al
+            borde "final" del elemento anterior (ya
+            ubicado) y el borde "inicial" de éste, al
             menos "gap" de separación.
         */
-        x =
-            bordeDerechoAnterior +
+        coord =
+            bordeFinAnterior +
             gap -
-            bordeIzquierdoActual;
+            bordeInicioActual;
 
-        positions.push({ x, z: 0 });
+        const p = { x: 0, y: 0, z: 0 };
+        p[eje] = coord;
+        positions.push(p);
 
     }
 
 
-    const bordeIzquierdoTotal =
-        positions[0].x + bboxesX[0].min.x;
+    const bordeInicioTotal =
+        positions[0][eje] + bboxesPrincipal[0].min[eje];
 
-    const bordeDerechoTotal =
-        positions[count - 1].x +
-        bboxesX[count - 1].max.x;
+    const bordeFinTotal =
+        positions[count - 1][eje] +
+        bboxesPrincipal[count - 1].max[eje];
 
     const centroTotal =
-        (bordeIzquierdoTotal + bordeDerechoTotal) / 2;
+        (bordeInicioTotal + bordeFinTotal) / 2;
 
     positions.forEach(p => {
 
-        p.x -= centroTotal;
+        p[eje] -= centroTotal;
 
     });
-
 
     return positions;
 

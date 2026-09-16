@@ -2,19 +2,42 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
+<link rel="icon" href="assets/favicon.ico" type="image/x-icon">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StreetData Insight – Recorrido continuo</title>
 
+  <!-- Aplica el tema guardado (o la preferencia del sistema) ANTES del
+       primer frame — mismo bloque y misma clave de localStorage
+       ('cascarones:tema') que atlas.html/mapa.html/galeria.html/navbar.js.
+       Antes esta página no tenía este bloque: no leía el tema del sitio
+       en absoluto. Acá solo se usa para que el fondo/texto de la "sala
+       de carga" y el color del pin salgan de variables.css (ver los
+       tokens FIJOS --color-oscuro/--color-blanco/--color-terracota más
+       abajo, no los que cambian con el tema) — igual que en atlas.html,
+       el aspecto de esta pantalla queda fijo a propósito, pero ahora
+       conectado a la misma paleta del sitio en vez de valores propios. -->
+  <script>
+    (function () {
+      var CLAVE_TEMA = 'cascarones:tema';
+      var guardado = localStorage.getItem(CLAVE_TEMA);
+      var tema = (guardado === 'oscuro' || guardado === 'claro')
+        ? guardado
+        : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+      document.documentElement.setAttribute('data-tema', tema);
+    })();
+  </script>
+
   <link href="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/variables.css" />
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
       width: 100%;
       font-family: 'DM Sans', sans-serif;
-      background: #111;
-      color: #fff;
+      background: rgb(var(--color-oscuro));
+      color: rgb(var(--color-blanco));
     }
 
     #map {
@@ -37,8 +60,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #111;
-      color: #888;
+      background: rgb(var(--color-oscuro));
+      color: rgba(var(--color-blanco), 0.55);
       font-size: 0.95rem;
       letter-spacing: 0.05em;
       pointer-events: none;
@@ -113,13 +136,18 @@
       font-weight: 500;
       font-size: 0.9rem;
       text-transform: capitalize;
-      background: #555;
+      background: #969696;
     }
-    .estado-bueno   { background: #4caf50; color: white; }
-    .estado-regular { background: #ff9800; color: white; }
-    .estado-riesgo  { background: #f44336; color: white; }
-    .estado-perdido { background: #9e9e9e; color: white; }
-    .estado-sin-info { background: #555; color: #ddd; }
+    /* Sincronizado con ESTADO_COLOR / FALLBACK_COLOR de
+       js/galeria-config.js — antes estos 4 colores eran una
+       calibración aparte, ya desactualizada frente a la que
+       terminó usando la galería real (colorPorEstado() /
+       colorEstadoHex()). Ahora son los mismos hex exactos. */
+    .estado-bueno   { background: #6cbf87; color: white; }
+    .estado-regular { background: #e8b84a; color: white; }
+    .estado-riesgo  { background: #e38149; color: white; }
+    .estado-perdido { background: #c44c4c; color: white; }
+    .estado-sin-info { background: #969696; color: #eee; }
 
   </style>
 </head>
@@ -175,9 +203,18 @@
       const ZOOM_FAR  = 11;   // zoom al que se aleja entre puntos
 
       // --- Color del pin ---
-      // Resultado aproximado de aplicar hue #ff4400 + saturation -32 + gamma .85
-      // (ajustá este hex directamente si el tono no es el que buscabas).
-      const PIN_COLOR = '#db6a40';
+      // Se lee de --color-terracota (variables.css) en vez de un hex
+      // propio: antes decía "ajustá este hex directamente si el tono
+      // no es el que buscabas" — con esto, el pin sigue el terracota
+      // real del sitio sin mantener un segundo valor a mano. Lee
+      // --color-terracota (token fijo) y no --color-primario (que en
+      // modo oscuro sale de un color-mix()) para que el pin se vea
+      // igual en los dos temas, igual que en atlas.html.
+      const PIN_COLOR = `rgb(${
+        getComputedStyle(document.documentElement)
+          .getPropertyValue('--color-terracota')
+          .trim()
+      })`;
 
       // Genera el SVG de un pin clásico (forma de gota) con el "hole"
       // (círculo blanco) característico de los pines de mapa.

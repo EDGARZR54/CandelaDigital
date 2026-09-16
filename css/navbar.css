@@ -19,9 +19,9 @@
   border-bottom-color: var(--color-borde);
   padding-block: 0.7rem;
 }
-[data-tema="oscuro"] .nav.nav--fija,
-@media (prefers-color-scheme: dark) { }
-[data-tema="oscuro"] .nav.nav--fija { background: rgba(18, 18, 18, 0.86); }
+[data-tema="oscuro"] .nav.nav--fija {
+  background: rgba(var(--color-oscuro), 0.86);
+}
 
 .nav__contenido {
   display: flex;

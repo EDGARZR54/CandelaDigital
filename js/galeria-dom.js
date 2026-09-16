@@ -136,6 +136,15 @@ export function capturarDOM() {
         document.getElementById("boton-autorotar");
 
     /*
+        Switch "Mostrar rejilla" — ver galeria-rejilla.js.
+        Mismo criterio que "botonAutorotar" de acá arriba,
+        GLOBAL de escena (no depende de qué cono esté en
+        foco, a diferencia de los dos de acá abajo).
+    */
+    const botonMostrarRejilla =
+        document.getElementById("boton-mostrar-rejilla");
+
+    /*
         Switch "Mostrar intersección" — ver
         galeria-corte-interseccion.js. Mismo criterio que
         "botonAutorotar" de acá arriba.
@@ -212,6 +221,7 @@ export function capturarDOM() {
         panelDerecho,
         fichaSheetTirador,
         botonAutorotar,
+        botonMostrarRejilla,
         botonMostrarInterseccion,
         botonMostrarPlanoCorte,
         fichaControlesContainer,

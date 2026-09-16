@@ -46,9 +46,116 @@ export function createReorderController(
         // por compatibilidad hacia atrás: si no se pasa,
         // se cae al cálculo viejo (constante fija) — ver
         // más abajo.
-        bboxesPorIndice
+        bboxesPorIndice,
+        // Eje principal vigente del layout (ver
+        // galeria-escena.js) — decide sobre qué
+        // coordenada de from/to se detecta "cambió de
+        // posición" (slid) y sobre cuál mide
+        // assignLayers() la superposición para el arco
+        // anti-colisión. Default "x" por compatibilidad
+        // hacia atrás con quien todavía no lo pasa.
+        ejePrincipal = "x",
+        // A: order inicial opcional — si no se pasa, arranca
+        // ordenado por el primer criterio de
+        // config.sortOptions, mismo comportamiento de
+        // siempre (ver "order" más abajo). Se pasa cuando
+        // galeria.js recrea este controller tras un cruce
+        // real de orientación horizontal/vertical (ver
+        // manejarPosibleCambioDeOrientacion en
+        // galeria-escena.js): así el visitante no pierde un
+        // reordenamiento manual propio solo por rotar la
+        // pantalla.
+        initialOrder = null
     }
 ) {
+
+    // Eje horizontal que NO es "ejePrincipal" (Y hoy, X en
+    // modo vertical) — mismo par que ejeSecundarioCamara
+    // en galeria-escena.js y ejeSecundario en
+    // galeria-carrusel.js, recalculado acá mismo (es una
+    // función pura de ejePrincipal, no vale la pena
+    // agregar otra dependencia solo para esto).
+    const ejeSecundario =
+        ejePrincipal === "x" ? "y" : "x";
+
+    /*
+        Eje sobre el que se mueve el arco anti-colisión
+        (el "lift" que separa dos elementos que se cruzan
+        de slot al reordenar). Hasta ahora siempre era Z
+        (hacia/desde cámara) — tiene sentido en horizontal,
+        donde la fila es una línea y Z es "hacia adentro
+        del cuadro", perpendicular a ella.
+
+        En vertical eso deja de leerse bien: la columna ya
+        ocupa la dimensión vertical de pantalla, y mover el
+        arco hacia cámara (Z) hace que el cruce se vea de
+        frente, difícil de seguir — mejor lateral (X), que
+        de verdad se ve como un quiebre hacia un costado.
+        Como X ya es el eje secundario en ese modo (con su
+        propio centrado por centroide, ver
+        "corregirSecundario"), el lift se SUMA sobre esa
+        base, no la reemplaza.
+    */
+    const ejeLift =
+        ejePrincipal === "x" ? "z" : ejeSecundario;
+
+    /*
+        PROPUESTA — centrado por centroide del eje
+        secundario (ver notas-encuadre-3d.md y el mismo
+        criterio ya aplicado en verticesMundoDeFila, en
+        galeria-escena.js): cuando el secundario es X
+        (modo vertical), no hay un "restY" físico
+        (apoyado en el piso) equivalente para el costado
+        — alinear por el borde/origen local de cada
+        geometría (lo que hacía el código antes de esto)
+        deja a cada elemento en un lugar lateral distinto
+        si sus pivotes locales no coinciden, en vez de
+        centrados en la misma línea vertical. Se les resta
+        su propio pivote (centro real del bbox en ese eje)
+        para que sea el CENTROIDE, no el origen local, el
+        que caiga en la coordenada compartida.
+
+        Cuando el secundario es Y (horizontal, sin
+        cambios), esto no se aplica: el borde/piso de cada
+        elemento (ver baseDe, abajo) es su propia base, sin
+        centrar.
+    */
+    function corregirSecundario(valor, cupID) {
+
+        if (ejeSecundario !== "x") return valor;
+        if (!bboxesPorIndice) return valor;
+
+        const bbox = bboxesPorIndice[cupID];
+
+        const pivotSecundario =
+            (bbox.min.x + bbox.max.x) / 2;
+
+        return valor - pivotSecundario;
+
+    }
+
+    /*
+        FIX (piso al 100%): "restY" es un colchón GLOBAL (el
+        MAYOR desplazamientoBase entre todos los elementos,
+        ver galeria-escena.js) — usarlo para posicionar CADA
+        elemento dejaba flotando a cualquiera cuya geometría
+        no fuera tan "profunda" como ese peor caso, que es
+        justo el motivo por el que el piso no quedaba debajo
+        del 100% de los objetos. Acá se usa la base PROPIA de
+        cada uno (misma cuenta que "desplazamientoBase" en
+        normalizarGeometriaElemento: -bbox.min.y), para que
+        su punto más bajo real caiga exactamente en su slot.
+        Fallback a "restY" si no llega "bboxesPorIndice"
+        (dependencia opcional, mismo criterio que
+        corregirSecundario).
+    */
+    function baseDe(cupID) {
+
+        if (!bboxesPorIndice) return restY;
+
+        return -bboxesPorIndice[cupID].min.y;
+
+    }
 
     /*
         Separación entre "niveles" del arco de
@@ -86,13 +193,21 @@ export function createReorderController(
         caso, los dos más profundos de la fila— no se
         toquen aun con un hueco de 1×, alcanza y hace
         falta que levelSeparation sea al menos la
-        profundidad Z máxima (max.z - min.z) de cualquier
-        elemento que pueda estar en movimiento
+        extensión máxima (max - min) sobre "ejeLift" de
+        cualquier elemento que pueda estar en movimiento
         (halfDepthA + halfDepthB ≤ levelSeparation, peor
         caso con A=B=el más profundo, da depthMax).
         levelSeparationFactor pasa a ser un margen de
         seguridad multiplicativo sobre esa cota (>= 1),
         no un factor sobre el spacing de la fila.
+
+        GENERALIZACIÓN: antes esto medía siempre Z
+        ("bbox.max.z - bbox.min.z"), porque el lift
+        siempre iba a Z. Ahora mide sobre "ejeLift" — en
+        horizontal sigue siendo Z exactamente igual que
+        antes (pixel-idéntico); en vertical pasa a medir
+        el ancho en X de cada elemento, porque ahí es
+        donde realmente va el lift.
     */
     const levelSeparation =
         bboxesPorIndice
@@ -103,7 +218,7 @@ export function createReorderController(
                           bboxesPorIndice[el.indice];
 
                       return bbox
-                          ? bbox.max.z - bbox.min.z
+                          ? bbox.max[ejeLift] - bbox.min[ejeLift]
                           : 0;
 
                   })
@@ -126,6 +241,7 @@ export function createReorderController(
     // está definida más abajo pero, al ser function
     // declaration, queda hoisteada.
     let order =
+        initialOrder ??
         getSortedOrder(
             config.sortOptions[0].key
         );
@@ -139,6 +255,35 @@ export function createReorderController(
     // promueve).
     let positions =
         computeRowPositions(order);
+
+    /*
+        FIX (cono de luz saltando "de golpe" al terminar un
+        reordenamiento — reportado contra galeria-cono-luz.js):
+        "positions" (arriba) es la fuente de verdad que
+        consume getPositions(), y hasta ahora quedaba
+        CONGELADA durante toda la animación de animateTo()
+        —solo se promovía a "newPositions" en el frame exacto
+        en que step() llega a t>=1 (ver más abajo)—, mientras
+        los propios conos SÍ se movían de a poco cada frame
+        (interpolando from/to con "e"). Cualquier consumidor
+        de getPositions() que ancle algo contra el LAYOUT (no
+        contra un elemento en particular) —el caso de
+        galeria-cono-luz.js: puntoDeDescanso() usa
+        getPositions()[slot] para los dos extremos del eje de
+        la luz— se quedaba leyendo el layout VIEJO todo el
+        reordenamiento entero, y saltaba de una sola vez al
+        layout nuevo en el último frame.
+
+        "positionsAnimadas": snapshot por-slot, recalculado en
+        cada step() mientras hay animación en curso — mismo
+        lerp componente a componente que ya usa el caso "slid"
+        más abajo (from + (to-from)*e), pero aplicado a TODO
+        el layout (por slot, no por elemento) en vez de a un
+        movimiento individual. null mientras no se está
+        animando: ahí getPositions() sigue devolviendo
+        "positions" crudo, sin ningún costo extra.
+    */
+    let positionsAnimadas = null;
 
     /*
         La escena (galeria-escena.js) centra la cámara al
@@ -210,7 +355,7 @@ export function createReorderController(
 
     function getPositions() {
 
-        return positions;
+        return positionsAnimadas || positions;
 
     }
 
@@ -330,14 +475,20 @@ export function createReorderController(
             // los bboxes de los elementos vecinos). No hay
             // colisión posible (nadie más ocupa este slot a
             // la vez), así que alcanza con un slide lineal,
-            // sin arco/lift/scale.
+            // sin arco/lift/scale. Se compara sobre
+            // ejePrincipal (antes, X fijo) — Z se deja
+            // afuera a propósito: "positions[].z" siempre
+            // vale 0 antes del arco anti-colisión (ver
+            // calculatePositions en galeria-escena.js), así
+            // que nunca aporta una diferencia real acá.
             const slid =
                 !slotChanged &&
-                (from.x !== to.x || from.z !== to.z);
+                from[ejePrincipal] !== to[ejePrincipal];
 
             movements.push({
 
                 cone: cones[cupID],
+                cupID,
 
                 from,
                 to,
@@ -359,7 +510,7 @@ export function createReorderController(
         // necesita un carril propio. Excluirlos de acá deja
         // a los "moved" sin ver ese tramo, y pueden terminar
         // cruzándose en Z con un "slid" que se quedó plano.
-        assignLayers(movements);
+        assignLayers(movements, ejePrincipal);
 
 
         /*
@@ -409,6 +560,14 @@ export function createReorderController(
             duration: config.reorder.duration,
             newOrder,
             newPositions,
+            // Snapshot del layout ANTES de este reordenamiento
+            // — punto de partida del lerp de
+            // "positionsAnimadas" en step(). "positions" en sí
+            // recién se reemplaza al terminar la animación
+            // (más abajo), así que esta referencia es la única
+            // forma de recordar de dónde salió cada slot una
+            // vez que "positions" ya haya sido promovido.
+            oldPositions: positions,
             fromLookAtX,
             toLookAtX
         };
@@ -432,10 +591,37 @@ export function createReorderController(
         const envelope = liftEnvelope(t);
 
 
+        /*
+            positionsAnimadas: lerp por-slot entre el layout
+            viejo (oldPositions) y el nuevo (newPositions), con
+            la MISMA "e" que ya interpola cada cono individual
+            más abajo — ver el FIX grande junto a la
+            declaración de "positionsAnimadas", arriba. Se
+            recalcula todos los frames de la animación (barato:
+            un array chico, un lerp por componente), y se limpia
+            a null cuando la animación termina (ver más abajo,
+            junto a "positions = animState.newPositions").
+        */
+        positionsAnimadas =
+            animState.newPositions.map((to, slot) => {
+
+                const from =
+                    animState.oldPositions[slot] || to;
+
+                return {
+                    x: from.x + (to.x - from.x) * e,
+                    y: from.y + (to.y - from.y) * e,
+                    z: from.z + (to.z - from.z) * e
+                };
+
+            });
+
+
         animState.movements.forEach(movement => {
 
             const {
                 cone,
+                cupID,
                 from,
                 to,
                 moved,
@@ -445,10 +631,36 @@ export function createReorderController(
             } = movement;
 
 
+            /*
+                GENERALIZACIÓN (ver notas-encuadre-3d.md):
+                antes "restY" bastaba solo porque "to.y"/
+                "from.y" siempre valían 0 (layout en X). Con
+                "ejePrincipal" en "y" (columna vertical),
+                "to.y"/"from.y" pasan a ser la posición real
+                de cada elemento en la columna — sumarlos acá
+                (baseDe(cupID) + y) es el mismo criterio que
+                ya usa verticesMundoDeFila() en
+                galeria-escena.js.
+
+                FIX (piso al 100%): la altura de piso es
+                "baseDe(cupID)" — la base PROPIA de ESTE
+                elemento — no el "restY" global que se usaba
+                antes; ver el comentario de baseDe más arriba.
+
+                "corregirSecundario" (ver más arriba) hace lo
+                mismo del otro lado: cuando el secundario es
+                X, corrige el CENTROIDE de "x" en vez de
+                dejar el borde/origen local crudo.
+            */
+
+            const baseElemento = baseDe(cupID);
+
             if (!moved && !slid) {
 
                 cone.position.set(
-                    to.x, restY, to.z
+                    corregirSecundario(to.x, cupID),
+                    baseElemento + to.y,
+                    to.z
                 );
 
                 cone.scale.setScalar(1);
@@ -466,9 +678,14 @@ export function createReorderController(
                 // anti-colisión entre elementos que se
                 // cruzan de slot).
                 const x = from.x + (to.x - from.x) * e;
+                const y = from.y + (to.y - from.y) * e;
                 const z = from.z + (to.z - from.z) * e;
 
-                cone.position.set(x, restY, z);
+                cone.position.set(
+                    corregirSecundario(x, cupID),
+                    baseElemento + y,
+                    z
+                );
                 cone.scale.setScalar(1);
 
                 return;
@@ -477,18 +694,45 @@ export function createReorderController(
 
 
             const dx = to.x - from.x;
+            const dy = to.y - from.y;
             const x = from.x + dx * e;
+            const y = from.y + dy * e;
 
             const arc =
                 levelSeparation * layerMagnitude;
 
-            const z =
-                from.z + layer * arc * envelope;
+            const liftOffset =
+                layer * arc * envelope;
 
             const scale =
                 1 + envelope * .12;
 
-            cone.position.set(x, restY, z);
+            /*
+                El lift se SUMA sobre "ejeLift" — en
+                horizontal es Z (from.z de por sí es 0 antes
+                del arco, ver calculatePositions en
+                galeria-escena.js, así que esto da
+                exactamente "layer*arc*envelope" como antes).
+                En vertical es X: se suma sobre el X ya
+                corregido por centroide
+                (corregirSecundario), no lo reemplaza — el
+                elemento se desvía del centro de la columna
+                hacia un costado mientras cruza, y vuelve al
+                centro cuando "envelope" vuelve a 0.
+            */
+            const xFinal =
+                ejeLift === "x"
+                    ? corregirSecundario(x, cupID) + liftOffset
+                    : corregirSecundario(x, cupID);
+
+            const zFinal =
+                ejeLift === "z"
+                    ? from.z + liftOffset
+                    : from.z;
+
+            cone.position.set(
+                xFinal, baseElemento + y, zFinal
+            );
             cone.scale.setScalar(scale);
 
         });
@@ -518,6 +762,12 @@ export function createReorderController(
 
             order = animState.newOrder;
             positions = animState.newPositions;
+            // "positions" ya quedó promovido a su valor final
+            // (idéntico a lo que positionsAnimadas ya daba en
+            // e=1) — se limpia para que getPositions() vuelva
+            // a leer "positions" crudo, sin el overhead del
+            // lerp, hasta el próximo animateTo().
+            positionsAnimadas = null;
             lookAtX = animState.toLookAtX;
             busy = false;
             animState = null;
@@ -567,6 +817,21 @@ export function createReorderController(
     }
 
 
+    /*
+        Id (índice en "cones"/"elementos") del elemento que
+        ocupa el slot dado del "order" vigente — punto único
+        de indexado para quien necesite "qué cono está en tal
+        posición" (antes se repetía "getOrder()[slot]" a mano
+        en cada call site de galeria.js: heroConeId/
+        primerFichaConeId/ultimoFichaConeId).
+    */
+    function getConeIdEnSlot(slot) {
+
+        return getOrder()[slot];
+
+    }
+
+
     return {
         getOrder,
         getPositions,
@@ -574,7 +839,8 @@ export function createReorderController(
         animateTo,
         step,
         isBusy,
-        isAnimating
+        isAnimating,
+        getConeIdEnSlot
     };
 
 }

@@ -592,16 +592,34 @@ export function createPaginationController(
         tramos que lo tocan a cada lado — ver "MESETA DE
         DESCANSO" en galeria-carrusel-descanso.js).
 
-        Caso especial índice 0: la meseta real empieza en
-        t=0, NO en tParaFicha(0) — durante todo el tramo
-        "formar" (t GLOBAL < cfgCarousel.formSpan, antes de
-        que "rotateT" siquiera arranque) el círculo se está
+        BUG ENCONTRADO Y CORREGIDO (reportado: "el círculo de
+        la paginación ya llegó a la primera ficha y apenas se
+        empieza a animar la construcción del carrusel"): acá
+        había un caso especial para el índice 0 que hacía
+        arrancar su meseta en t=0 GLOBAL — el primer píxel de
+        la fase "fichas" — con el argumento de que durante
+        "formar" (t < cfgCarousel.formSpan, antes de que
+        "rotateT" siquiera arranque) el círculo se está
         cerrando y "phi" ya vale 0 fijo, o sea el slot 0 YA
-        está en foco desde el instante mismo en que arranca
-        la fase "fichas" (ver el mismo comentario de cabecera
-        en ese archivo) — no hace falta esperar a que
-        "rotateT" llegue a su propia media meseta para que
-        cuente como asentado.
+        está en foco. Ese argumento es cierto para "qué
+        elemento está en foco" (relevante para
+        galeria-interaccion-ficha.js), pero NO para "cuándo el
+        DOT de paginación cuenta como asentado": con esa
+        meseta arrancando en t=0, el blob queda pegado del
+        todo (frac=1, ver update()) apenas se entra a "fichas"
+        — antes de que la animación de línea→círculo llegue
+        siquiera a la mitad, mucho antes de "formSpan" (el
+        punto real en el que termina "formar" y arranca la
+        rotación, el mismo que ya usa tParaFicha(0)). Fix: la
+        meseta del índice 0 arranca en "formSpan" — recién
+        cuando termina de formarse el carrusel — igual que
+        tParaFicha(0) ya usa ese mismo punto como su
+        aterrizaje "oficial". El resto de los índices no
+        necesita ningún caso especial ni piso extra: con
+        "mitadDescanso" siempre < 1 (tope 0.9/2, ver su
+        cálculo más arriba), "rotateDesde" da positivo para
+        cualquier índice >= 1, así que su "tDesde" ya cae
+        naturalmente por encima de "formSpan".
     */
     function bordesMesetaFicha(indice) {
 
@@ -622,7 +640,7 @@ export function createPaginationController(
 
         if (indiceClamp === 0) {
 
-            return [0, tHasta];
+            return [cfgCarousel.formSpan, tHasta];
 
         }
 

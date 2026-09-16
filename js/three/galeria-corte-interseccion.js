@@ -467,11 +467,20 @@ export function createCorteInterseccion({ cones } = {}) {
         /*
             Mismo momento que autorotar.reset()/corte.reset()/
             etc. — los 4 puntos donde galeria.js sale de
-            "fichas". A diferencia de "Autorotado" (que vuelve
-            a prender), acá se APAGA: es un control secundario
-            de visualización, no tiene sentido que una sesión
-            nueva de "fichas" arranque mostrando curvas que el
-            visitante ni pidió.
+            "fichas". Este reset() en sí siempre apaga
+            ("activo=false") y limpia cualquier curva que
+            hubiera quedado puesta, dejando el módulo en un
+            estado neutro y predecible.
+
+            El DEFAULT de si "Mostrar intersección" queda
+            prendida o apagada después de un reset no se
+            decide acá — lo decide quien llama (galeria.js),
+            mismo criterio que "Autorotado": ahí, justo
+            después de llamar a este reset(), se llama
+            setActivo(true) para que el switch quede
+            prendido por defecto en cada sesión nueva de
+            "fichas" (ver los 4 puntos correspondientes en
+            galeria.js).
         */
         reset() {
 

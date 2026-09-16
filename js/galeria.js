@@ -55,6 +55,16 @@
    conjunto.
 ================================================== */
 
+// DEBE ir primero: parchea THREE.ShaderChunk (atenuación
+// de luces) y THREE.ColorManagement ANTES de que
+// cualquier otro módulo importado más abajo construya un
+// Renderer o compile un material — ver el comentario de
+// cabecera de galeria-compat-r128.js. (Si ya lo agregaste
+// en tu copia real del proyecto, este import es un no-op
+// duplicado — lo repongo acá porque el archivo que subiste
+// esta vez no lo tenía.)
+import "./three/galeria-compat-r128.js";
+
 import { CONFIG } from "./three/galeria-config.js";
 import { cargarElementos } from "./three/galeria-datos.js";
 import { createScene } from "./three/galeria-escena.js";
@@ -75,24 +85,24 @@ import { createProjectController } from "./three/galeria-proyecto.js";
 import { createRotationController } from "./three/galeria-rotacion.js";
 import { createReorderController } from "./three/galeria-reordenar.js";
 import { createCarouselController } from "./three/galeria-carrusel.js";
+import { createConoLuz } from "./three/galeria-cono-luz.js";
 import { createInteraccionFicha } from "./three/galeria-interaccion-ficha.js";
 /*
     Dolly de cámara sobre el objeto 3D en foco (cono o,
     a futuro, nube Potree — ver zoom3dScroll.md) activado
     por wheel cuando el cursor está sobre ese objeto, sin
-    tocar window.scrollY en ningún momento (ver ese
-    archivo para el diseño completo).
+    tocar window.scrollY en ningún momento — y, hermano
+    directo, paneo de cámara por arrastre con el botón
+    derecho sobre ese mismo objeto: no mueve el objeto,
+    traslada camera.position, esta vez sobre el plano
+    perpendicular al eje de vista en vez de a lo largo de
+    él (ver ambos en galeria-controls.js, mismo patrón
+    exacto, agrupados en un solo archivo).
 */
-import { createZoomController } from "./three/galeria-zoom.js";
-/*
-    Paneo de cámara por arrastre con el botón derecho
-    sobre el objeto 3D en foco (ver galeria-paneo.js) —
-    mismo criterio que el dolly de arriba, hermano
-    directo: no mueve el objeto, traslada camera.position,
-    esta vez sobre el plano perpendicular al eje de vista
-    en vez de a lo largo de él.
-*/
-import { createPaneoController } from "./three/galeria-paneo.js";
+import {
+    createZoomController,
+    createPaneoController
+} from "./three/galeria-controls.js";
 import { createParamPanel } from "./three/galeria-panel-parametros.js";
 import { createMaterialPanel } from "./three/galeria-panel-material.js";
 import { createFotosPanel } from "./three/galeria-panel-fotos.js";
@@ -100,7 +110,8 @@ import {
     calcularDimensionesFicha,
     renderizarFicha,
     calcularDimensionesCampos,
-    renderizarCampos
+    renderizarCampos,
+    calcularAnchoMaximoCampo
 } from "./three/galeria-ficha.js";
 import { createMapaController } from "./three/galeria-mapa.js";
 import { createPanelDerechoSheet } from "./three/galeria-panel-derecho.js";
@@ -110,10 +121,19 @@ import { createCorteController } from "./three/galeria-corte.js";
 import { createCorteControles } from "./three/galeria-corte-controles.js";
 import { createCorteInterseccion } from "./three/galeria-corte-interseccion.js";
 import { createPlanoCorte } from "./three/galeria-plano-corte.js";
+import { createRejillaController } from "./three/galeria-rejilla.js";
 import { createPaginationController } from "./three/galeria-paginacion.js";
+// === CÁMARA DEBUG === (opcional — ver galeria-camara-debug.js
+// para cómo sacar este módulo por completo: borrar este
+// import + las 3 líneas más abajo marcadas igual + el archivo).
+import { createCamaraDebug } from "./three/galeria-camara-debug.js";
 import { capturarDOM } from "./galeria-dom.js";
-import { createGuiController } from "./galeria-gui.js";
+import { createGuiController, GUI_TOP_MINIMO } from "./galeria-gui.js";
 import { fijarOpacidadPanel } from "./three/galeria-utils.js";
+import {
+    crearMedidorMargenes,
+    ajustarAltoScroll
+} from "./galeria-margenes.js";
 
 
 async function initGaleria() {
@@ -145,6 +165,7 @@ async function initGaleria() {
         panelDerecho,
         fichaSheetTirador,
         botonAutorotar,
+        botonMostrarRejilla,
         botonMostrarInterseccion,
         botonMostrarPlanoCorte,
         fichaControlesContainer,
@@ -155,6 +176,13 @@ async function initGaleria() {
         scrollHint,
         paginacionContainer
     } = capturarDOM();
+
+    const {
+        medirAltoNavbar,
+        getMargenVerticalPx,
+        getMargenHorizontalPx,
+        ajustarAltoFichaSegunContenido
+    } = crearMedidorMargenes({ gui, sceneContainer, carouselPanel });
 
     /*
         La transición CSS de opacidad de "#carousel-panel.visible"
@@ -183,11 +211,6 @@ async function initGaleria() {
             );
 
     } catch (err) {
-
-        console.error(
-            "galeria.js: no se pudieron cargar " +
-            "los elementos:", err
-        );
 
         sceneContainer.textContent =
             "No se pudieron cargar los datos " +
@@ -244,78 +267,11 @@ async function initGaleria() {
     */
 
 
-    const GAP_SPECS_HORIZONTAL = 22;
-    const ANCHO_MINIMO_CAMPO = 64;
-    const ANCHO_MAXIMO_CAMPO_DEFAULT = 260;
-
-    /*
-        Tope de ancho por campo de specs (superficie,
-        altura, estado, etc.), medido contra el ancho
-        REAL disponible en vez de un default fijo de
-        260px (el que usa galeria-ficha.js el resto del
-        tiempo).
-
-        En retrato hay alto de sobra, así que no hace
-        falta forzar nada: se devuelve "undefined" y
-        calcularDimensionesFicha cae a su propio default.
-
-        En horizontal de celular (ver el media query de
-        #carousel-panel en galeria.css) el alto es el
-        recurso escaso: ahí sí hace falta que las specs
-        entren en una sola fila, así que se calcula el
-        ancho por columna para que todas quepan lado a
-        lado.
-
-        Se mide el ancho real de ".ficha__fila" (padre de
-        "#panel-ficha") con getBoundingClientRect() — ya
-        viene con el espacio del panel derecho descontado,
-        sin necesidad de aproximarlo a mano. GAP_SPECS_HORIZONTAL
-        replica el gap real de "#carousel-panel .specs" en
-        ese breakpoint; si cambia en galeria.css, actualizar
-        acá también.
-    */
-    function calcularAnchoMaximoCampo() {
-
-        const fila = panelFicha.parentElement;
-
-        if (!fila) return undefined;
-
-        const anchoDisponible =
-            fila.getBoundingClientRect().width;
-
-        /*
-            La grilla real es 4 columnas fijas
-            ("grid-template-columns: repeat(4, auto)",
-            ver "#carousel-panel .specs" en galeria.css) —
-            se lee del CSS computado en vez de escribir
-            "4" a mano, para que este cálculo siga
-            automático si ese valor cambia algún día.
-        */
-        const columnasGrid =
-            getComputedStyle(panelFicha)
-                .gridTemplateColumns
-                .split(" ")
-                .length || 1;
-
-        const anchoPorCampo =
-            (
-                anchoDisponible -
-                GAP_SPECS_HORIZONTAL * (columnasGrid - 1)
-            ) / columnasGrid;
-
-        return Math.max(
-            ANCHO_MINIMO_CAMPO,
-            Math.min(ANCHO_MAXIMO_CAMPO_DEFAULT, anchoPorCampo)
-        );
-
-    }
-
-
     let dimensionesFicha =
         calcularDimensionesFicha(
             elementos,
             { panelNombre, panelSubtitulo, panelFicha },
-            { anchoMaximoCampo: calcularAnchoMaximoCampo() }
+            { anchoMaximoCampo: calcularAnchoMaximoCampo(panelFicha) }
         );
 
     /*
@@ -338,63 +294,15 @@ async function initGaleria() {
     /*
         calcularAnchoMaximoCampo() solo mira el ancho; una
         columna angosta puede necesitar más líneas (más
-        alto). Se apoya en que renderizarFicha() ya aplica
-        minHeight con el peor caso a cada campo (ver
+        alto). ajustarAltoFichaSegunContenido() (ver
+        galeria-margenes.js) se apoya en que renderizarFicha()
+        ya aplica minHeight con el peor caso a cada campo (ver
         galeria-ficha.js), así que carouselPanel.scrollHeight
         —medido directo del DOM en vez de estimar paddings a
         mano— ya refleja el alto máximo real. Se llama desde
         remedirFicha() (resize) y al final de updatePanel()
         (primera entrada a "fichas" sin resize de por medio).
     */
-
-    const ALTO_MAXIMO_FICHA_VH_BASE = 58;
-    const ALTO_MAXIMO_FICHA_VH_TECHO = 82;
-
-    function ajustarAltoFichaSegunContenido() {
-
-        const esHorizontalBajo =
-            window.matchMedia(
-                "(max-height: 500px) " +
-                "and (orientation: landscape)"
-            ).matches;
-
-        if (!esHorizontalBajo) {
-
-            /*
-                Fuera de ese breakpoint no hay que forzar
-                nada: se limpia cualquier max-height
-                inline que hubiera quedado de una rotación
-                anterior, y manda de nuevo el CSS normal
-                (sin tope, hay alto de sobra).
-            */
-            carouselPanel.style.maxHeight = "";
-            return;
-
-        }
-
-
-        const altoContenido =
-            carouselPanel.scrollHeight;
-
-        const altoBasePx =
-            window.innerHeight *
-            (ALTO_MAXIMO_FICHA_VH_BASE / 100);
-
-        const altoTechoPx =
-            window.innerHeight *
-            (ALTO_MAXIMO_FICHA_VH_TECHO / 100);
-
-        const altoFinal =
-            Math.min(
-                altoTechoPx,
-                Math.max(altoBasePx, altoContenido)
-            );
-
-        carouselPanel.style.maxHeight =
-            altoFinal + "px";
-
-    }
-
     ajustarAltoFichaSegunContenido();
 
     /*
@@ -423,18 +331,85 @@ async function initGaleria() {
         computeRowPositions,
         restY,
         bboxesPorIndice,
+        // A: snapshot al momento de crear la escena, no una
+        // referencia viva — ver el "let ejePrincipal" justo
+        // abajo, reasignado cada vez que
+        // manejarPosibleCambioDeOrientacion() detecta un
+        // cruce real.
+        ejePrincipal: ejePrincipalInicial,
         resize,
         computeLookAtX,
         setLookAtX,
         setCameraLado,
+        actualizarSetupCarrusel,
         actualizarCajasDebug,
         actualizarColoresTema,
         getHiddenDrop,
         getRowBottomScreenY,
-        actualizarHiddenDropParaOrden
+        actualizarHiddenDropParaOrden,
+        manejarPosibleCambioDeOrientacion,
+        // Fase 0 (sombra dirty, ver galeria-escena.js):
+        // marcarSombraDirty() se llama en cada punto de este
+        // archivo donde una malla con sombra se mueve/rota/
+        // escala; prepararRenderDeSombra() se llama justo
+        // antes de cada renderer.render().
+        marcarSombraDirty,
+        prepararRenderDeSombra,
+        // Fase 3 (habitación): se llama una vez por frame,
+        // sin importar la fase — ver el call site junto al
+        // render final del tick().
+        actualizarPisoSegunGeometria,
+        // Gating de castShadow por elemento (ver
+        // actualizarCastShadow en galeria-escena.js): mismo
+        // criterio y mismo call site que
+        // actualizarPisoSegunGeometria — una vez por frame,
+        // sin importar la fase. Va DESPUÉS de ella: usa el
+        // piso que esa acaba de dejar (roomGroup.position.y).
+        actualizarCastShadow,
+        // Fase 4 (luces adicionales): mismo criterio, mismo
+        // call site.
+        actualizarLucesAdicionalesSegunCamara,
+        // Fase 4 (lucesPorCaja): necesita el mapa de foco
+        // vigente en cada llamada — ver los call sites por
+        // fase, más abajo.
+        actualizarLucesPorCaja,
+        // Fase 5 (cono de luz, ver galeria-cono-luz.js):
+        // "keyLight" es la instancia real (SpotLight) que ese
+        // módulo reposiciona cada frame; "getLadoActual"/
+        // "getEjePrincipal" son getters (no el valor
+        // capturado en este momento) porque ambos cambian con
+        // el tiempo.
+        keyLight,
+        getLadoActual,
+        getEjePrincipal,
+        // Fase 5 (sistema día/noche, ver el comentario grande
+        // junto a su definición en galeria-escena.js). Mitad
+        // "luces/materiales"; la otra mitad (haz visible) la
+        // expone conoLuz.actualizarTema — ver
+        // actualizarTemaSuave(), más abajo.
+        actualizarTemaLuces,
+        // Fase 5 (sombra de contacto, ver
+        // galeria-sombra-contacto.js).
+        actualizarSombrasDeContacto,
+        actualizarTemaSombraContacto
     } = await createScene(
-        sceneContainer, elementos, CONFIG
+        sceneContainer, elementos, CONFIG,
+        getMargenVerticalPx, getMargenHorizontalPx
     );
+
+    // === CÁMARA DEBUG === (ver comentario junto al import)
+    const camaraDebug =
+        createCamaraDebug(CONFIG, { renderer, camera, cones });
+
+    // A: mutable — reasignado por
+    // recrearControllersPorOrientacion() (más abajo) cada vez
+    // que se cruza el umbral horizontal↔vertical en caliente
+    // (resize/orientationchange/fullscreenchange). Todo lo que
+    // en este archivo necesite el eje VIGENTE debe leer esta
+    // variable (nunca capturarla aparte en un const propio),
+    // igual que ya hacen los 3 usos de más abajo (reorder/
+    // reveal/carousel).
+    let ejePrincipal = ejePrincipalInicial;
 
 
     const phases =
@@ -444,29 +419,16 @@ async function initGaleria() {
 
     /*
         Aplica el presupuesto de scroll (las 5 fases) como
-        alto real de #galeria-spacer, que empuja al
-        <footer> hasta el final del recorrido. Se le suma
-        un alto de ventana extra: al llegar a la fase
-        "final", #galeria-escena-fija pasa a
+        alto real de #galeria-spacer (ver ajustarAltoScroll()
+        en galeria-margenes.js) — empuja al <footer> hasta el
+        final del recorrido, con un alto de ventana extra: al
+        llegar a la fase "final", #galeria-escena-fija pasa a
         position:absolute y deja de empujar el flujo — ese
         viewport extra es el tramo de scroll que tarda la
-        escena liberada en desaparecer antes de que el
-        footer entre en pantalla.
+        escena liberada en desaparecer antes de que el footer
+        entre en pantalla.
     */
-
-    function ajustarAltoScroll() {
-
-        phases.updateScrollHeight();
-
-        const total =
-            phases.getScrollBudget().total;
-
-        spacer.style.height =
-            (total + window.innerHeight) + "px";
-
-    }
-
-    ajustarAltoScroll();
+    ajustarAltoScroll(phases, spacer);
 
 
     /*
@@ -495,7 +457,80 @@ async function initGaleria() {
     );
 
 
-    const reorder =
+    /*
+        Sistema día/noche de la escena 3D (ver config.tema,
+        galeria-config.js, y actualizarTemaLuces() en
+        galeria-escena.js) — el mismo botón de tema del navbar
+        que ya dispara "observadorTema" de arriba (fondo/
+        niebla, instantáneo) ahora TAMBIÉN mueve las luces/
+        materiales de la escena, pero con una transición
+        suave en vez de saltar de golpe: "kTemaActual" (0..1)
+        se anima con suavizado exponencial hacia
+        "temaObjetivoK()" en cada frame de tick(), sin
+        depender del observer (leer un atributo del DOM es
+        barato, no hace falta cachear el objetivo — así
+        tampoco hay que preocuparse de qué pasa si el
+        MutationObserver no llegó a disparar todavía).
+
+        Mismo fallback que alternarTema()/aplicarTemaGuardado()
+        en navbar.js: si "data-tema" no está puesto (nunca se
+        guardó una preferencia), se usa prefers-color-scheme
+        en vez de asumir un valor fijo.
+    */
+    function temaObjetivoK() {
+
+        const actual =
+            document.documentElement.getAttribute('data-tema');
+
+        const esOscuro =
+            actual === 'oscuro'
+                ? true
+                : actual === 'claro'
+                ? false
+                : window.matchMedia(
+                      '(prefers-color-scheme: dark)'
+                  ).matches;
+
+        return esOscuro ? 0 : 1;
+
+    }
+
+    // Arranca YA en el valor objetivo (no en 0 ni en 1 fijo):
+    // si la página carga en modo claro, la primera aplicación
+    // de tema no debe animarse desde "oscuro" — solo se anima
+    // un cambio real, iniciado por el visitante.
+    let kTemaActual = temaObjetivoK();
+
+    let lastNowTema = null;
+
+    function actualizarTemaSuave(now) {
+
+        if (lastNowTema === null) {
+
+            lastNowTema = now;
+
+        }
+
+        const dt =
+            Math.min(100, Math.max(0, now - lastNowTema));
+
+        lastNowTema = now;
+
+        const objetivo = temaObjetivoK();
+
+        const factor =
+            1 - Math.exp(-dt / CONFIG.tema.suavizadoMs);
+
+        kTemaActual += (objetivo - kTemaActual) * factor;
+
+        actualizarTemaLuces(kTemaActual);
+        conoLuz.actualizarTema(kTemaActual);
+        actualizarTemaSombraContacto(kTemaActual);
+
+    }
+
+
+    let reorder =
         createReorderController(
             CONFIG,
             {
@@ -522,7 +557,8 @@ async function initGaleria() {
                     comentario de levelSeparation en
                     galeria-reordenar.js).
                 */
-                bboxesPorIndice
+                bboxesPorIndice,
+                ejePrincipal
             }
         );
 
@@ -532,25 +568,50 @@ async function initGaleria() {
         necesita "reorder.getOrder" para etiquetar cada
         dot de ficha con el elemento que ocupa ese slot
         REALMENTE (no el orden crudo del GeoJSON).
+
+        Se pasa como ARROW FUNCTION, no como referencia
+        cruda a "reorder.getOrder" — "reorder" es mutable
+        (ver más arriba) y puede REASIGNARSE a una instancia
+        nueva en un cruce de orientación
+        (recrearControllersPorOrientacion, más abajo). Una
+        referencia cruda capturaría el método de la instancia
+        VIEJA para siempre; esta indirección relee "reorder"
+        (la variable, no el objeto) en cada llamada, así que
+        sigue apuntando a la instancia vigente sin que
+        "paginacion" tenga que enterarse de que hubo un
+        cruce.
     */
     const paginacion =
         createPaginationController(
             paginacionContainer, phases, elementos,
-            reorder.getOrder, CONFIG
+            () => reorder.getOrder(), CONFIG
         );
 
-    const reveal =
+    let reveal =
         createRevealController(
             CONFIG,
             {
                 cones,
-                getPositions: reorder.getPositions,
+                getPositions: () => reorder.getPositions(),
                 elementCount,
                 restY,
-                getOrder: reorder.getOrder,
-                getHiddenDrop
+                getOrder: () => reorder.getOrder(),
+                getHiddenDrop,
+                bboxesPorIndice,
+                ejePrincipal
             }
         );
+
+    /*
+        FIX (cono de luz saltando "de golpe" al terminar un
+        reordenamiento): último "focoWeights" conocido de la
+        fase "orden" — ver el comentario grande junto a su
+        uso, en el bloque "phase === 'orden'" de tick() más
+        abajo. Arranca en {} (nadie en foco): antes de la
+        primera vez que se entra a "orden" no importa, ese
+        bloque todavía no corrió.
+    */
+    let focoWeightsOrdenActual = {};
 
     /*
         Mapa dentro del cuadrado del panel derecho (ver
@@ -566,7 +627,7 @@ async function initGaleria() {
         createMapaController({
             container: panelDerechoCuadro,
             elementos,
-            getOrder: reorder.getOrder,
+            getOrder: () => reorder.getOrder(),
             config: CONFIG
         });
 
@@ -632,6 +693,17 @@ async function initGaleria() {
     let corteControlesRef = null;
 
     /*
+        Switch "Mostrar rejilla" (ver galeria-rejilla.js) —
+        mismo criterio que corteInterseccion/planoCorte de
+        acá abajo: se construye antes y se le pasa el estado
+        ya resuelto (corte.obtenerEstadoActivo()) en cada
+        callback de más abajo, porque la rejilla ahora cuelga
+        del cono en foco, no de "scene" entera.
+    */
+    const rejilla3d =
+        createRejillaController({ cones });
+
+    /*
         Switch "Mostrar intersección" (ver
         galeria-corte-interseccion.js) — no se necesita
         ninguna referencia diferida como con corteControles:
@@ -688,6 +760,21 @@ async function initGaleria() {
                     corte.obtenerEstadoActivo()
                 );
 
+                /*
+                    Mismo motivo que arriba: reengancha (o
+                    esconde) la rejilla al cono recién
+                    activado — no-op barato si "Mostrar
+                    rejilla" está apagado (ver
+                    galeria-rejilla.js). Sin esto, si el
+                    visitante cambia de ficha con el switch
+                    prendido, la rejilla quedaría colgada del
+                    cono anterior hasta el próximo evento que
+                    dispare este mismo callback.
+                */
+                rejilla3d.actualizar(
+                    corte.obtenerEstadoActivo()
+                );
+
             }
         });
 
@@ -730,6 +817,46 @@ async function initGaleria() {
     corteControlesRef = corteControles;
 
     /*
+        Switch "Mostrar rejilla": mismo patrón que "Mostrar
+        intersección"/"Mostrar plano de corte" de acá abajo —
+        al prender, hay que enganchar la rejilla YA al cono
+        en foco ahora mismo, sin esto se vería recién cuando
+        el visitante cambie de ficha por primera vez. SÍ se
+        limpia (el enganche visual, no el booleano) en los 4
+        puntos donde galeria.js sale de "fichas" — ver
+        rejilla3d.reset() y la cabecera de
+        galeria-rejilla.js para el porqué de esa distinción.
+    */
+    if (botonMostrarRejilla) {
+
+        botonMostrarRejilla.addEventListener(
+            "click", () => {
+
+                const nuevoActivo =
+                    botonMostrarRejilla.getAttribute(
+                        "aria-checked"
+                    ) !== "true";
+
+                botonMostrarRejilla.setAttribute(
+                    "aria-checked", String(nuevoActivo)
+                );
+
+                rejilla3d.setActivo(nuevoActivo);
+
+                if (nuevoActivo) {
+
+                    rejilla3d.actualizar(
+                        corte.obtenerEstadoActivo()
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+    /*
         Switch "Mostrar intersección": mismo patrón simple
         que el resto de los switches de "role=switch" +
         "aria-checked" de esta página (ver botonAutorotar más
@@ -770,33 +897,6 @@ async function initGaleria() {
                 }
 
             }
-        );
-
-    }
-
-    /*
-        Sincronización inicial: mismo motivo que
-        "Sincronización inicial" en
-        galeria-panel-material.js (mostrarMalla) —
-        "corteInterseccion" nace con su "activo" interno en
-        false (ver createCorteInterseccion), sin leer el
-        HTML por su cuenta, así que si "#boton-mostrar-
-        interseccion" arranca en aria-checked="true" hay que
-        empujar ese estado a mano ACÁ, una sola vez, o el
-        switch queda visualmente prendido sin que las curvas
-        se hayan dibujado nunca.
-    */
-    if (
-        botonMostrarInterseccion &&
-        botonMostrarInterseccion.getAttribute(
-            "aria-checked"
-        ) === "true"
-    ) {
-
-        corteInterseccion.setActivo(true);
-
-        corteInterseccion.actualizar(
-            corte.obtenerEstadoActivo()
         );
 
     }
@@ -847,9 +947,9 @@ async function initGaleria() {
     */
     function heroConeId() {
 
-        return reorder.getOrder()[
+        return reorder.getConeIdEnSlot(
             reveal.getHeroSlot()
-        ];
+        );
 
     }
 
@@ -868,7 +968,7 @@ async function initGaleria() {
     */
     function primerFichaConeId() {
 
-        return reorder.getOrder()[0];
+        return reorder.getConeIdEnSlot(0);
 
     }
 
@@ -884,7 +984,7 @@ async function initGaleria() {
     */
     function ultimoFichaConeId() {
 
-        return reorder.getOrder()[elementCount - 1];
+        return reorder.getConeIdEnSlot(elementCount - 1);
 
     }
 
@@ -902,7 +1002,8 @@ async function initGaleria() {
     */
     const rotation =
         createRotationController(
-            CONFIG, { cones, elementCount }
+            CONFIG,
+            { cones, elementCount, marcarSombraDirty }
         );
 
     /*
@@ -936,29 +1037,152 @@ async function initGaleria() {
         centro real de su bbox (ver cabecera de
         galeria-carrusel.js).
     */
-    const carousel =
+    let carousel =
         createCarouselController(
             CONFIG,
             {
                 cones,
-                getPositions: reorder.getPositions,
+                getPositions: () => reorder.getPositions(),
                 elementCount,
                 restY,
-                getOrder: reorder.getOrder,
+                getOrder: () => reorder.getOrder(),
                 bboxesPorIndice,
-                getManualOffset: interaccionFicha.getOffset
+                getManualOffset: interaccionFicha.getOffset,
+                ejePrincipal
             }
         );
 
 
     /*
+        Cono de luz (Fase 5, ver galeria-cono-luz.js) —
+        único shadow caster de toda la escena, así que no
+        depende de la fase vigente para EXISTIR (a
+        diferencia de "carousel", solo tiene sentido dentro
+        de "fichas"): se llama en las 6 fases desde tick(),
+        más abajo. NO se recrea en el cruce de orientación
+        (no está en recrearControllersPorOrientacion): sus
+        dependencias mutables (getPositions/getOrder/
+        getHeroSlot) ya van envueltas en arrow functions,
+        mismo criterio que el resto de este bloque — siguen
+        apuntando a las instancias vigentes de "reorder"/
+        "reveal" solas, sin que este controller necesite
+        enterarse de nada.
+    */
+    const conoLuz =
+        createConoLuz(
+            CONFIG,
+            {
+                scene,
+                keyLight, camera,
+                getLadoActual, getEjePrincipal,
+                getPositions: () => reorder.getPositions(),
+                getOrder: () => reorder.getOrder(),
+                getHeroSlot: () => reveal.getHeroSlot(),
+                restY, elementCount, cones, bboxesPorIndice
+            }
+        );
+
+    /*
+        Recrea reorder/reveal/carousel con el "ejePrincipal"
+        VIGENTE (ver "let ejePrincipal", más arriba) — llamada desde el handler de
+        resize/orientationchange/fullscreenchange (más abajo,
+        junto a "RESIZE") cuando
+        manejarPosibleCambioDeOrientacion() (galeria-escena.js)
+        detecta un cruce real horizontal↔vertical.
+
+        Por qué RECREAR en vez de mutar las instancias viejas:
+        cada uno de estos 3 controllers decide, en su propia
+        construcción (no en cada update()), varias cosas que
+        dependen del eje — el orden/dirección de la cascada de
+        revelado (galeria-revelado.js), qué coordenada de
+        from/to cuenta como "cambió de posición" para el arco
+        anti-colisión (galeria-reordenar.js). No son un simple
+        "número que se lee distinto cada frame": son decisiones
+        de armado que ya quedaron fijas en clausuras privadas
+        de cada instancia. Recrear es más simple y más
+        confiable que agregarle a cada archivo un método propio
+        de "actualizar eje en caliente".
+
+        Mismas 3 construcciones que el arranque (arriba en
+        este mismo archivo), con dos diferencias: "ejePrincipal"
+        vigente (no el inicial) y "initialOrder" en reorder —
+        para que el visitante no pierda un reordenamiento
+        manual propio solo por rotar la pantalla.
+
+        "reorder"/"reveal"/"carousel" son "let" (ver sus
+        declaraciones, arriba): reasignarlos acá alcanza para
+        que TODO el resto del archivo (el loop de render, los
+        handlers de fase, etc. — que siempre los llaman como
+        "reorder.step(...)"/"reveal.update(...)"/
+        "carousel.update(...)", nunca destructurados aparte)
+        empiece a usar la instancia nueva de inmediato, sin
+        tocar ningún otro call site. "paginacion"/"mapa" NO se
+        recrean: ya reciben "reorder.getOrder"/
+        "reorder.getPositions" envueltos en una arrow function
+        (ver sus construcciones, más arriba), así que siguen
+        funcionando solos contra la instancia que sea que
+        "reorder" tenga en cada momento.
+    */
+    function recrearControllersPorOrientacion() {
+
+        const ordenPrevio =
+            reorder.getOrder();
+
+        reorder =
+            createReorderController(
+                CONFIG,
+                {
+                    cones, computeRowPositions, elementos, restY,
+                    computeLookAtX, setLookAtX,
+                    actualizarCajasDebug,
+                    actualizarHiddenDrop: actualizarHiddenDropParaOrden,
+                    bboxesPorIndice,
+                    ejePrincipal,
+                    initialOrder: ordenPrevio
+                }
+            );
+
+        reveal =
+            createRevealController(
+                CONFIG,
+                {
+                    cones,
+                    getPositions: () => reorder.getPositions(),
+                    elementCount,
+                    restY,
+                    getOrder: () => reorder.getOrder(),
+                    getHiddenDrop,
+                    bboxesPorIndice,
+                    ejePrincipal
+                }
+            );
+
+        carousel =
+            createCarouselController(
+                CONFIG,
+                {
+                    cones,
+                    getPositions: () => reorder.getPositions(),
+                    elementCount,
+                    restY,
+                    getOrder: () => reorder.getOrder(),
+                    bboxesPorIndice,
+                    getManualOffset: interaccionFicha.getOffset,
+                    ejePrincipal
+                }
+            );
+
+    }
+
+
+    /*
         Dolly de cámara sobre el objeto 3D en foco (ver
-        galeria-zoom.js) — agnóstico de si ese objeto es
-        un cono o, a futuro, una nube Potree: quien arma
-        cada frame de "fichas" es responsable de avisarle
-        con setObjetoActivo() cuáles son las mallas
-        vigentes contra las que testear el wheel (ver más
-        abajo, dentro de tick()).
+        createZoomController en galeria-controls.js) —
+        agnóstico de si ese objeto es un cono o, a futuro,
+        una nube Potree: quien arma cada frame de "fichas"
+        es responsable de avisarle con setObjetoActivo()
+        cuáles son las mallas vigentes contra las que
+        testear el wheel (ver más abajo, dentro de tick()).
     */
     const zoom =
         createZoomController(
@@ -967,11 +1191,11 @@ async function initGaleria() {
 
     /*
         Paneo de cámara por arrastre con botón derecho
-        sobre el objeto 3D en foco (ver galeria-paneo.js)
-        — mismo criterio que "zoom" acá arriba: agnóstico
-        del objeto, recibe sus mallas vigentes vía
-        setObjetoActivo() (ver más abajo, dentro de
-        tick(), mismo call site que zoom).
+        sobre el objeto 3D en foco (ver createPaneoController,
+        mismo archivo que zoom, galeria-controls.js) — mismo
+        criterio que "zoom" acá arriba: agnóstico del objeto,
+        recibe sus mallas vigentes vía setObjetoActivo() (ver
+        más abajo, dentro de tick(), mismo call site que zoom).
     */
     const paneo =
         createPaneoController(
@@ -1092,11 +1316,41 @@ async function initGaleria() {
         getRowBottomScreenY). Se instancia acá porque recién
         acá están disponibles reorder, phases y
         getRowBottomScreenY (de la escena).
+
+        "reorder" es mutable y puede REASIGNARSE a una
+        instancia nueva en un cruce de orientación (ver
+        recrearControllersPorOrientacion, más arriba). Pasarlo
+        tal cual (el objeto crudo) dejaría a "guiController"
+        con una referencia congelada a la instancia VIEJA: el
+        render loop (tick(), que sí lee "reorder" fresca en
+        cada frame) pasaría a stepear la instancia NUEVA,
+        mientras los botones de orden seguirían llamando
+        animateTo() a la vieja — el reordenamiento quedaría
+        roto en silencio, sin ningún error en consola.
+
+        "reorderEstable" expone la MISMA API que
+        createReorderController (getOrder/getPositions/
+        getSortedOrder/animateTo/step/isBusy/isAnimating), pero
+        cada método relee la variable "reorder" (no el objeto)
+        en el momento en que se llama — así sigue funcionando
+        sin importar cuántas veces se recree "reorder" después,
+        y sin importar si galeria-gui.js guarda estos métodos
+        sueltos o los llama siempre vía "reorder.metodo(...)".
     */
+    const reorderEstable = {
+        getOrder: (...args) => reorder.getOrder(...args),
+        getPositions: (...args) => reorder.getPositions(...args),
+        getSortedOrder: (...args) => reorder.getSortedOrder(...args),
+        animateTo: (...args) => reorder.animateTo(...args),
+        step: (...args) => reorder.step(...args),
+        isBusy: (...args) => reorder.isBusy(...args),
+        isAnimating: (...args) => reorder.isAnimating(...args)
+    };
+
     const guiController = createGuiController({
         gui,
         panelNombre,
-        reorder,
+        reorder: reorderEstable,
         phases,
         sortOptions: CONFIG.sortOptions,
         getRowBottomScreenY
@@ -1139,8 +1393,101 @@ async function initGaleria() {
     }
 
 
+    /*
+        MISMO problema que el del GUI de arriba, pero para
+        el navbar: navbar.js (confirmado leyendo ese
+        archivo) inyecta el navbar real por fetch() dentro
+        de un handler de DOMContentLoaded — un round-trip de
+        red, así que casi seguro no está listo todavía en
+        este punto de la carga. A diferencia del GUI (que
+        esta misma página controla y puede forzar a
+        renderizar antes de seguir), acá no hay forma de
+        "esperar" de forma síncrona ni un evento propio que
+        avise cuándo termina — así que se observa el propio
+        DOM: en cuanto "#navbar-placeholder" reciba hijos
+        (el innerHTML que arma inyectarParcial), se dispara
+        un resize() más, con el alto real del navbar ya
+        medible, y se desconecta (esto pasa una sola vez en
+        la vida de la página).
+
+        Mientras tanto (los milisegundos entre este punto y
+        que la fetch resuelva), el encuadre usa el respaldo
+        de medirAltoNavbar() — puede verse por un instante
+        con menos despeje del que corresponde, hasta que
+        este observer corrija.
+    */
+    const navbarPlaceholder =
+        document.getElementById("navbar-placeholder");
+
+    if (navbarPlaceholder) {
+
+        const navbarObserver =
+            new MutationObserver(() => {
+
+                navbarObserver.disconnect();
+                resize();
+
+            });
+
+        navbarObserver.observe(
+            navbarPlaceholder, { childList: true }
+        );
+
+    }
+
+
     renderSortButtons();
     wireSortButtons();
+
+    /*
+        getMargenVerticalPx() (más arriba) daba "bottom: 0"
+        durante el armado inicial de la escena porque el
+        GUI todavía no tenía botones (medía 0 de alto).
+        Ahora que ya existen, se fuerza un resize() para
+        que el encuadre vertical (modo columna) se
+        recalcule con el alto real del GUI — mismo
+        mecanismo que ya dispara un resize de verdad
+        (redimensionar la ventana), solo que activado a
+        mano acá una vez.
+    */
+    resize();
+
+    /*
+        Si "#gui" arranca oculto/colapsado por CSS hasta que
+        la fase "orden" lo activa (mismo patrón que el navbar,
+        que arranca vacío hasta que el fetch lo llena — ver
+        navbarObserver más arriba), "getMargenVerticalPx()"
+        mide 0 en el resize() forzado de arriba, aunque los
+        botones ya existan en el DOM. Un scroll normal (llegar
+        a "orden") no dispara un evento "resize" de por sí, así
+        que nada corregiría el encuadre sin este observer.
+
+        Mismo mecanismo que "navbarObserver" (arriba), pero con
+        ResizeObserver en vez de MutationObserver: "#gui" no
+        cambia de HIJOS al activarse (ya los tiene desde
+        renderSortButtons()), cambia de TAMAÑO (de colapsado a
+        real). Se desconecta apenas el tamaño deja de ser 0×0
+        (primer disparo real, "one-shot" como el navbar): de
+        ahí en más, cualquier cambio de tamaño legítimo llega
+        acompañado de un resize real de ventana o de un cruce
+        de orientación (ver manejarCruceDeOrientacion, más
+        abajo), que ya disparan un resize completo por su
+        cuenta.
+    */
+    const guiResizeObserver =
+        new ResizeObserver((entries) => {
+
+            const { width, height } =
+                entries[0].contentRect;
+
+            if (width === 0 && height === 0) return;
+
+            guiResizeObserver.disconnect();
+            resize();
+
+        });
+
+    guiResizeObserver.observe(gui);
 
 
     /*
@@ -1148,6 +1495,131 @@ async function initGaleria() {
         LOOP DE RENDER
         ==============================
     */
+
+    /*
+        INVERSIÓN DE CÁMARA EN VERTICAL — DESACTIVADA: el
+        arco vertical recorre de "anguloDerecha" (arriba)
+        hasta la altura NEUTRA calibrada
+        (config.camera.position.y, alcanzada en t=0.5), y de
+        ahí en más (0.5->1) la altura queda FIJA en ese piso
+        mientras la cámara gira sobre el círculo verde (ver
+        cameraPosFromMagnitud en galeria-escena.js): nunca
+        baja más allá de esa altura neutra, así que no hay
+        ningún tramo que necesite invertirse.
+
+        Se deja el helper (identidad, en vez de borrarlo de
+        los 5 call sites) por si en algún momento hiciera
+        falta un ajuste de dirección puntual sin tocar cada
+        uno por separado.
+    */
+    function ladoInvertido(lado) {
+
+        return lado;
+
+    }
+
+
+    /*
+        Resetea TODOS los controles propios de "fichas" —
+        se llama en cada uno de los 4 puntos de tick() donde
+        se sale de esa fase hacia otra (hero/proyecto/
+        revelado/orden), en un solo lugar para no tener que
+        mantener la lista sincronizada en los 4 puntos.
+
+        No incluye el reset de zoom/paneo del listener de
+        "resize" (ver ese bloque más abajo): ese es un caso
+        aparte, sin autorotar ni el resto — ver el comentario
+        junto a "A propósito no se llama acá a
+        autorotar.reset()".
+    */
+    function resetControlesFicha() {
+
+        carousel.reset();
+        interaccionFicha.reset();
+        zoom.reset();
+        paneo.reset();
+        mapa.reset();
+        panelDerechoSheet.reset();
+        seccionesPanelDerecho.reset();
+        autorotar.reset();
+        corte.reset();
+        corteControles.reset();
+        corteInterseccion.reset();
+
+    }
+
+
+    /*
+        "Mostrar intersección" arranca ACTIVADO por defecto
+        (a diferencia de "Mostrar plano de corte") — mismo
+        criterio que "Autorotado": un reset la vuelve a
+        prender en vez de apagarla. corte.reset() (ver
+        resetControlesFicha(), arriba) ya dejó
+        "activo=false" puertas adentro de corteInterseccion
+        (limpia cualquier curva vieja); acá se vuelve a
+        prender. No hace falta llamar actualizar() en este
+        punto porque corte.reset() tampoco dejó ningún cono
+        activo — las curvas recién se dibujan cuando el
+        visitante entra a "fichas" y hay un elemento en
+        foco.
+
+        rejilla3d.reset(), a diferencia de corteInterseccion/
+        planoCorte de acá arriba, NO fuerza "activo" a ningún
+        valor — ver "BOOLEANO GLOBAL" en la cabecera de
+        galeria-rejilla.js: si el visitante la dejó prendida,
+        sigue prendida (y "aria-checked" no se toca acá),
+        solo se limpia el enganche visual para no dejarla
+        colgada del cono que tenía foco en "fichas".
+
+        Se llama, igual que resetControlesFicha(), en los 4
+        puntos de tick() donde se sale de "fichas".
+    */
+    function resetCorteYPlanos() {
+
+        corteInterseccion.setActivo(true);
+
+        planoCorte.reset();
+
+        rejilla3d.reset();
+
+        if (botonMostrarInterseccion) {
+
+            botonMostrarInterseccion.setAttribute(
+                "aria-checked", "true"
+            );
+
+        }
+
+        if (botonMostrarPlanoCorte) {
+
+            botonMostrarPlanoCorte.setAttribute(
+                "aria-checked", "false"
+            );
+
+        }
+
+    }
+
+
+    /*
+        Limpia el panel de parámetros y el de fotografías —
+        mismo criterio de deduplicación que las dos de
+        arriba, llamada en los mismos 4 puntos (en "orden"
+        se llama en un punto ligeramente distinto respecto
+        de mapa.cargar()/gui.classList, pero el efecto final
+        de estas 3 líneas es el mismo así que no hace falta
+        más de un helper).
+    */
+    function limpiarPanelesParametrosYFotos() {
+
+        panelParametrosContainer.classList
+            .remove("visible");
+
+        paramPanel.limpiar();
+        fotosPanel.limpiar();
+
+    }
+
 
     function tick(now) {
 
@@ -1169,6 +1641,7 @@ async function initGaleria() {
         if (reorder.isAnimating()) {
 
             reorder.step(now);
+            marcarSombraDirty();
 
         }
 
@@ -1235,9 +1708,23 @@ async function initGaleria() {
                     scroll.
                 */
                 interaccionFicha.update(now);
-                carousel.update(1);
+                const resultFinal = carousel.update(1);
+                actualizarLucesPorCaja(resultFinal.focoWeights);
+                conoLuz.update(resultFinal.focoWeights, true, now);
+                marcarSombraDirty();
 
-                renderer.render(scene, camera);
+                actualizarPisoSegunGeometria();
+                actualizarCastShadow();
+                actualizarLucesAdicionalesSegunCamara();
+                actualizarSombrasDeContacto();
+                actualizarTemaSuave(now);
+
+                prepararRenderDeSombra();
+                camaraDebug.update(); // === CÁMARA DEBUG ===
+                renderer.render(
+                    scene,
+                    camaraDebug.getCamaraActiva(camera) // === CÁMARA DEBUG ===
+                );
 
             }
 
@@ -1276,7 +1763,7 @@ async function initGaleria() {
                 extremo izquierdo en "revelado" (ver esa
                 rama más abajo).
             */
-            setCameraLado(0);
+            setCameraLado(ladoInvertido(0));
 
             /*
                 progress = 0: deja al cono visible
@@ -1297,6 +1784,9 @@ async function initGaleria() {
             rotation.update(
                 { [heroConeId()]: 1 }, now
             );
+
+            actualizarLucesPorCaja({ [heroConeId()]: 1 });
+            conoLuz.update({ [heroConeId()]: 1 }, false, now);
 
             const {
                 heroFadeOpacity,
@@ -1323,40 +1813,11 @@ async function initGaleria() {
             /* Limpia el override inline que deja "fichas" (ver carouselPanel arriba). */
             carouselPanel.style.opacity = "";
 
-            carousel.reset();
-            interaccionFicha.reset();
-            zoom.reset();
-            paneo.reset();
-            mapa.reset();
-            panelDerechoSheet.reset();
-            seccionesPanelDerecho.reset();
-            autorotar.reset();
-            corte.reset();
-            corteControles.reset();
-            corteInterseccion.reset();
-            planoCorte.reset();
+            resetControlesFicha();
 
-            if (botonMostrarInterseccion) {
+            resetCorteYPlanos();
 
-                botonMostrarInterseccion.setAttribute(
-                    "aria-checked", "false"
-                );
-
-            }
-
-            if (botonMostrarPlanoCorte) {
-
-                botonMostrarPlanoCorte.setAttribute(
-                    "aria-checked", "false"
-                );
-
-            }
-
-            panelParametrosContainer.classList
-                .remove("visible");
-
-            paramPanel.limpiar();
-            fotosPanel.limpiar();
+            limpiarPanelesParametrosYFotos();
 
         } else if (phase === "proyecto") {
 
@@ -1366,7 +1827,7 @@ async function initGaleria() {
                 mantiene en el extremo derecho mientras
                 se lee el panel de texto.
             */
-            setCameraLado(0);
+            setCameraLado(ladoInvertido(0));
 
             /*
                 Misma razón que en "hero": todavía no
@@ -1390,6 +1851,9 @@ async function initGaleria() {
                 { [heroConeId()]: 1 }, now
             );
 
+            actualizarLucesPorCaja({ [heroConeId()]: 1 });
+            conoLuz.update({ [heroConeId()]: 1 }, false, now);
+
             const { panelOpacity } =
                 proyecto.update(t);
 
@@ -1408,40 +1872,11 @@ async function initGaleria() {
             /* Limpia el override inline que deja "fichas" (ver carouselPanel arriba). */
             carouselPanel.style.opacity = "";
 
-            carousel.reset();
-            interaccionFicha.reset();
-            zoom.reset();
-            paneo.reset();
-            mapa.reset();
-            panelDerechoSheet.reset();
-            seccionesPanelDerecho.reset();
-            autorotar.reset();
-            corte.reset();
-            corteControles.reset();
-            corteInterseccion.reset();
-            planoCorte.reset();
+            resetControlesFicha();
 
-            if (botonMostrarInterseccion) {
+            resetCorteYPlanos();
 
-                botonMostrarInterseccion.setAttribute(
-                    "aria-checked", "false"
-                );
-
-            }
-
-            if (botonMostrarPlanoCorte) {
-
-                botonMostrarPlanoCorte.setAttribute(
-                    "aria-checked", "false"
-                );
-
-            }
-
-            panelParametrosContainer.classList
-                .remove("visible");
-
-            paramPanel.limpiar();
-            fotosPanel.limpiar();
+            limpiarPanelesParametrosYFotos();
 
         } else if (phase === "revelado") {
 
@@ -1451,11 +1886,19 @@ async function initGaleria() {
                 propio de este tramo que ya recibe
                 reveal.update() abajo — corte limpio
                 respecto de "proyecto", igual que la
-                cascada): del extremo derecho (0) al
-                izquierdo (1), en sincronía con que suben
-                los elementos.
+                cascada): del extremo derecho (0) hasta
+                la vista de FRENTE (0.5, "ladoActual"=0.5
+                — group shot sin escorzo, ver
+                cameraPosFromMagnitud en galeria-escena.js),
+                en sincronía con que suben los elementos.
+
+                El tramo se detiene en la mitad del arco: el
+                resto (0.5 -> 1, el giro que termina alineado
+                con el ancla) ocurre en la fase "fichas", EN
+                PARALELO con el doblez línea->círculo, no acá
+                (ver esa fase, más abajo).
             */
-            setCameraLado(t);
+            setCameraLado(ladoInvertido(0.5 * t));
 
             /*
                 Recién acá arranca de verdad la
@@ -1467,10 +1910,13 @@ async function initGaleria() {
                 desacelera solo, sin pedirlo, ni bien
                 arranca esta fase.
             */
-            const { rotationWeights } =
+            const { rotationWeights, focoWeights } =
                 reveal.update(t);
 
             rotation.update(rotationWeights, now);
+            actualizarLucesPorCaja(focoWeights);
+            conoLuz.update(focoWeights, false, now);
+            marcarSombraDirty();
 
             fijarOpacidadPanel(
                 proyectoPanel, proyectoContenedor, 0
@@ -1488,40 +1934,11 @@ async function initGaleria() {
             /* Limpia el override inline que deja "fichas" (ver carouselPanel arriba). */
             carouselPanel.style.opacity = "";
 
-            carousel.reset();
-            interaccionFicha.reset();
-            zoom.reset();
-            paneo.reset();
-            mapa.reset();
-            panelDerechoSheet.reset();
-            seccionesPanelDerecho.reset();
-            autorotar.reset();
-            corte.reset();
-            corteControles.reset();
-            corteInterseccion.reset();
-            planoCorte.reset();
+            resetControlesFicha();
 
-            if (botonMostrarInterseccion) {
+            resetCorteYPlanos();
 
-                botonMostrarInterseccion.setAttribute(
-                    "aria-checked", "false"
-                );
-
-            }
-
-            if (botonMostrarPlanoCorte) {
-
-                botonMostrarPlanoCorte.setAttribute(
-                    "aria-checked", "false"
-                );
-
-            }
-
-            panelParametrosContainer.classList
-                .remove("visible");
-
-            paramPanel.limpiar();
-            fotosPanel.limpiar();
+            limpiarPanelesParametrosYFotos();
 
             /*
                 Arranca acá (una fase antes de que el
@@ -1540,13 +1957,16 @@ async function initGaleria() {
         } else if (phase === "orden") {
 
             /*
-                El arco de cámara ya terminó su viaje en
-                "revelado": queda fijo en el extremo
-                izquierdo (t=1) para el resto del
-                recorrido (esta fase, "fichas" y
-                "final").
+                El arco de cámara ya llegó a la vista de
+                FRENTE en "revelado" (ladoActual=0.5, sin
+                escorzo, todas las cajas visibles sin
+                oclusión — ver esa fase): queda fijo ahí
+                para todo el ordenamiento. El resto del
+                arco (0.5 -> 1) recién avanza al entrar a
+                "fichas", en paralelo con el doblez (ver
+                esa fase, más abajo).
             */
-            setCameraLado(1);
+            setCameraLado(ladoInvertido(0.5));
 
             /*
                 Pausa: todos quietos, salvo el que ya
@@ -1577,34 +1997,9 @@ async function initGaleria() {
             /* Limpia el override inline que deja "fichas" (ver carouselPanel arriba). */
             carouselPanel.style.opacity = "";
 
-            carousel.reset();
-            interaccionFicha.reset();
-            zoom.reset();
-            paneo.reset();
-            mapa.reset();
-            panelDerechoSheet.reset();
-            seccionesPanelDerecho.reset();
-            autorotar.reset();
-            corte.reset();
-            corteControles.reset();
-            corteInterseccion.reset();
-            planoCorte.reset();
+            resetControlesFicha();
 
-            if (botonMostrarInterseccion) {
-
-                botonMostrarInterseccion.setAttribute(
-                    "aria-checked", "false"
-                );
-
-            }
-
-            if (botonMostrarPlanoCorte) {
-
-                botonMostrarPlanoCorte.setAttribute(
-                    "aria-checked", "false"
-                );
-
-            }
+            resetCorteYPlanos();
 
             /*
                 mapa.cargar() ya arrancó en "revelado"; se
@@ -1616,11 +2011,7 @@ async function initGaleria() {
 
             gui.classList.add("visible");
 
-            panelParametrosContainer.classList
-                .remove("visible");
-
-            paramPanel.limpiar();
-            fotosPanel.limpiar();
+            limpiarPanelesParametrosYFotos();
 
 
             /*
@@ -1630,11 +2021,77 @@ async function initGaleria() {
                 lugar (según el "order" vigente).
             */
 
+            /*
+                FIX (cono de luz saltando "de golpe" al
+                terminar un reordenamiento — reportado
+                contra galeria-cono-luz.js): ANTES,
+                "conoLuz.update()"/"actualizarLucesPorCaja()"
+                vivían LOS DOS adentro de este mismo
+                "if (!reorder.isAnimating())", así que
+                mientras una animación de animateTo() estaba
+                en curso NUNCA se llamaban — el keyLight y el
+                cono visible quedaban completamente
+                CONGELADOS en la posición de ANTES del
+                reordenamiento, mientras los propios conos
+                (elementos) sí se movían de a poco cada frame
+                vía reorder.step() (ver más arriba en tick()).
+                Recién en el primer frame en que
+                reorder.isAnimating() pasa a false, este "if"
+                se vuelve a cumplir y conoLuz.update() corre
+                con el layout YA terminado — ahí es el salto
+                "de golpe" reportado. Interpolar
+                "positions" en galeria-reordenar.js (fix
+                previo) no alcanzaba por sí solo: de nada
+                sirve un getPositions() que interpola en vivo
+                si quien lo consume no se llega a llamar
+                mientras dura la interpolación.
+
+                La separación real que hace falta es otra:
+                "reveal.update(1)" SÍ debe seguir gateada
+                detrás de "!isAnimating()" —llamarla durante
+                el reordenamiento pelearía por
+                cone.position cada frame contra
+                reorder.step(), que ya está moviendo los
+                conos con su propio arco anti-colisión (dos
+                dueños del mismo cone.position en el mismo
+                frame, orden de ejecución indefinido)—, pero
+                "conoLuz.update()"/"actualizarLucesPorCaja()"
+                NO tocan cone.position en absoluto: solo LEEN
+                getPositions()/getOrder()/getHeroSlot() (ya
+                interpolados en vivo, ver galeria-reordenar.js)
+                para orientar keyLight/lucesPorCaja. No hay
+                ningún conflicto en llamarlas TAMBIÉN mientras
+                reorder.isAnimating() es true.
+
+                "focoWeightsOrdenActual" (declarada arriba,
+                junto a "reveal") cachea el último mapa que
+                reveal.update(1) calculó, para seguir
+                alimentando a las dos mientras dura la
+                animación y reveal.update() no se está
+                llamando — no tiene sentido recalcular el foco
+                a mitad de un reordenamiento (la cámara no se
+                mueve, solo se redistribuyen elementos), así
+                que sostener el último valor conocido hasta
+                que reveal.update() vuelva a correr al
+                terminar es exactamente lo que hacía la
+                maqueta (que no tenía este problema porque no
+                reordenaba en vivo).
+            */
+
             if (!reorder.isAnimating()) {
 
-                reveal.update(1);
+                const { focoWeights } = reveal.update(1);
+                focoWeightsOrdenActual = focoWeights;
+                actualizarLucesPorCaja(focoWeights);
+
+            } else {
+
+                actualizarLucesPorCaja(focoWeightsOrdenActual);
 
             }
+
+            conoLuz.update(focoWeightsOrdenActual, false, now);
+            marcarSombraDirty();
 
         } else {
 
@@ -1643,12 +2100,10 @@ async function initGaleria() {
             */
 
             /*
-                Mismo lado que ya dejó fijo "orden"
-                (t=1): "fichas" no mueve la cámara, solo
-                el foco entre elementos (ver
-                galeria-carrusel.js).
+                Acá no se fija la cámara — ver más abajo,
+                después de carousel.update(), que es quien la
+                mueve en lockstep con el doblez.
             */
-            setCameraLado(1);
 
             fijarOpacidadPanel(
                 proyectoPanel, proyectoContenedor, 0
@@ -1684,6 +2139,34 @@ async function initGaleria() {
 
             const result =
                 carousel.update(t);
+
+            actualizarLucesPorCaja(result.focoWeights);
+            conoLuz.update(result.focoWeights, true, now);
+            marcarSombraDirty();
+
+            /*
+                El resto del arco de cámara (0.5 -> 1, ver
+                "ladoActual" en galeria-escena.js) no tiene un
+                tramo de scroll propio: avanza EN PARALELO con
+                el doblez línea->círculo, usando el mismo
+                "blend" (0..1, theta/2π) que ya gobierna esa
+                geometría. Se le pasa primero a la escena la
+                geometría fresca del círculo cerrado/ancla que
+                "calcularArcoCamara" necesita para el tramo
+                extra (ver actualizarSetupCarrusel en
+                galeria-escena.js) — recién calculada este
+                mismo frame por carousel.update(), así que
+                nunca queda un frame atrás.
+            */
+            actualizarSetupCarrusel({
+                circuloCerrado: result.circuloCerrado,
+                anclaPrincipalMundo: result.anclaPrincipalMundo,
+                anclaMundoX: result.anclaMundoX
+            });
+
+            setCameraLado(
+                ladoInvertido(0.5 + 0.5 * result.blend)
+            );
 
             /*
                 Opacidad atada a "panelOpacity" (mismo
@@ -1736,32 +2219,22 @@ async function initGaleria() {
             );
 
             /*
-                Mismas mallas que usa el hit-test del drag
-                manual, más planoCorte.obtenerMallasHitTest():
-                el wheel-zoom testea contra el mismo objeto
-                en foco, planos de corte incluidos.
+                Mismas mallas para el hit-test de wheel-zoom y
+                paneo: el objeto en foco + los planos de corte
+                visibles (planoCorte.obtenerMallasHitTest() al
+                vuelo). Se arma una sola vez acá y se reusa
+                para los dos, en vez de repetir el mismo
+                .concat() por módulo.
             */
-            zoom.setObjetoActivo(
+            const mallasFoco =
                 cones[result.elementoId]
                     .userData.mallas
                     .concat(
                         planoCorte.obtenerMallasHitTest()
-                    )
-            );
+                    );
 
-            /*
-                Mismas mallas exactas que acaba de recibir
-                "zoom" (misma línea de arriba) — el paneo
-                testea contra el mismo objeto en foco, ver
-                galeria-paneo.js.
-            */
-            paneo.setObjetoActivo(
-                cones[result.elementoId]
-                    .userData.mallas
-                    .concat(
-                        planoCorte.obtenerMallasHitTest()
-                    )
-            );
+            zoom.setObjetoActivo(mallasFoco);
+            paneo.setObjetoActivo(mallasFoco);
 
             /*
                 Emphasis de posición/escala/opacidad de
@@ -1818,16 +2291,53 @@ async function initGaleria() {
             zoom.aplicarOffset() lo aplica si todavía no
             terminó de resetearse. Sin offset acumulado
             ambas son no-ops baratos (guards internos en
-            galeria-zoom.js).
+            galeria-controls.js).
         */
         zoom.update(now);
         zoom.aplicarOffset();
 
-        /* Mismo par, mismo motivo, para el paneo (ver galeria-paneo.js). */
+        /* Mismo par, mismo motivo, para el paneo (ver galeria-controls.js). */
         paneo.update(now);
         paneo.aplicarOffset();
 
-        renderer.render(scene, camera);
+        /*
+            Mismo criterio: rejilla3d.update() tiene que
+            correr siempre, no solo dentro de "fichas", para
+            que un fundido en curso (entrada o salida, ver
+            galeria-rejilla.js) termine de resolverse aunque
+            el visitante cambie de fase a mitad de camino —
+            reset() limpia todo de forma instantánea al salir
+            de "fichas", así que en la práctica esto rara vez
+            tiene algo que animar fuera de esa fase, pero
+            sigue siendo un no-op barato (dos colecciones
+            casi siempre vacías) si no hay nada puesto.
+        */
+        rejilla3d.update(now);
+
+        /*
+            Fase 3 (habitación): una vez por frame, sin
+            importar la fase (mismo criterio que la maqueta,
+            que la llama incondicionalmente en animate()) —
+            en horizontal es un no-op (early return a y=0
+            dentro de la función), en vertical sigue al
+            elemento más bajo de la columna. Tiene que correr
+            DESPUÉS de que el resto del tick() ya haya
+            posicionado los conos de este frame (reveal/
+            reorder/carousel, más arriba) — lee sus posiciones
+            de mundo tal cual quedaron.
+        */
+        actualizarPisoSegunGeometria();
+        actualizarCastShadow();
+        actualizarLucesAdicionalesSegunCamara();
+        actualizarSombrasDeContacto();
+        actualizarTemaSuave(now);
+
+        prepararRenderDeSombra();
+        camaraDebug.update(); // === CÁMARA DEBUG ===
+        renderer.render(
+            scene,
+            camaraDebug.getCamaraActiva(camera) // === CÁMARA DEBUG ===
+        );
 
     }
 
@@ -1841,9 +2351,34 @@ async function initGaleria() {
         ==============================
     */
 
-    window.addEventListener("resize", () => {
+    /*
+        Factorizada aparte para poder reusarla también
+        después de un cruce real de orientación (ver
+        manejarCruceDeOrientacion, más abajo), que necesita
+        la MISMA cadena de reencuadre/remedición, no una
+        aparte.
+    */
+    function refrescarTrasResize() {
 
         resize();
+
+        // === CÁMARA DEBUG === (mismo aspect que usa
+        // calcularLayoutDeFila en galeria-escena.js: el del
+        // contenedor, no el de window, por si algún día
+        // sceneContainer no ocupa el viewport completo).
+        camaraDebug.resize(
+            sceneContainer.clientWidth /
+                sceneContainer.clientHeight
+        );
+
+        /*
+            LineMaterial (los ejes de "Mostrar rejilla", ver
+            galeria-rejilla.js) calcula el grosor en píxeles
+            a partir de esta resolución — sin actualizarla
+            acá, quedarían con el grosor calculado para el
+            viewport viejo.
+        */
+        rejilla3d.actualizarResolucion();
 
         /*
             resize() reescribe camera.position sin el
@@ -1854,7 +2389,7 @@ async function initGaleria() {
         zoom.reset();
         paneo.reset();
 
-        ajustarAltoScroll();
+        ajustarAltoScroll(phases, spacer);
 
         /*
             Remide dimensionesFicha para el viewport actual
@@ -1874,7 +2409,75 @@ async function initGaleria() {
         */
         panelDerechoSheet.actualizarPosicion();
 
-    });
+    }
+
+    window.addEventListener("resize", refrescarTrasResize);
+
+
+    /*
+        Recalcula cambios de orientación de layout ante
+        resize/pantalla completa/giro de celular, SIN
+        recargar la página.
+
+        Separado del listener de "resize" de arriba (que
+        sigue corriendo en CADA evento, sin debounce —
+        comportamiento de siempre, solo reencuadra la cámara
+        dentro de la MISMA orientación) porque esto hace algo
+        bastante más caro: recalcular todo el layout de la
+        fila (mesa, frustum de sombra — ver
+        manejarPosibleCambioDeOrientacion en
+        galeria-escena.js) y recrear reorder/reveal/carousel
+        desde cero. Se dispara con DEBOUNCE (200ms desde el
+        último evento) para no repetir ese trabajo caro en
+        cada tick de un arrastre de ventana o durante la
+        animación de una rotación de celular.
+
+        Escucha "resize" (redimensionar ventana de
+        escritorio), "orientationchange" (girar el celular —
+        en algunos navegadores el "resize" que lo acompaña
+        llega con timing distinto, o con dimensiones todavía
+        viejas, así que hace falta escuchar los dos por las
+        dudas) y "fullscreenchange" (entrar/salir de pantalla
+        completa) — los tres pueden cruzar el umbral
+        horizontal↔vertical sin que la página se recargue.
+    */
+    let debounceOrientacion = null;
+
+    function manejarCruceDeOrientacion() {
+
+        clearTimeout(debounceOrientacion);
+
+        debounceOrientacion =
+            setTimeout(() => {
+
+                const resultado =
+                    manejarPosibleCambioDeOrientacion();
+
+                if (!resultado.cambio) return;
+
+                ejePrincipal = resultado.ejePrincipal;
+
+                recrearControllersPorOrientacion();
+
+                // Misma cadena de reencuadre/remedición que
+                // ya corre en cada "resize" — el layout
+                // recién cambió de verdad, así que hace
+                // falta igual (o más) que en un resize común.
+                refrescarTrasResize();
+
+            }, 200);
+
+    }
+
+    window.addEventListener(
+        "orientationchange", manejarCruceDeOrientacion
+    );
+    window.addEventListener(
+        "resize", manejarCruceDeOrientacion
+    );
+    document.addEventListener(
+        "fullscreenchange", manejarCruceDeOrientacion
+    );
 
 
     /*
@@ -1894,7 +2497,7 @@ async function initGaleria() {
                 { panelNombre, panelSubtitulo, panelFicha },
                 {
                     anchoMaximoCampo:
-                        calcularAnchoMaximoCampo()
+                        calcularAnchoMaximoCampo(panelFicha)
                 }
             );
 

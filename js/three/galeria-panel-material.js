@@ -11,7 +11,7 @@
 
    "ninguno": no es un material propio (no hay
    "MeshNinguno" en Three.js) — es la malla sólida
-   OCULTA (mallaFrontal/mallaTrasera.visible = false) +
+   OCULTA (malla.visible = false) +
    el overlay de malla, si "Mostrar malla" está prendido
    (si no, no se ve nada) — mismo criterio que
    visor-geometrias.html. Con esto, más el switch que ya
@@ -90,7 +90,7 @@ import {
 
 
 /*
-    Opacidad BASE del overlay de malla según haya o no
+    Opacidad del overlay de malla según haya o no
     superficie sólida debajo — mismos dos valores/mismo
     criterio que visor-geometrias.html: sutil como
     referencia ENCIMA de un material sólido/normales, pero
@@ -99,15 +99,13 @@ import {
     y nada debajo, la pieza se vería casi transparente en
     vez de funcionar como un alambre real.
 
-    "BASE": la opacidad final que termina en pantalla no es
-    ninguno de estos dos números tal cual — es éste,
-    multiplicado cada frame por el fundido por distancia al
-    foco (ver el proxy "group.material.opacity" en
-    galeria-escena.js), igual que ya le pasa a la superficie
-    sólida. Estos valores viven en overlay.userData.
-    opacidadBase (ver actualizarAristasVisualDeGrupo), no
-    escritos nunca directo en overlay.material.opacity salvo
-    para evitar un parpadeo de un frame.
+    Ya NO es una "base" a multiplicar por nada: existía un
+    proxy en galeria-escena.js que la reescalaba cada frame
+    por el fundido de opacidad por distancia al foco, pero
+    esa fase ya no anima opacidad (ver galeria-carrusel.js/
+    galeria-revelado.js), así que el proxy se sacó y estos
+    dos valores son directamente la opacidad final del
+    overlay — ver actualizarAristasVisualDeGrupo.
 */
 const OPACIDAD_ARISTAS_OVERLAY = 0.22;
 const OPACIDAD_ARISTAS_SIN_SUPERFICIE = 0.9;
@@ -426,7 +424,13 @@ export function createMaterialPanel(container, cones) {
         de material elegido:
 
         - "solido": color de tema, uniforme, distinto
-          en frontal/trasera.
+          en frontal/trasera — con una sola malla
+          DoubleSide esto ya no lo decide "qué material se
+          le puso a qué mesh" (ver construirMaterialSolido
+          más abajo): ambos colores se calculan siempre
+          juntos y es el propio shader, en tiempo de
+          render, el que elige uno u otro según
+          gl_FrontFacing.
         - "estado"/"normales"/"ninguno": el color por
           estado de conservación que ya trae el grupo
           (colorEstado), igual en ambas caras — mismo
@@ -438,17 +442,90 @@ export function createMaterialPanel(container, cones) {
           aparte sólo para evitar ese cálculo de más,
           barato.
     */
-    function colorParaTipo(tipo, colorEstado, side) {
+    function colorParaTipo(tipo, colorEstado) {
 
-        if (tipo === "solido") {
-
-            return side === THREE.BackSide
-                ? colorRellenoTemaTrasera()
-                : colorRellenoTemaFrontal();
-
-        }
+        if (tipo === "solido") return null; // ver construirMaterialSolido
 
         return colorEstado;
+
+    }
+
+
+    /*
+        Material para el tipo "sólido": misma superficie
+        MeshPhysicalMaterial de siempre (roughness/
+        metalness/clearcoat), pero con un parche de shader
+        (mismo mecanismo que floorMat en
+        galeria-habitacion.js: onBeforeCompile sobre chunks
+        de Three.js) que pisa el color base según
+        gl_FrontFacing — así una ÚNICA malla DoubleSide
+        sigue mostrando un color distinto en cada cara,
+        que es lo único que de verdad necesitaba dos
+        mallas antes (ver el comentario grande en
+        armarGroup3D, galeria-escena.js). El resto del
+        pipeline PBR (roughness map, clearcoat, luces,
+        sombras) sigue intacto: solo se pisa
+        "diffuseColor.rgb", nada más.
+
+        "color" del constructor queda en blanco (1,1,1):
+        es solo el valor de arranque antes de compilar el
+        shader la primera vez (un frame, a lo sumo, y sin
+        contraste visible porque el override corre en el
+        fragment shader de cada pixel) — el color real
+        SIEMPRE sale de los uniforms.
+    */
+    function construirMaterialSolido(matCfg) {
+
+        const colorFrontal = colorRellenoTemaFrontal();
+        const colorTrasera = colorRellenoTemaTrasera();
+
+        const material =
+            new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                roughness: matCfg.roughness,
+                metalness: matCfg.metalness,
+                clearcoat: matCfg.clearcoat,
+                clearcoatRoughness:
+                    matCfg.clearcoatRoughness,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 1
+            });
+
+        material.onBeforeCompile = (shader) => {
+
+            shader.uniforms.uColorFrontal =
+                { value: colorFrontal };
+
+            shader.uniforms.uColorTrasera =
+                { value: colorTrasera };
+
+            shader.fragmentShader =
+                shader.fragmentShader
+                    .replace(
+                        "#include <common>",
+                        `#include <common>
+                        uniform vec3 uColorFrontal;
+                        uniform vec3 uColorTrasera;`
+                    )
+                    .replace(
+                        "#include <color_fragment>",
+                        `#include <color_fragment>
+                        // gl_FrontFacing: true en la cara
+                        // frontal según el winding de la
+                        // geometría — mismo criterio de
+                        // "cara" que antes distinguía
+                        // FrontSide de BackSide entre las
+                        // dos mallas.
+                        diffuseColor.rgb =
+                            gl_FrontFacing
+                                ? uColorFrontal
+                                : uColorTrasera;`
+                    );
+
+        };
+
+        return material;
 
     }
 
@@ -461,33 +538,39 @@ export function createMaterialPanel(container, cones) {
         galeria-escena.js ya guardó en
         group.userData (colorEstado = color por estado
         de conservación; se usa o no según el tipo,
-        ver colorParaTipo).
+        ver colorParaTipo). Siempre DoubleSide: ya no hay
+        una malla frontal y otra trasera con "side"
+        distinto (ver armarGroup3D, galeria-escena.js).
     */
-    function construirMaterial(tipo, colorEstado, matCfg, side) {
+    function construirMaterial(tipo, colorEstado, matCfg) {
+
+        if (tipo === "solido") {
+
+            return construirMaterialSolido(matCfg);
+
+        }
 
         const color =
-            colorParaTipo(tipo, colorEstado, side);
+            colorParaTipo(tipo, colorEstado);
 
         switch (tipo) {
 
             case "normales":
 
                 return new THREE.MeshNormalMaterial({
-                    side,
+                    side: THREE.DoubleSide,
                     transparent: true,
                     opacity: 1
                 });
 
             case "estado":
-            case "solido":
             case "ninguno":
                 // "ninguno" no es un material propio: la
                 // malla queda OCULTA (ver
                 // actualizarMaterialDeGrupo), así que el
                 // material en sí no importa — cae al mismo
-                // que "estado"/"solido" en vez de un branch
-                // aparte, mismo criterio que
-                // visor-geometrias.html.
+                // que "estado" en vez de un branch aparte,
+                // mismo criterio que visor-geometrias.html.
             default:
 
                 return new THREE.MeshPhysicalMaterial({
@@ -497,7 +580,7 @@ export function createMaterialPanel(container, cones) {
                     clearcoat: matCfg.clearcoat,
                     clearcoatRoughness:
                         matCfg.clearcoatRoughness,
-                    side,
+                    side: THREE.DoubleSide,
                     transparent: true,
                     opacity: 1
                 });
@@ -508,21 +591,21 @@ export function createMaterialPanel(container, cones) {
 
 
     /*
-        Reemplaza el material de las dos mallas de UN
-        grupo, conservando su opacidad actual (para no
-        pegar un salto visual si el elemento está a
-        mitad de un fundido de alguna fase cuando se
-        cambia el tipo de material).
+        Reemplaza el material de la malla de UN grupo,
+        conservando su opacidad actual (para no pegar un
+        salto visual si el elemento está a mitad de un
+        fundido de alguna fase cuando se cambia el tipo de
+        material).
     */
     function actualizarMaterialDeGrupo(group) {
 
         const { color, matCfg } = group.userData;
 
-        const [mallaFrontal, mallaTrasera] =
+        const [malla] =
             group.userData.mallas;
 
         const opacidadActual =
-            mallaFrontal.material.opacity;
+            malla.material.opacity;
 
         /*
             clippingPlanes también hay que preservarlos,
@@ -530,58 +613,41 @@ export function createMaterialPanel(container, cones) {
             pero acá el costo de no hacerlo es más
             visible: galeria-corte.js asigna el corte
             activo directo sobre la instancia de material
-            ("mallaFrontal.material.clippingPlanes =
-            planosArray", ver activar() en ese archivo),
-            UNA sola vez al enfocar el elemento. Si acá
-            se reemplaza el material sin copiar ese array,
-            el material nuevo nace sin ningún corte
-            asignado — el elemento en foco dejaba de
-            cortarse en cuanto se cambiaba el tipo de
-            material, hasta el próximo cambio de foco
-            (el único otro momento en que algo reasigna
-            clippingPlanes).
+            ("malla.material.clippingPlanes = planosArray",
+            ver activar() en ese archivo), UNA sola vez al
+            enfocar el elemento. Si acá se reemplaza el
+            material sin copiar ese array, el material
+            nuevo nace sin ningún corte asignado — el
+            elemento en foco dejaba de cortarse en cuanto
+            se cambiaba el tipo de material, hasta el
+            próximo cambio de foco (el único otro momento
+            en que algo reasigna clippingPlanes).
 
-            Se copian los MISMOS arrays (no un clone) a
-            propósito: son los mismos objetos THREE.Plane
-            que sincronizarMundo() muta in-place cada
-            frame en galeria-corte.js — si este grupo es
-            el que "Corte" tiene activo ahora mismo, el
-            corte sigue actualizándose solo cuadro a
-            cuadro sin que este panel necesite saber nada
-            de "Corte" (mismo desacople que ya vale para
-            el resto del archivo).
+            Se copia el MISMO array (no un clone) a
+            propósito: es el mismo objeto que
+            sincronizarMundo() muta in-place cada frame en
+            galeria-corte.js — si este grupo es el que
+            "Corte" tiene activo ahora mismo, el corte
+            sigue actualizándose solo cuadro a cuadro sin
+            que este panel necesite saber nada de "Corte"
+            (mismo desacople que ya vale para el resto del
+            archivo).
         */
-        const clippingFrontal =
-            mallaFrontal.material.clippingPlanes;
-        const clippingTrasera =
-            mallaTrasera.material.clippingPlanes;
+        const clipping =
+            malla.material.clippingPlanes;
 
-        mallaFrontal.material.dispose();
-        mallaTrasera.material.dispose();
+        malla.material.dispose();
 
-        mallaFrontal.material =
+        malla.material =
             construirMaterial(
-                estado.tipo, color, matCfg,
-                THREE.FrontSide
+                estado.tipo, color, matCfg
             );
 
-        mallaTrasera.material =
-            construirMaterial(
-                estado.tipo, color, matCfg,
-                THREE.BackSide
-            );
-
-        mallaFrontal.material.opacity =
+        malla.material.opacity =
             opacidadActual;
 
-        mallaTrasera.material.opacity =
-            opacidadActual;
-
-        mallaFrontal.material.clippingPlanes =
-            clippingFrontal;
-
-        mallaTrasera.material.clippingPlanes =
-            clippingTrasera;
+        malla.material.clippingPlanes =
+            clipping;
 
         /*
             "ninguno": la malla sólida queda OCULTA (no es
@@ -591,8 +657,7 @@ export function createMaterialPanel(container, cones) {
             ver "ninguno" en la cabecera del archivo. Con
             cualquier otro tipo, visible de nuevo.
         */
-        mallaFrontal.visible = estado.tipo !== "ninguno";
-        mallaTrasera.visible = estado.tipo !== "ninguno";
+        malla.visible = estado.tipo !== "ninguno";
 
         /*
             La opacidad/profundidad del overlay de malla
@@ -670,7 +735,7 @@ export function createMaterialPanel(container, cones) {
     */
     function crearOverlayDeGrupo(group) {
 
-        const [mallaFrontal] =
+        const [malla] =
             group.userData.mallas;
 
         const { pivote } = group.userData;
@@ -681,7 +746,7 @@ export function createMaterialPanel(container, cones) {
         const overlay =
             new THREE.LineSegments(
                 construirGeometriaAristas(
-                    mallaFrontal.geometry,
+                    malla.geometry,
                     infoCuadricula,
                     estado.densidad
                 ),
@@ -712,7 +777,7 @@ export function createMaterialPanel(container, cones) {
                 })
             );
 
-        overlay.position.copy(mallaFrontal.position);
+        overlay.position.copy(malla.position);
 
         pivote.add(overlay);
 
@@ -737,11 +802,11 @@ export function createMaterialPanel(container, cones) {
     */
     function construirInfoCuadriculaDeGrupo(group) {
 
-        const [mallaFrontal] =
+        const [malla] =
             group.userData.mallas;
 
         const infoCuadricula =
-            extraerCuadriculaUV(mallaFrontal.geometry);
+            extraerCuadriculaUV(malla.geometry);
 
         group.userData.infoCuadricula = infoCuadricula;
 
@@ -761,7 +826,7 @@ export function createMaterialPanel(container, cones) {
         prendió "Mostrar malla" para él).
 
         TAMBIÉN resincroniza "overlay.position" contra
-        "mallaFrontal.position" (ver crearOverlayDeGrupo,
+        "malla.position" (ver crearOverlayDeGrupo,
         "LA SOLUCIÓN"): un no-op barato si nada cambió
         (mismo caso del slider de densidad, donde
         posicionarPivote() no corrió), pero necesario
@@ -778,16 +843,16 @@ export function createMaterialPanel(container, cones) {
 
         if (!overlay) return;
 
-        const [mallaFrontal] =
+        const [malla] =
             group.userData.mallas;
 
-        overlay.position.copy(mallaFrontal.position);
+        overlay.position.copy(malla.position);
 
         const geometriaVieja = overlay.geometry;
 
         overlay.geometry =
             construirGeometriaAristas(
-                mallaFrontal.geometry,
+                malla.geometry,
                 group.userData.infoCuadricula,
                 estado.densidad
             );
@@ -798,26 +863,20 @@ export function createMaterialPanel(container, cones) {
 
 
     /*
-        Aplica visibilidad/profundidad/opacidad BASE del
-        overlay de UN grupo según el estado GLOBAL vigente
-        (tipo + mostrarMalla) — mismo criterio que
-        actualizarAristasVisual() en visor-geometrias.html,
-        con un agregado propio: NO escribe la opacidad
-        final directamente. Guarda la opacidad BASE en
-        "overlay.userData.opacidadBase" (0.22 normal, 0.9
-        con "ninguno") y es el proxy "group.material.opacity"
-        de galeria-escena.js quien la multiplica, CADA
-        FRAME, por el fundido por distancia al foco que ya
-        aplica a la superficie sólida — pedido explícito: el
-        overlay tiene que atenuarse igual que la superficie
-        con la distancia, no quedar siempre a opacidad fija.
+        Aplica visibilidad/profundidad/opacidad del overlay
+        de UN grupo según el estado GLOBAL vigente (tipo +
+        mostrarMalla) — mismo criterio que
+        actualizarAristasVisual() en visor-geometrias.html.
 
-        La escritura directa de acá (mallaFrontal.material.
-        opacity, el fundido YA vigente en este instante) es
-        sólo para evitar un parpadeo de un frame con la
-        opacidad vieja mientras se espera al próximo tick
-        del proxy — el valor de fondo sigue siendo
-        "opacidadBase", no éste.
+        Antes multiplicaba esta opacidad por
+        "malla.material.opacity" cada vez que se llamaba,
+        para que un proxy en galeria-escena.js pudiera
+        reescalarla cuadro a cuadro con el fundido por
+        distancia al foco. Esa fase ya no anima opacidad (ver
+        galeria-carrusel.js/galeria-revelado.js) y el proxy se
+        sacó, así que "base" es directamente la opacidad
+        final — no hace falta leer la malla ni guardar nada
+        en userData para que otro código la reescale después.
 
         No-op si el grupo no tiene overlay todavía.
     */
@@ -827,18 +886,12 @@ export function createMaterialPanel(container, cones) {
 
         if (!overlay) return;
 
-        const [mallaFrontal] =
-            group.userData.mallas;
-
         const base =
             estado.tipo === "ninguno"
                 ? OPACIDAD_ARISTAS_SIN_SUPERFICIE
                 : OPACIDAD_ARISTAS_OVERLAY;
 
-        overlay.userData.opacidadBase = base;
-
-        overlay.material.opacity =
-            base * mallaFrontal.material.opacity;
+        overlay.material.opacity = base;
 
         overlay.visible = estado.mostrarMalla;
 
@@ -992,17 +1045,13 @@ export function createMaterialPanel(container, cones) {
         mismo o la escena arrancaría mostrando colores de
         estado aunque el select diga "Normales".
 
-        Mismo motivo aplica al overlay de malla:
-        "estado.mostrarMalla" ya se lee del "aria-checked"
-        del switch más arriba, pero eso solo actualiza la
-        variable en JS — el overlay en sí (uno por cono)
-        recién se crea/actualiza dentro de
-        "actualizarMallaDeTodos", que hasta ahora SOLO se
-        llamaba desde el listener de click del switch. Sin
-        este llamado acá, un HTML que arranca con
-        aria-checked="true" dejaba el switch marcado pero
-        ningún overlay puesto, hasta que el visitante lo
-        apagaba y prendía a mano.
+        Mismo motivo aplica al overlay de malla: se crea/
+        actualiza dentro de "actualizarMallaDeTodos" (uno
+        por cono), así que además de llamarla desde el
+        click del switch hay que llamarla una vez acá — si
+        no, "estado.mostrarMalla" queda en true (leído del
+        "aria-checked" del HTML, ver más arriba) pero sin
+        ningún overlay real puesto en la escena.
     */
     actualizarTodosLosMateriales();
     actualizarMallaDeTodos(estado.mostrarMalla);

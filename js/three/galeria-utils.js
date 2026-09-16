@@ -91,13 +91,24 @@ export function liftEnvelope(t, ramp = .28) {
     cada uno, mutándolos in-place.
 */
 
-export function assignLayers(movements) {
+export function assignLayers(movements, eje = "x") {
 
+    /*
+        GENERALIZACIÓN (ver notas-encuadre-3d.md): antes
+        esto siempre miraba superposición en X — correcto
+        mientras la fila creciera en X. "eje" deja elegir
+        sobre qué coordenada de "from"/"to" se mide esa
+        superposición (el eje PRINCIPAL de layout vigente,
+        ver galeria-escena.js) — Z sigue sin tocarse: sigue
+        siendo el eje sobre el que este mismo assignLayers
+        reparte los niveles del arco anti-colisión (layer/
+        layerMagnitude, más abajo), en los dos modos.
+    */
     const items =
         movements.map(m => ({
             m,
-            start: Math.min(m.from.x, m.to.x),
-            end: Math.max(m.from.x, m.to.x)
+            start: Math.min(m.from[eje], m.to[eje]),
+            end: Math.max(m.from[eje], m.to[eje])
         }));
 
 
@@ -158,7 +169,7 @@ export function assignLayers(movements) {
    de THREE: solo vectores y trigonometría, así se
    puede probar de forma aislada.
 
-   findCenteredLookAtX(), más abajo, resuelve el
+   findCenteredLookAtPrincipal(), más abajo, resuelve el
    centrado de la fila por bisección sobre esta misma
    proyección — ver el comentario de esa función para
    el detalle de por qué se descartó el Newton-Raphson
@@ -321,38 +332,85 @@ export function projectToNdc(
     sobre la silueta real en vez de los centros de slot.
 */
 
-export function findCenteredLookAtX(
+export function findCenteredLookAtPrincipal(
     cameraPos,
-    lookAtY,
+    lookAtSecundario,
     lookAtZ,
     worldVertices,
     fovDeg,
-    aspect
+    aspect,
+    eje = "x",
+    targetNdcCenter = 0
 ) {
 
     if (worldVertices.length === 0) return 0;
 
-    const xs =
-        worldVertices.map(v => v.x);
+    /*
+        GENERALIZACIÓN (ver notas-encuadre-3d.md, "Modelo
+        mental: eje principal"): esta función era
+        "findCenteredLookAtPrincipal", fija a X. Ahora resuelve el
+        lookAt sobre CUALQUIERA de los dos ejes horizontales
+        de layout ("x" en modo horizontal, "y" en modo
+        vertical) — Z sigue sin tocarse acá en ningún modo
+        (es el eje de profundidad, ver galeria-escena.js).
 
-    let lo = Math.min(...xs);
-    let hi = Math.max(...xs);
+        "lookAtSecundario" es el valor YA DECIDIDO del otro
+        eje entre x/y (el que NO se resuelve acá): en modo
+        horizontal es el lookAtY real (mediana de alturas,
+        ver galeria-escena.js), en modo vertical sería el
+        lookAtX (probablemente casi fijo, ver tabla de ejes
+        en notas-encuadre-3d.md — "eje secundario, casi
+        fijo, solo pivote").
+
+        La correspondencia eje-mundo -> componente-NDC vale
+        porque projectToNdc usa SIEMPRE up=(0,1,0) de mundo
+        (ver más arriba): mundo X se proyecta en NDC.x,
+        mundo Y en NDC.y, sin importar dónde esté la cámara.
+        Por eso alcanza con leer ndc[eje] más abajo — no
+        hace falta ninguna otra distinción entre los dos
+        modos.
+
+        "targetNdcCenter" (nuevo): antes esto siempre
+        centraba en NDC 0 (mitad exacta de pantalla). Ahora
+        puede centrar en cualquier punto de esa banda —
+        necesario para dejar la columna centrada en el
+        alto REAL disponible (navbar arriba, botones de
+        orden abajo — ver calcularMagnitudRasante en
+        galeria-escena.js), no en el alto total de
+        pantalla. Con 0 (default) el comportamiento es
+        idéntico al de antes.
+    */
+
+    const coords =
+        worldVertices.map(v => v[eje]);
+
+    let lo = Math.min(...coords);
+    let hi = Math.max(...coords);
+
+
+    function lookAtCandidato(coordPrincipal) {
+
+        return eje === "x"
+            ? { x: coordPrincipal, y: lookAtSecundario, z: lookAtZ }
+            : { x: lookAtSecundario, y: coordPrincipal, z: lookAtZ };
+
+    }
 
 
     /*
-        error(candidateX): promedio de los extremos
-        (min/max) de la proyección NDC en X de TODOS
-        los vértices de bounding box de la fila, para
-        un punto de mira candidato. 0 = silueta
-        perfectamente centrada.
+        error(candidateCoord): diferencia entre el punto
+        medio real (min/max) de la proyección NDC, en el
+        componente "eje", y "targetNdcCenter". 0 = silueta
+        centrada exactamente en ese punto (no
+        necesariamente el medio de pantalla).
     */
 
-    function error(candidateX) {
+    function error(candidateCoord) {
 
         const lookAt =
-            { x: candidateX, y: lookAtY, z: lookAtZ };
+            lookAtCandidato(candidateCoord);
 
-        const ndcXs =
+        const ndcs =
             worldVertices.map(v =>
                 projectToNdc(
                     cameraPos,
@@ -360,13 +418,15 @@ export function findCenteredLookAtX(
                     v,
                     fovDeg,
                     aspect
-                ).x
+                )[eje]
             );
 
         return (
-            Math.min(...ndcXs) +
-            Math.max(...ndcXs)
-        ) / 2;
+            (
+                Math.min(...ndcs) +
+                Math.max(...ndcs)
+            ) / 2
+        ) - targetNdcCenter;
 
     }
 
@@ -380,13 +440,13 @@ export function findCenteredLookAtX(
     /*
         Si el error no cambia de signo entre los dos
         extremos físicos de la fila, no hay ningún
-        lookAtX DENTRO de ese rango que centre del todo
-        la silueta (puede pasar con geometrías muy
+        lookAt candidato DENTRO de ese rango que centre
+        del todo la silueta (puede pasar con geometrías muy
         asimétricas). En vez de extrapolar hacia afuera
         del rango —que es exactamente el
         comportamiento que causaba el bug reportado—,
         nos quedamos en el extremo con menor error
-        absoluto: sigue siendo un lookAtX dentro de la
+        absoluto: sigue siendo un lookAt dentro de la
         fila, nunca un ángulo de cámara degenerado.
     */
 
@@ -437,7 +497,7 @@ export function findCenteredLookAtX(
    AJUSTE DE ANCHO ("fit to width"), para pantallas
    verticales (celular)
 
-   findCenteredLookAtX() (arriba) resuelve "¿qué
+   findCenteredLookAtPrincipal() (arriba) resuelve "¿qué
    lookAtX deja la silueta centrada?", pero no toca
    ni el tamaño ni el margen con el que esa silueta
    entra en cuadro — eso lo gobierna, hoy, un valor
@@ -454,7 +514,7 @@ export function findCenteredLookAtX(
    izquierdo/derecho en vez de entrar completa.
 
    findFittedMagnitude() resuelve, por bisección
-   —mismo criterio que findCenteredLookAtX(), acotado
+   —mismo criterio que findCenteredLookAtPrincipal(), acotado
    y sin extrapolar—, la MAGNITUD (distancia de cámara,
    como fracción del ancho de la fila — ver
    "margenRasante"/"cameraPosFromMagnitude" en
@@ -466,53 +526,74 @@ export function findCenteredLookAtX(
 
 export function findFittedMagnitude(
     cameraPosFromMagnitude,
-    lookAtY,
+    lookAtSecundario,
     lookAtZ,
     worldVertices,
     fovDeg,
     aspect,
     magnitudMin,
-    magnitudMax
+    magnitudMax,
+    eje = "x",
+    targetSize = 2,
+    targetNdcCenter = 0
 ) {
 
     if (worldVertices.length === 0) return magnitudMin;
 
 
     /*
-        anchoProyectado(m): ancho NDC (der - izq) de la
-        silueta completa, para una cámara ubicada según
-        "cameraPosFromMagnitude(m)" y YA CENTRADA para
-        esa posición (bisección anidada sobre
-        findCenteredLookAtX, la misma función que ya
-        centra la fila en cualquier otro lado de la
-        app — así el ajuste de ancho nunca se calcula
-        sobre un encuadre descentrado).
+        GENERALIZACIÓN (ver notas-encuadre-3d.md): antes
+        esto siempre ajustaba el ANCHO (NDC.x) — correcto
+        en modo horizontal, donde el problema es que la
+        fila se recorta por los costados. En modo vertical
+        el problema análogo es el ALTO (NDC.y): una columna
+        de elementos, alta y angosta, encuadrada con el
+        margen calibrado para escritorio queda chica con
+        mucho vacío a los costados si solo se ajustara el
+        ancho — ver el diagnóstico completo en
+        notas-encuadre-3d.md, sección "calcularMagnitudRasante".
+        "eje" decide qué componente NDC se lleva a ocupar
+        el cuadro completo.
 
-        Monótona DECRECIENTE en m: más lejos (m mayor)
-        siempre se ve más chico, sin excepción —
-        garantiza que la bisección converja igual que
-        en findCenteredLookAtX.
+        "lookAtSecundario" (antes "lookAtY"): el valor YA
+        DECIDIDO del eje horizontal de layout que NO se
+        está ajustando acá — ver mismo parámetro en
+        findCenteredLookAtPrincipal, arriba.
+
+        "targetSize"/"targetNdcCenter" (nuevos): antes
+        "el cuadro completo" era SIEMPRE 2 de NDC (-1 a 1),
+        centrado en 0. Ahora puede ser una banda más chica
+        y no necesariamente centrada en mitad de pantalla
+        — para dejarle lugar de verdad al navbar y a los
+        botones de orden en modo vertical (ver
+        calcularMagnitudRasante en galeria-escena.js). Con
+        los defaults (2 y 0) el comportamiento es idéntico
+        al de antes.
     */
 
-    function anchoProyectado(m) {
+    function tamanoProyectado(m) {
 
         const candidateCameraPos =
             cameraPosFromMagnitude(m);
 
-        const lookAtX =
-            findCenteredLookAtX(
+        const lookAtCoord =
+            findCenteredLookAtPrincipal(
                 candidateCameraPos,
-                lookAtY,
+                lookAtSecundario,
                 lookAtZ,
                 worldVertices,
                 fovDeg,
-                aspect
+                aspect,
+                eje,
+                targetNdcCenter
             );
 
         const lookAt =
-            { x: lookAtX, y: lookAtY, z: lookAtZ };
+            eje === "x"
+                ? { x: lookAtCoord, y: lookAtSecundario, z: lookAtZ }
+                : { x: lookAtSecundario, y: lookAtCoord, z: lookAtZ };
 
-        const ndcXs =
+        const ndcs =
             worldVertices.map(v =>
                 projectToNdc(
                     candidateCameraPos,
@@ -520,25 +601,24 @@ export function findFittedMagnitude(
                     v,
                     fovDeg,
                     aspect
-                ).x
+                )[eje]
             );
 
-        return Math.max(...ndcXs) - Math.min(...ndcXs);
+        return Math.max(...ndcs) - Math.min(...ndcs);
 
     }
 
 
     /*
-        error(m) = 0 cuando el ancho proyectado ocupa
-        EXACTAMENTE el cuadro completo (de -1 a 1 => 2
-        de ancho NDC). Positivo = sobra ancho (se
-        recorta), negativo = falta ancho (queda con
-        margen).
+        error(m) = 0 cuando el tamaño proyectado (en el
+        eje elegido) ocupa EXACTAMENTE "targetSize" de NDC.
+        Positivo = sobra (se recorta), negativo = falta
+        (queda con margen).
     */
 
     function error(m) {
 
-        return anchoProyectado(m) - 2;
+        return tamanoProyectado(m) - targetSize;
 
     }
 
@@ -553,7 +633,7 @@ export function findFittedMagnitude(
     if (errHi === 0) return hi;
 
     /*
-        Mismo resguardo que findCenteredLookAtX: si no
+        Mismo resguardo que findCenteredLookAtPrincipal: si no
         hay cambio de signo dentro del rango dado, nos
         quedamos en el extremo con menor error absoluto
         en vez de extrapolar hacia una magnitud fuera
@@ -586,7 +666,7 @@ export function findFittedMagnitude(
 
         /*
             Monótona DECRECIENTE (a diferencia de
-            findCenteredLookAtX, que no asume signo):
+            findCenteredLookAtPrincipal, que no asume signo):
             errMid > 0 (sobra ancho) => hay que alejar
             la cámara => mover el piso "lo" hacia acá.
             errMid < 0 (falta ancho) => acercar la

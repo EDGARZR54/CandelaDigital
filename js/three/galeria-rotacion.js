@@ -39,7 +39,7 @@
 
 
 export function createRotationController(
-    config, { cones, elementCount }
+    config, { cones, elementCount, marcarSombraDirty }
 ) {
 
     /*
@@ -150,6 +150,23 @@ export function createRotationController(
                 velocidadActual[id] === 0 &&
                 objetivo === 0
             ) continue;
+
+
+            /*
+                Acá, y solo acá, se sabe con certeza que
+                ESTE cono va a mover su pivote.rotation.y
+                este frame (el "continue" de arriba ya
+                descartó los que no tienen nada que
+                integrar) — es el punto más preciso posible
+                para pedir un recálculo de sombra (ver
+                marcarSombraDirty()/prepararRenderDeSombra()
+                en galeria-escena.js). Sin "marcarSombraDirty"
+                inyectado (guard, mismo criterio que
+                createAutorotarToggle sin botón) esto
+                simplemente no hace nada — no rompe llamar a
+                update() sin esa dependencia.
+            */
+            if (marcarSombraDirty) marcarSombraDirty();
 
 
             /*

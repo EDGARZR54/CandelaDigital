@@ -82,11 +82,11 @@
    quaternion es lo que hace falta para rotar (pivotX,
    pivotY, pivotZ) sin conversiones de ida y vuelta.
 
-   PENDIENTE DE CALIBRAR A OJO (no es un bug, es una
-   convención que solo se confirma mirando la escena real):
-   el signo de "rotationY = atan2(outward.x, outward.z)"
-   puede necesitar el signo opuesto, o un +π, según cómo
-   esté orientada la cara "frontal" real de cada geometría.
+   PENDIENTE DE CALIBRAR A OJO: el signo de "rotationY =
+   atan2(outward.x, outward.z)" puede necesitar el signo
+   opuesto, o un +π, según cómo esté orientada la cara
+   "frontal" real de cada geometría — solo se confirma
+   mirando la escena real.
 
    BLEND GRADUAL DEL CENTRADO: el offset que centra cada
    elemento en su bbox real no se aplica de golpe desde el
@@ -111,24 +111,26 @@
 
    Ya NO se usa getHiddenDrop(): nada sale del cuadro en
    esta fase — todos los elementos quedan siempre sobre el
-   círculo, a restY constante.
+   círculo, cada uno apoyado en su propia base (ver
+   "baseElemento" en el loop de update, el FIX del piso al
+   100%).
 
    HISTÉRESIS DEL FOCO (displayIndex): "mejorSlot" (el
    vecino angular más cercano al punto de foco) es un
    cálculo continuo y sin margen, correcto para todo lo que
-   se anima en base a él (escala/opacidad/rotationWeights,
-   que sí deben reaccionar de forma continua) pero es el
-   punto ciego para decidir qué elemento es "el foco" de
-   cara afuera: justo en el ángulo medio entre dos
-   elementos, un scroll de un pixel puede hacer oscilar el
-   foco reportado de un lado a otro — y como cada cambio de
-   foco dispara updatePanel() en galeria.js, esa oscilación
-   se siente como parpadeo. La solución es una zona muerta
-   angular alrededor del punto de cruce, solo para esta
-   decisión puntual: el foco previo se queda fijo hasta que
-   el candidato nuevo gana por más que MARGEN_HISTERESIS —
-   ver el cálculo de "displayIndex" en update(), después del
-   forEach principal.
+   se anima en base a él (opacidad del panel/luces,
+   rotationWeights, que sí deben reaccionar de forma
+   continua) pero es el punto ciego para decidir qué
+   elemento es "el foco" de cara afuera: justo en el ángulo
+   medio entre dos elementos, un scroll de un pixel puede
+   hacer oscilar el foco reportado de un lado a otro — y
+   como cada cambio de foco dispara updatePanel() en
+   galeria.js, esa oscilación se siente como parpadeo. La
+   solución es una zona muerta angular alrededor del punto
+   de cruce, solo para esta decisión puntual: el foco previo
+   se queda fijo hasta que el candidato nuevo gana por más
+   que MARGEN_HISTERESIS — ver el cálculo de "displayIndex"
+   en update(), después del forEach principal.
 
    MESETA DE DESCANSO (phi): la histéresis de arriba evita
    que la FICHA de texto cambie de lado cerca del cruce,
@@ -180,7 +182,24 @@ export function createCarouselController(
         // juntos para componer un único quaternion. Opcional:
         // si nadie la pasa, se comporta como si nadie
         // estuviera arrastrando nunca.
-        getManualOffset = () => ({ yaw: 0, pitch: 0 })
+        getManualOffset = () => ({ yaw: 0, pitch: 0 }),
+        // Eje principal vigente del layout (ver
+        // galeria-escena.js) — usado SOLO para leer el
+        // espaciado real de la fila de ENTRADA
+        // (sFracBasePorSlot/longitudFisica, más abajo): la
+        // fila puede crecer en X o en Y según el modo, pero
+        // el círculo en sí que arma este archivo siempre
+        // vive en el plano XZ (ver "uHat"/"vHat" más abajo)
+        // — no cambia con el modo. Default "x" por
+        // compatibilidad hacia atrás.
+        //
+        // No recibe "camera": con "anguloBase" fijo en -π/2
+        // (ver puntoYOutward más abajo) el ancla queda fija
+        // en anchorWorld por identidad algebraica, sin
+        // necesitar la cámara real. Apuntar la cámara AL
+        // ancla es responsabilidad de quien orquesta
+        // cámara+carrusel (galeria.js / galeria-escena.js).
+        ejePrincipal = "x"
     }
 ) {
 
@@ -188,17 +207,33 @@ export function createCarouselController(
 
     let panelDisplayIndex = -1;
 
-    // Última foto de update(), para inspeccionar desde la
-    // consola sin loguear cada frame ("rotar" corre 60
-    // veces por segundo). Se pisa en cada llamada; debug()
-    // al final del archivo solo imprime lo último que haya.
-    let ultimoDebug = null;
-
 
     function update(t) {
 
-        const order = getOrder();
-        const positions = getPositions();
+        /*
+            En vertical el ancla del carrusel (order[0], más
+            abajo) tiene que ser el elemento de ARRIBA: se
+            lee de arriba hacia abajo, así que el círculo
+            arranca a formarse desde ahí. Se invierten
+            "order" y "positions" juntos, una sola vez, en
+            vez de tocar cada uso por separado: como
+            "positions[i]" siempre corresponde al cupID en
+            "order[i]" (misma fila, leída en paralelo),
+            invertir ambos preserva esa correspondencia — el
+            resto del archivo sigue igual, solo que "slot 0"
+            pasa a ser el elemento de arriba. En horizontal,
+            sin cambios.
+        */
+        const order =
+            ejePrincipal === "y"
+                ? [...getOrder()].reverse()
+                : getOrder();
+
+        const positions =
+            ejePrincipal === "y"
+                ? [...getPositions()].reverse()
+                : getPositions();
+
         const n = elementCount;
 
         if (n === 0) {
@@ -207,7 +242,11 @@ export function createCarouselController(
                 changed: false,
                 rotationWeights: {},
                 panelOpacity: 0,
-                focoContinuo: 0
+                focoContinuo: 0,
+                blend: 0,
+                circuloCerrado: null,
+                anclaPrincipalMundo: 0,
+                anclaMundoX: 0
             };
 
         }
@@ -223,33 +262,29 @@ export function createCarouselController(
             "longitudEfectiva" en theta=0 — ver comentario
             de cabecera.
         */
+        /*
+            Es una MAGNITUD (cuánto mide la fila entre sus
+            dos extremos): Math.abs() la hace robusta a cuál
+            extremo tiene la coordenada mayor, sea cual sea
+            el modo (en vertical el ancla queda arriba, con
+            la coordenada más alta; en horizontal es al
+            revés). Sin el abs(), un signo negativo acá
+            desplazaría en π toda la parametrización angular
+            del círculo (longitudCurva/radioCerrado).
+        */
         const longitudFisica =
-            extremoPos.x - anclaPos.x;
+            Math.abs(
+                extremoPos[ejePrincipal] - anclaPos[ejePrincipal]
+            );
 
         /*
-            Un hueco "vacío" extra: con "n" elementos hay
-            n-1 huecos REALES entre ellos, pero barrer los
-            2π completos sobre esos n-1 huecos hace que el
-            último elemento (sFrac=1) y el ancla (sFrac=0)
-            terminen en el MISMO ángulo al cerrar el
-            círculo (-π/2 + 2π ≡ -π/2 mod 2π) — se pisan,
-            igual que pasa al doblar una varilla recta
-            hasta que sus dos puntas se tocan.
-
-            Se agrega un hueco fantasma más (n huecos en
-            vez de n-1), del mismo ancho angular que el
-            resto, repartiendo el mismo largo físico real
-            sobre una circunferencia conceptualmente más
-            "larga" — el hueco extra queda entre el último
-            elemento y el ancla, cerrando el círculo sin
-            coincidencia. Esto también hace que
-            "anguloVecino" (más abajo, ya calculado como
-            2π/n) pase a describir el espaciado angular
-            REAL entre vecinos con exactitud — antes,
-            con n-1 huecos reales sobre el círculo
-            completo, el espaciado real era 2π/(n-1), un
-            poco más apretado de lo que ese cálculo
-            asumía.
+            Hueco fantasma (n huecos, no n-1) — ver "HUECO
+            VACÍO" en la cabecera. De paso, hace que
+            "anguloVecino" (más abajo, 2π/n) describa el
+            espaciado angular real entre vecinos con
+            exactitud — con n-1 huecos reales sobre el
+            círculo completo, ese espaciado hubiera sido
+            2π/(n-1), más apretado de lo que asume el cálculo.
         */
         const huecosReales =
             Math.max(1, n - 1);
@@ -281,10 +316,30 @@ export function createCarouselController(
             la meseta queda garantizada consistente con el
             diff real, sea cual sea el layout.
         */
+        /*
+            "longitudFisica" es Math.abs() (siempre positiva),
+            pero sFracBasePorSlot necesita saber si el sentido
+            real ancla->extremo es creciente o decreciente en
+            "ejePrincipal", o el resultado da negativo (el
+            elemento arranca curvándose para el lado
+            equivocado). "signoFila" se calcula ANTES del
+            abs() para restaurar ese signo — no con
+            Math.sign(longitudFisica), que ya sería siempre
+            +1. Con esto, sFracBasePorSlot va de 0 (ancla) a
+            positivo creciente (extremo), sea cual sea qué
+            extremo tiene la coordenada más alta.
+        */
+        const signoFila =
+            extremoPos[ejePrincipal] - anclaPos[ejePrincipal] >= 0
+                ? 1
+                : -1;
+
         const sFracBasePorSlot =
             positions.map(
                 pos =>
-                    (pos.x - anclaPos.x) / sFracDenom
+                    signoFila *
+                    (pos[ejePrincipal] - anclaPos[ejePrincipal]) /
+                    sFracDenom
             );
 
         /*
@@ -314,15 +369,30 @@ export function createCarouselController(
 
         /*
             uHat/vHat: misma convención que
-            linea_isometrica.html. La fila real siempre
-            crece en +X con z=0 fijo por slot (ver
-            calculatePositions en galeria-escena.js), así
-            que estos dos vectores son constantes, no
-            hace falta derivarlos de datos en vivo.
+            linea_isometrica.html. El plano del círculo es
+            SIEMPRE XZ, sea cual sea "ejePrincipal" —a
+            diferencia de "sFracBasePorSlot"/"longitudFisica",
+            que sí necesitan saber sobre qué eje crece la
+            fila de entrada— para que en vertical el círculo
+            se siga viendo "hacia el costado" y no "hacia
+            atrás" (un círculo en YZ, visto de frente, se lee
+            como profundidad pura, sin componente lateral en
+            pantalla).
+
             vHat=(0,0,-1): el círculo se abomba hacia -Z
-            (lejos de la cámara, que mira desde +Z), así
-            el punto de foco (-π/2) queda del lado de
-            adelante, hacia cámara.
+            (lejos de la cámara, que mira desde +Z), así el
+            punto de foco (-π/2) queda del lado de adelante.
+
+            NO invertir este signo sin más: con las
+            proporciones reales de este proyecto (radioCerrado
+            ~17.4, bastante más grande que la distancia
+            cámara-ancla, ~6-16 según la fase) invertir vHat
+            pone a la cámara DENTRO del círculo y rompe el
+            framing. En linea_isometrica.html el mismo truco
+            sí funciona porque ahí el radio es diminuto
+            (~1.6) frente a la distancia de esa cámara (~14)
+            — proporción muy distinta, no es transportable
+            sin más.
         */
         const uHat = { x: 1, z: 0 };
         const vHat = { x: 0, z: -1 };
@@ -351,19 +421,81 @@ export function createCarouselController(
         const longitudGrande =
             longitudCurva * cfg.radioFactor;
 
+        /*
+            B (galeria.js/galeria-escena.js): geometría del
+            círculo YA CERRADO del carrusel + coordenada del
+            ancla sobre "ejePrincipal" — se exponen en el
+            resultado de update() (más abajo, "circuloCerrado"/
+            "anclaPrincipalMundo") para que
+            calcularArcoCamara() (galeria-escena.js) pueda
+            calcular el radio "mismos radios" y el ángulo de
+            alineación del giro extra del arco de cámara
+            (t>0.5). Mismas fórmulas que antes vivían en el
+            escaneo de "anguloFoco" (radioCerrado =
+            longitudGrande/2π, centro = ancla + radio·vHat —
+            ver el comentario grande, más abajo), reusadas
+            acá con otro fin.
+
+            "anclaPrincipalMundo" NO sale de "anchorWorld"
+            (que solo tiene x/z, siempre en el plano del
+            círculo): se recalcula sobre "ejePrincipal" —
+            mismo criterio que anclaCentroX/Z, pero con la
+            componente que corresponda según el modo
+            horizontal/vertical.
+        */
+        const radioCerrado =
+            longitudGrande / (Math.PI * 2);
+
+        const circuloCerrado = {
+            x: anchorWorld.x + vHat.x * radioCerrado,
+            z: anchorWorld.z + vHat.z * radioCerrado,
+            radio: radioCerrado
+        };
+
+        const anclaPivotPrincipal =
+            (anclaBbox.min[ejePrincipal] + anclaBbox.max[ejePrincipal]) / 2;
+
+        const anclaPrincipalMundo =
+            anclaPos[ejePrincipal] + anclaPivotPrincipal;
+
+        /*
+            D (galeria-escena.js, círculo verde en vertical):
+            "anchorWorld.x" YA ES la coordenada X real del
+            ancla en mundo — el círculo del carrusel vive
+            SIEMPRE en XZ (ver "uHat"/"vHat" más arriba), así
+            que "anchorWorld" ya resuelve solo la corrección
+            de eje secundario (corregirSecundario, aplicada
+            más abajo al armar "positions") sin que
+            galeria-escena.js tenga que repetir esa cuenta.
+            Se expone con nombre propio para que quede claro
+            que es la X REAL de la ancla, no la del centro del
+            círculo cerrado.
+        */
+        const anclaMundoX = anchorWorld.x;
+
+        /*
+            El ángulo de referencia del círculo ("anguloBase"
+            en puntoYOutward, más abajo) está FIJO en -π/2:
+            con sFrac=0 (el ancla) y phi=0 (arranque de
+            "rotar"), eso da angulo=-π/2 para cualquier
+            theta/blend, y con uHat=(1,0)/vHat=(0,-1) cancela
+            EXACTAMENTE el término de centro, dejando
+            "anchorWorld" sin importar cuán grande sea el
+            radio — identidad algebraica, no aproximación: el
+            ancla queda fija SIEMPRE, sin buscar ni cachear
+            nada. Con el punto a centrar en pantalla ya fijo y
+            conocido ("anchorWorld"), apuntar la cámara ahí es
+            responsabilidad de quien orquesta cámara+carrusel
+            (ver "setCameraLado"/el lookAt en
+            galeria-escena.js y su uso en galeria.js), no de
+            este archivo.
+        */
+
 
         let theta, phi;
 
-        /*
-            DEBUG: se declaran acá (scope de update(),
-            no del bloque "else" donde se calculan) para
-            que el snapshot de debug() —al final de
-            update()— los pueda leer aunque el tramo
-            vigente sea "formar" (ahí quedan en su valor
-            por default, ver más abajo). No cambia nada
-            de la lógica existente, sólo dónde vive la
-            declaración.
-        */
+        // Valor por defecto para el tramo "formar" — recién
+        // se recalcula en el tramo "rotar", más abajo.
         let rotateT = 0;
 
         /*
@@ -371,10 +503,10 @@ export function createCarouselController(
             continuo, EXACTAMENTE 0 en el elemento del
             slot 0 y EXACTAMENTE huecosReales (=n-1) en el
             último — con la MISMA meseta/transición que ya
-            gobierna phi (ver indiceContinuo() más arriba
-            y el fix junto a "panelOpacity": mismo
-            criterio, "atar al número que ya existe" en
-            vez de recalcular uno aparte). Lo consume
+            gobierna phi (ver indiceContinuo() más arriba;
+            mismo criterio que "panelOpacity": atar al
+            número que ya existe en vez de recalcular uno
+            aparte). Lo consume
             galeria-mapa.js (ver "focoContinuo" en el
             return de más abajo) para saber en qué punto
             de su propio recorrido A->B->C debe estar la
@@ -394,10 +526,10 @@ export function createCarouselController(
             Rango real que "phi" tiene que barrer en el
             tramo "rotar": NO son los 2π completos —eso
             volvería a traer al ancla al foco justo al
-            final, repitiendo la primera ficha (bug
-            reportado)—, sino sólo el arco ocupado por
-            los huecos REALES (n-1 de los n huecos
-            totales, ver "longitudCurva" más arriba). Al
+            final, repitiendo la primera ficha—, sino sólo
+            el arco ocupado por los huecos REALES (n-1 de
+            los n huecos totales, ver "longitudCurva" más
+            arriba). Al
             llegar a rotateT=1, phi queda exactamente en
             el valor que trae al ÚLTIMO elemento real al
             foco, sin seguir de largo hacia el hueco
@@ -485,18 +617,15 @@ export function createCarouselController(
         /*
             Interpola desde longitudCurva (theta=0, sin
             aporte de radioFactor todavía) hacia
-            longitudGrande (theta=2π, círculo ya cerrado)
-            — ver comentario de cabecera sobre por qué
-            esto no rompe la continuidad en theta=0. Usa
-            "longitudCurva" (con el hueco fantasma), no
-            "longitudFisica" cruda — mismo motivo que en
-            "sFracDenom" más abajo: son la misma variable
-            usada en el numerador (el multiplicador del
-            branch theta<EPS) y en el denominador de
-            "sFrac", así que se cancelan entre sí y el
-            layout recto en theta=0 sigue dando
-            exactamente "positions[slot].x", sea cual sea
-            el valor de longitudCurva.
+            longitudGrande (theta=2π, círculo ya cerrado).
+            Con la fórmula ya unificada (ver puntoYOutward
+            más abajo — ya no hay una rama theta<EPS
+            aparte), la continuidad en theta=0 la garantiza
+            "blend" multiplicando a "(curvaX - xBase)" en
+            finalX/finalY/finalZ (más abajo): con blend=0,
+            esos "final*" dan exactamente "xBase"/"yBase"/
+            "positions[slot].z" sea cual sea el valor de
+            longitudCurva acá.
         */
         const blend = theta / (Math.PI * 2);
 
@@ -507,35 +636,21 @@ export function createCarouselController(
 
         /*
             SEAM ANIMADO: corre el parámetro de la curva
-            (sFrac, ver más abajo) "seamOffset" hacia el
-            extremo libre, la MISMA fracción para todos
-            los elementos por igual (ver "seamPorSlot"
-            más arriba, junto a theta/phi — se sigue
-            armando como array por slot para no tocar el
-            resto del archivo, pero todos sus valores son
-            iguales a "seamOffset"). Sirve para recentrar
-            la geometría destacada respecto del punto de
-            foco fijo (-π/2), sin tener que tocar ese
-            punto de foco ni la lógica de "quién está en
-            foco" (diff, más abajo) por separado — como
-            "diff" también se calcula a partir de este
-            mismo "sFrac" ya desplazado (reusa la misma
-            variable), la detección de foco queda
-            automáticamente consistente con lo que se ve.
+            (sFrac, más abajo) "seamOffset" hacia el extremo
+            libre, la misma fracción para todos los elementos
+            (ver "seamPorSlot" más arriba). Es un ajuste
+            residual OPCIONAL para un nudge fino si hiciera
+            falta (default 0, sin efecto si no se toca) — el
+            centrado del ancla ya no depende de él, es una
+            identidad algebraica (ver "anguloBase" más abajo).
+            Como "diff" se calcula sobre este mismo "sFrac" ya
+            desplazado, cualquier residuo queda automáticamente
+            consistente con la detección de foco.
 
-            Se anima con el MISMO "blend" que ya gobierna
-            posición/escala/opacidad (0 en theta=0, 1 con
-            el círculo ya cerrado) — mismo criterio que el
-            resto del archivo: en theta=0 no suma nada
-            (layout recto exacto, sin salto respecto de
-            "orden") y llega a su valor completo recién al
-            cerrarse el círculo, nunca de golpe.
-
-            "seamPorSlot" ya se armó más arriba (antes del
-            bloque de theta/phi, junto a "seamOffset") —
-            acá solo falta blendearlo por slot, que sí
-            depende de "blend" y por eso no podía
-            adelantarse con el resto.
+            Se anima con el mismo "blend" que ya gobierna
+            posición/escala/opacidad: en theta=0 no suma nada
+            (sin salto respecto de "orden") y llega a su valor
+            completo recién al cerrarse el círculo.
         */
         const seamAnimadoPorSlot =
             seamPorSlot.map(s => s * blend);
@@ -548,24 +663,23 @@ export function createCarouselController(
             este punto) que resuelve tanto la orientación
             como el offset de centrado — ver cabecera.
         */
+        /*
+            "anguloBase" fijo en -π/2 (ver justificación más
+            arriba, junto a "longitudGrande"): cos(-π/2)=0,
+            1+sin(-π/2)=0, así que cancela el término de
+            centro exacto para cualquier "radius". Sin rama
+            especial "theta < EPS": la fórmula general ya
+            converge sola al mismo resultado (ancla fija,
+            resto en línea recta); solo hace falta acotar el
+            DENOMINADOR del radio (Math.max(theta, EPS)) para
+            evitar la división por 0 en el primer frame.
+        */
         function puntoYOutward(sFrac) {
 
-            if (theta < EPS) {
-
-                return {
-                    x:
-                        anchorWorld.x +
-                        uHat.x * longitudCurva * sFrac,
-                    z:
-                        anchorWorld.z +
-                        uHat.z * longitudCurva * sFrac,
-                    outward: { x: 0, z: 1 }
-                };
-
-            }
+            const anguloBase = -Math.PI / 2;
 
             const radius =
-                longitudEfectiva / theta;
+                longitudEfectiva / Math.max(theta, EPS);
 
             const centerX =
                 anchorWorld.x + vHat.x * radius;
@@ -573,7 +687,7 @@ export function createCarouselController(
                 anchorWorld.z + vHat.z * radius;
 
             const angle =
-                -Math.PI / 2 + theta * sFrac + phi;
+                anguloBase + theta * sFrac + phi;
 
             const x =
                 centerX +
@@ -631,6 +745,16 @@ export function createCarouselController(
         // independiente del scroll.
         const opacityPorSlot = {};
 
+        // Mismo número que "opacityPorSlot", pero indexado
+        // por ID DE ELEMENTO (cupID) en vez de slot — mismo
+        // criterio que "rotationWeights" (que también indexa
+        // por cupID, no por slot). Alimenta lucesPorCaja
+        // (galeria-luces.js): la maqueta reusa literalmente
+        // "opacityFinal" como "focoWeight" (ver
+        // aplicarColorFoco(slot, opacityFinal) en
+        // Maqueta.html) — mismo valor, dos usos.
+        const focoWeights = {};
+
         let mejorSlot = 0;
         let mejorDiffAbs = Infinity;
 
@@ -667,20 +791,23 @@ export function createCarouselController(
                 ) * blend +
                 seamAnimadoPorSlot[slot];
 
-            const { x, z, outward } =
+            const punto =
                 puntoYOutward(sFrac);
+
+            const x = punto.x;
+            const z = punto.z;
+            const outward = punto.outward;
 
 
             /*
-                "diff"/"emphasis"/"scaleObjetivo"/
-                "opacityObjetivo" solo necesitan "sFrac" y
-                "phi" (ya definidos arriba) más "blend" y
-                "anguloVecino" (ya definidos antes del
-                forEach) — no dependen de "outward", del
-                quaternion ni del pivot. Se calculan acá
-                (antes de rotar "pivotLocal" más abajo)
-                porque ese paso necesita conocer el factor
-                de escala real del frame primero.
+                "diff"/"emphasis"/"opacityObjetivo" solo
+                necesitan "sFrac" y "phi" (ya definidos
+                arriba) más "blend" y "anguloVecino" (ya
+                definidos antes del forEach) — no dependen de
+                "outward", del quaternion ni del pivot. Se
+                calculan acá (antes de rotar "pivotLocal" más
+                abajo) por prolijidad, junto al resto del
+                cálculo de foco.
 
                 Distancia angular al foco (-π/2), envuelta a
                 [-π, π] — el foco es siempre el MISMO ángulo
@@ -711,7 +838,7 @@ export function createCarouselController(
                 acá, "diffAbs" nunca llegaría a 0 en el punto
                 en el que el elemento realmente está quieto y
                 centrado en pantalla: el pico de
-                "emphasis"/opacidad/scaleBump y el cambio de
+                "emphasis"/opacidad y el cambio de
                 "mejorSlot"/displayIndex quedarían corridos
                 "rangoPhi" de scroll respecto de la meseta
                 real. Al restar el mismo
@@ -743,14 +870,15 @@ export function createCarouselController(
 
             /*
                 "emphasis" describe el estado YA CURVADO
-                (círculo completo) — cuánto bump de
-                escala/opacidad/rotación le toca a este
-                elemento si el círculo estuviera totalmente
-                formado. Igual que la posición, no se
-                aplica de golpe: crece de 0 a 1 recién con
-                el círculo ya cerrado (blend), así el ajuste
-                queda disimulado dentro del propio tramo
-                "formar" en vez de saltar de una vez.
+                (círculo completo) — cuánto bump de opacidad
+                (panel de texto/luces, ver "focoWeights" más
+                abajo) le toca a este elemento si el círculo
+                estuviera totalmente formado. Igual que la
+                posición, no se aplica de golpe: crece de 0 a
+                1 recién con el círculo ya cerrado (blend),
+                así el ajuste queda disimulado dentro del
+                propio tramo "formar" en vez de saltar de una
+                vez.
             */
             const emphasis =
                 smoothstep(
@@ -760,26 +888,15 @@ export function createCarouselController(
                     )
                 );
 
-            const scaleObjetivo =
-                1 + emphasis * cfg.scaleBump;
-
             const opacityObjetivo =
                 cfg.minOpacity +
                 emphasis * (1 - cfg.minOpacity);
-
-            // Factor de escala REAL que
-            // "cone.scale.setScalar" va a aplicar este frame
-            // — se calcula acá (no junto a esa línea, más
-            // abajo) porque "offsetWorld" lo necesita antes
-            // de rotar "pivotLocal" (ver ese comentario). Se
-            // reusa tal cual más abajo, sin recalcularlo.
-            const scaleFinal =
-                1 + (scaleObjetivo - 1) * blend;
 
             const opacityFinal =
                 1 + (opacityObjetivo - 1) * blend;
 
             opacityPorSlot[slot] = opacityFinal;
+            focoWeights[cupID] = opacityFinal;
 
 
             /*
@@ -821,6 +938,13 @@ export function createCarouselController(
                 centroide describiendo un arco propio
                 alrededor de ese ancla al arrastrar.
             */
+            /*
+                El círculo siempre vive en el plano XZ, sea
+                cual sea "ejePrincipal" (ver "uHat"/"vHat"
+                más arriba) — así que el eje de yaw también
+                es siempre EJE_Y, la normal de ese plano; no
+                depende del modo horizontal/vertical.
+            */
             qYaw.setFromAxisAngle(
                 EJE_Y, rotationY + manual.yaw
             );
@@ -840,6 +964,19 @@ export function createCarouselController(
                 (bbox.min.z + bbox.max.z) / 2;
 
             /*
+                FIX (piso al 100%): la altura de piso de ESTE
+                elemento es su propia base (misma cuenta que
+                "desplazamientoBase" en
+                normalizarGeometriaElemento: -bbox.min.y), no
+                el "restY" GLOBAL que se usaba antes — ese es
+                el mayor desplazamientoBase de TODA la fila
+                (ver galeria-escena.js), así que dejaba
+                flotando a cualquier elemento cuya geometría
+                no fuera tan "profunda" como ese peor caso.
+            */
+            const baseElemento = -bbox.min.y;
+
+            /*
                 pivotLocal: vector del origen del mesh
                 (ancla frontal/base) al centroide real, en
                 espacio LOCAL del objeto — fijo, no depende
@@ -848,58 +985,24 @@ export function createCarouselController(
                 qTotal: cuánto hay que correr el origen del
                 mesh, respecto del centroide, para que el
                 centroide termine exactamente donde tiene que
-                estar. Con pitch=0 esto da lo mismo que antes
-                en X/Z, y en Y da 0 (una rotación pura sobre Y
-                nunca cambia la componente Y de un vector), así
-                que "restY" sigue siendo la altura correcta del
-                origen del mesh.
-
-                Se escala "pivotLocal" por "scaleFinal" ANTES
-                de rotarlo: Three.js compone el centroide en
-                mundo como "position + quaternion·(scale ⊙
-                pivotLocal)", no "position + quaternion·
-                pivotLocal". Como "cone.position" se fija
-                asumiendo scale=1 (más abajo, vía
-                "curvaX/Y/Z") y "cone.scale" pasa a valer
-                "scaleFinal" (≠1 en cualquier elemento con
-                algo de "emphasis"), sin este escalado previo
-                el centroide real terminaría en:
-
-                  centroReal = centroObjetivo +
-                               offsetWorld·(scaleFinal-1)
-
-                — un corrimiento hacia el origen del mesh
-                proporcional a cuánto creciera el objeto, más
-                visible justo en el elemento mejor centrado
-                angularmente (donde "emphasis"/"scaleFinal"
-                llegan a su pico). Escalar "pivotLocal" acá
-                por "scaleFinal" antes de rotarlo hace que
-                "offsetWorld" ya considere cuánto va a crecer
-                el objeto este frame, así "curvaX/Y/Z" calculan
-                la posición de origen que deja al centroide ya
-                escalado exactamente sobre el punto de la
-                curva, sea cual sea "scaleFinal". Con
-                scaleFinal=1 da exactamente lo mismo que sin
-                este ajuste.
+                estar. Esto es lo que hace falta para X/Z
+                (donde el objetivo es el CENTROIDE sobre la
+                curva — ver "ANCLA" en la cabecera), pero NO
+                para Y — ver el FIX junto a "curvaY", más
+                abajo: ahí el objetivo es la BASE apoyada en
+                el piso, no el centroide, así que no se resta
+                "offsetWorld.y".
             */
             pivotLocal.set(pivotX, pivotY, pivotZ);
-            pivotLocal.multiplyScalar(scaleFinal);
             offsetWorld
                 .copy(pivotLocal)
                 .applyQuaternion(qTotal);
 
             const cone = cones[cupID];
 
-            // El offset de centrado (arriba) no se aplica de
-            // golpe: en theta=0 tiene que dar exactamente
-            // "positions[slot]" —el mismo lugar plano donde
-            // "orden"/"revelado" dejaron a cada elemento— o
-            // se ve un salto al entrar a "fichas". Se
-            // interpola desde esa posición plana hacia la
-            // posición centrada-sobre-la-curva con un blend
-            // atado a "theta" mismo (0 en theta=0, 1 con el
-            // círculo ya cerrado). El eje Y entra al mismo
-            // blend por la misma razón: el arrastre vertical
+            // Mismo blend gradual del centrado que la cabecera
+            // (ver "BLEND GRADUAL DEL CENTRADO"). El eje Y
+            // entra al mismo blend por la misma razón: el arrastre vertical
             // solo es posible sobre el elemento en foco
             // durante "rotar" (blend ya en 1 para entonces),
             // pero blendearlo igual que X/Z mantiene el
@@ -921,11 +1024,81 @@ export function createCarouselController(
             // theta≈0).
             const curvaX = x - offsetWorld.x;
             const curvaZ = z - offsetWorld.z;
-            const curvaY = restY + pivotY - offsetWorld.y;
+
+            /*
+                curvaY: la BASE del objeto (no el centroide)
+                tiene que quedar apoyada en el piso —
+                "baseElemento", la altura propia de este
+                elemento (ver el FIX del piso al 100%, más
+                arriba). Sin escala animada, alcanza con eso
+                directo: el origen del mesh ya nace a
+                "-bbox.min.y" de su propia base, así que
+                fijar "cone.position.y = baseElemento" deja
+                la base exactamente en "y=0 world" bajo
+                cualquier rotación sobre Y (nunca toca la
+                componente Y de un vector).
+
+                NO se suma "positions[slot].y" acá (a
+                diferencia de "yBase", más abajo): el círculo
+                vive siempre en el plano XZ a una única altura
+                de piso compartida (ver cabecera, "el círculo
+                del carrusel vive SIEMPRE en el plano XZ, sea
+                cual sea ejePrincipal") — en vertical, "curvaY"
+                es justo el objetivo hacia el que cada elemento
+                tiene que ABANDONAR su altura de columna
+                (positions[slot].y) a medida que "blend" avanza
+                y el círculo se cierra; sumar esa altura acá
+                habría dejado a cada uno flotando en su vieja
+                altura de columna en vez de converger al piso
+                real.
+            */
+            const curvaY =
+                baseElemento;
+
+            /*
+                "xBase" es el valor del que blend=0 tiene
+                que partir. En horizontal, X es el eje
+                principal: "positions[slot].x" ya es el
+                valor real. En vertical, X es el eje
+                SECUNDARIO, y "positions[slot].x" vale 0 sin
+                el centrado por centroide que sí aplica
+                galeria-reordenar.js (ver
+                "corregirSecundario" ahí) — se resta "pivotX"
+                (ya calculado arriba) para que blend=0
+                coincida exactamente con donde
+                "orden"/"revelado" dejaron al elemento; así
+                no salta al entrar a "fichas". En horizontal
+                no cambia nada.
+
+                "yBase" es el mismo criterio para el eje Y:
+                el punto real donde la fila (ver
+                verticesMundoDeFila, galeria-escena.js) deja
+                a este elemento — "baseElemento +
+                positions[slot].y" —, no una altura fija. En
+                vertical, Y es el eje principal y
+                "positions[slot].y" es la altura real donde
+                quedó parado en la columna; sin sumarla, cada
+                elemento saltaría a "casi la misma altura" al
+                entrar a "fichas" en vez de curvarse desde su
+                propio lugar. En horizontal,
+                positions[slot].y siempre es 0, así que da
+                exactamente la base propia del elemento (ver
+                "baseElemento" más arriba: el FIX del piso al
+                100% — antes acá iba "restY", el peor caso
+                global, que dejaba flotando a los elementos
+                menos "profundos").
+            */
+            const xBase =
+                ejePrincipal === "y"
+                    ? positions[slot].x - pivotX
+                    : positions[slot].x;
+
+            const yBase =
+                baseElemento + positions[slot].y;
 
             const finalX =
-                positions[slot].x +
-                (curvaX - positions[slot].x) *
+                xBase +
+                (curvaX - xBase) *
                 blend;
 
             const finalZ =
@@ -934,8 +1107,8 @@ export function createCarouselController(
                 blend;
 
             const finalY =
-                restY +
-                (curvaY - restY) *
+                yBase +
+                (curvaY - yBase) *
                 blend;
 
             cone.position.set(
@@ -953,15 +1126,29 @@ export function createCarouselController(
             cone.quaternion.copy(qTotal);
 
 
-            // "diff"/"diffAbs"/"emphasis"/"scaleFinal"/
-            // "opacityFinal" y el update de
+            // "diff"/"diffAbs"/"emphasis"/"opacityFinal" y
+            // el update de
             // "mejorSlot"/"mejorDiffAbs"/"diffPorSlot" ya se
             // calcularon arriba (antes del bloque de
-            // pivot/offsetWorld). Acá solo queda aplicarlos
-            // al objeto:
-            cone.scale.setScalar(scaleFinal);
+            // pivot/offsetWorld). Acá solo queda aplicar
+            // posición/orientación al objeto (arriba) — la
+            // escala ya no se anima en esta fase (ver
+            // galeria-dolly-foco.js: el "acercamiento" del
+            // elemento en foco ahora lo hace la cámara, no
+            // el objeto), así que "cone.scale" ni se toca,
+            // queda en su valor de construcción (1).
 
-            cone.material.opacity = opacityFinal;
+            // Efecto de opacidad DESACTIVADO: las geometrías
+            // quedan siempre a opacidad plena. Ya no se
+            // escribe "cone.material.opacity" en absoluto
+            // (el proxy que lo resolvía se sacó de
+            // galeria-escena.js, ver ese archivo): el material
+            // nace en opacity 1 y nadie más la toca, así que
+            // no hace falta reafirmarla acá. "opacityFinal" no
+            // se borra más arriba porque panelOpacity (el
+            // fundido del panel de texto) y focoWeights (las
+            // luces, ver galeria-luces.js) siguen atados a
+            // ese mismo número.
 
             rotationWeights[cupID] =
                 emphasis * cfg.rotationScale * blend;
@@ -970,41 +1157,18 @@ export function createCarouselController(
 
 
         /*
-            "mejorSlot" (arriba) es el vecino más cercano
-            PURO — sin margen, cambia apenas otro slot queda
-            una fracción de radián más cerca. Justo en el
-            ángulo medio entre dos elementos, cualquier
-            microscroll (inercia de trackpad, rueda con
-            redondeo) puede hacer que "mejorSlot" oscile de
-            un lado a otro del umbral, y como
-            panelDisplayIndex dispara updatePanel() en
-            galeria.js (swap de ficha, re-medición de
-            paneles, fundido), esa oscilación se siente como
-            un parpadeo.
+            Histéresis del foco reportado — ver "HISTÉRESIS
+            DEL FOCO" en la cabecera. No toca nada de lo ya
+            calculado arriba (posición/escala/opacidad/
+            rotationWeights siguen con el diffAbs crudo, que
+            sí debe ser continuo cuadro a cuadro): solo decide
+            qué slot se reporta como foco hacia afuera.
 
-            La HISTÉRESIS de acá abajo no toca "mejorSlot" ni
-            nada de lo ya calculado arriba (posición, escala,
-            opacidad, rotationWeights siguen usando el
-            diffAbs crudo de cada elemento: esas sí tienen
-            que ser continuas cuadro a cuadro) — solo decide,
-            aparte, cuál es el slot que se reporta como
-            "foco" hacia afuera (displayIndex/changed), con
-            una zona muerta alrededor del punto de cruce: el
-            foco previo (panelDisplayIndex) se queda quieto
-            hasta que el candidato nuevo gana por más que
-            MARGEN_HISTERESIS, no por cualquier epsilon.
-
-            MARGEN_HISTERESIS se expresa como fracción de
-            "anguloVecino" (el espaciado angular real entre
-            elementos vecinos) en vez de un radián fijo, para
-            que la tolerancia se ajuste sola sea cual sea la
-            cantidad de elementos.
-
-            0.18 (~18% del espaciado a cada elemento) es un
-            valor de partida para ajustar a ojo: más alto,
-            más "pegajoso" el foco (tarda más en soltar); más
-            bajo, más parecido al comportamiento sin
-            histéresis.
+            MARGEN_HISTERESIS es una fracción de "anguloVecino"
+            (no un radián fijo) para que la tolerancia se
+            ajuste sola con la cantidad de elementos. 0.18
+            (~18% del espaciado) es un valor de partida para
+            ajustar a ojo: más alto, foco más "pegajoso".
         */
         const MARGEN_HISTERESIS =
             anguloVecino * 0.18;
@@ -1050,48 +1214,6 @@ export function createCarouselController(
         // desincronización posible.
         const panelOpacity = opacityPorSlot[displayIndex];
 
-        // Snapshot de este frame, para debug() al final del
-        // archivo. "targets" es un array de {slot, u,
-        // phiDeg} — el punto exacto (en grados) donde cada
-        // slot queda centrado según la corrección de seam
-        // vigente.
-        ultimoDebug = {
-            t, rotateT, phi,
-            phiDeg: phi * 180 / Math.PI,
-            n, huecosReales,
-            seamOffset,
-            mejorSlot, mejorDiffAbs,
-            mejorDiffAbsDeg: mejorDiffAbs * 180 / Math.PI,
-            panelDisplayIndex, displayIndex,
-            panelOpacity,
-            focoContinuo,
-            targets: Array.from(
-                { length: huecosReales + 1 },
-                (_, k) => {
-
-                    const u =
-                        targetU(
-                            k, huecosReales,
-                            rangoPhi, sFracUniformePorSlot
-                        );
-
-                    return {
-                        slot: k,
-                        sFracBase: sFracBasePorSlot[k],
-                        sFracUniforme: sFracUniformePorSlot[k],
-                        seamAplicado: seamPorSlot[k],
-                        u,
-                        phiDeg: (-rangoPhi * u) * 180 / Math.PI,
-                        diffAbsAhoraDeg:
-                            diffPorSlot[k] !== undefined
-                                ? diffPorSlot[k] * 180 / Math.PI
-                                : null
-                    };
-
-                }
-            )
-        };
-
         if (displayIndex !== panelDisplayIndex) {
 
             panelDisplayIndex = displayIndex;
@@ -1101,8 +1223,13 @@ export function createCarouselController(
                 displayIndex,
                 elementoId,
                 rotationWeights,
+                focoWeights,
                 panelOpacity,
-                focoContinuo
+                focoContinuo,
+                blend,
+                circuloCerrado,
+                anclaPrincipalMundo,
+                anclaMundoX
             };
 
         }
@@ -1112,8 +1239,13 @@ export function createCarouselController(
             displayIndex,
             elementoId,
             rotationWeights,
+            focoWeights,
             panelOpacity,
-            focoContinuo
+            focoContinuo,
+            blend,
+            circuloCerrado,
+            anclaPrincipalMundo,
+            anclaMundoX
         };
 
     }
@@ -1139,82 +1271,6 @@ export function createCarouselController(
     }
 
 
-    /*
-        DEBUG — COMANDO PARA LA CONSOLA:
-
-            __galeriaCarrusel.debug()
-
-        Imprime el último frame calculado por update():
-        en qué "paso" (tramo entre dos elementos) está
-        parado el scroll ahora mismo, el phi vigente, y
-        —en una tabla— el punto EXACTO donde cada
-        elemento (slot) queda centrado según la
-        corrección de seam actual, junto con su diffAbs
-        REAL de este mismo frame (columna
-        "diffAbsAhoraDeg" — si el elemento realmente
-        está en su punto, esa columna da ~0° para el
-        slot que corresponda al "paso" vigente).
-
-        Para comparar "dato actual" vs. "dónde debería
-        ocurrir": mirá la fila de "targets" cuyo "slot"
-        coincide con el elemento que estás mirando en
-        pantalla, columna "phiDeg" — ESE es el ángulo en
-        el que debería estar centrado. Compará contra
-        "phiDeg" de arriba (el phi vigente AHORA) cuando
-        el scroll está, a ojo, en el punto donde debería
-        estar la meseta.
-
-        Se puede dejar pegado en el código: no hace
-        nada solo (no loguea nada por su cuenta, no usa
-        recursos) hasta que alguien lo llama a mano
-        desde la consola.
-    */
-    function debug() {
-
-        if (!ultimoDebug) {
-
-            console.log(
-                "[galeria-carrusel] todavía no corrió " +
-                "ningún update() — hacé scroll un poco " +
-                "y volvé a llamar a __galeriaCarrusel.debug()."
-            );
-
-            return null;
-
-        }
-
-        const d = ultimoDebug;
-
-        console.log(
-            "[galeria-carrusel] t=" + d.t.toFixed(4) +
-            "  rotateT=" + d.rotateT.toFixed(4) +
-            "  phi=" + d.phiDeg.toFixed(2) + "°" +
-            "  n=" + d.n +
-            "  huecosReales=" + d.huecosReales +
-            "  seamOffset=" + d.seamOffset
-        );
-
-        console.log(
-            "[galeria-carrusel] mejorSlot=" + d.mejorSlot +
-            "  mejorDiffAbs=" + d.mejorDiffAbsDeg.toFixed(2) + "°" +
-            "  panelDisplayIndex=" + d.panelDisplayIndex +
-            "  displayIndex=" + d.displayIndex
-        );
-
-        console.table(d.targets);
-
-        return d;
-
-    }
-
-
-    if (typeof window !== "undefined") {
-
-        window.__galeriaCarrusel = { debug };
-
-    }
-
-
-    return { update, reset, debug };
+    return { update, reset };
 
 }

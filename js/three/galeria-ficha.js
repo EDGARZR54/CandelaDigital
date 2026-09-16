@@ -61,6 +61,66 @@
 const ANCHO_MAXIMO_CAMPO = 260;
 
 /*
+    Tope de ancho por campo de specs (superficie, altura,
+    estado, etc.), medido contra el ancho REAL disponible
+    en vez de este default fijo de arriba — usado en
+    horizontal de celular (ver el media query de
+    "#carousel-panel" en galeria.css), donde el alto es el
+    recurso escaso y hay que garantizar que las specs entren
+    en una sola fila.
+
+    GAP_SPECS_HORIZONTAL replica el gap real de
+    "#carousel-panel .specs" en ese breakpoint; si cambia en
+    galeria.css, actualizar acá también. Movida desde
+    galeria.js (antes calcularAnchoMaximoCampo() vivía ahí,
+    con su propio ANCHO_MAXIMO_CAMPO_DEFAULT — ahora
+    reutiliza el ANCHO_MAXIMO_CAMPO de arriba, mismo valor,
+    una sola fuente de verdad).
+*/
+const GAP_SPECS_HORIZONTAL = 22;
+const ANCHO_MINIMO_CAMPO = 64;
+
+/*
+    En retrato hay alto de sobra, así que no hace falta
+    forzar nada: si "panelFicha" todavía no tiene padre
+    (".ficha__fila"), se devuelve "undefined" y
+    calcularDimensionesFicha cae a su propio default
+    (ANCHO_MAXIMO_CAMPO, arriba). En horizontal de celular
+    sí hace falta: se mide el ancho real de ".ficha__fila"
+    con getBoundingClientRect() —ya viene con el espacio del
+    panel derecho descontado— y se reparte entre las
+    columnas reales de la grilla (leídas del CSS computado,
+    no a mano).
+*/
+export function calcularAnchoMaximoCampo(panelFicha) {
+
+    const fila = panelFicha.parentElement;
+
+    if (!fila) return undefined;
+
+    const anchoDisponible =
+        fila.getBoundingClientRect().width;
+
+    const columnasGrid =
+        getComputedStyle(panelFicha)
+            .gridTemplateColumns
+            .split(" ")
+            .length || 1;
+
+    const anchoPorCampo =
+        (
+            anchoDisponible -
+            GAP_SPECS_HORIZONTAL * (columnasGrid - 1)
+        ) / columnasGrid;
+
+    return Math.max(
+        ANCHO_MINIMO_CAMPO,
+        Math.min(ANCHO_MAXIMO_CAMPO, anchoPorCampo)
+    );
+
+}
+
+/*
     Nombre del área de CSS Grid para cada campo de
     "ficha", EN EL MISMO ORDEN que el array "ficha" de
     normalizarElemento() (galeria-config.js: Autor(es),

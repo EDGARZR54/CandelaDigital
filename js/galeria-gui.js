@@ -38,8 +38,14 @@ function remAPx(rem) {
     píxeles según el tamaño de fuente real de la raíz
     (por si el visitante tiene el zoom del navegador o el
     tamaño de fuente del sistema cambiados).
+
+    EXPORTADA (nuevo): galeria.js la reusa como margen
+    superior del encuadre de cámara en modo vertical (ver
+    getMargenVerticalPx en galeria.js/createScene en
+    galeria-escena.js) — mismo despeje de navbar, una sola
+    fuente de verdad, en vez de duplicar el número.
 */
-const GUI_TOP_MINIMO = remAPx(5.5);
+export const GUI_TOP_MINIMO = remAPx(5.5);
 const GUI_MARGEN_SOBRE_GEOMETRIA = 16;
 
 
@@ -105,12 +111,15 @@ export function createGuiController({
                   GUI_MARGEN_SOBRE_GEOMETRIA
                 : 0;
 
-        gui.style.top =
+        const topFinal =
             Math.max(
                 topFicha,
                 topPorGeometria,
                 GUI_TOP_MINIMO
-            ) + "px";
+            );
+
+        gui.style.top =
+            topFinal + "px";
 
     }
 

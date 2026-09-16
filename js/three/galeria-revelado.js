@@ -46,12 +46,68 @@ export function createRevealController(
     config,
     {
         cones, getPositions, getOrder, elementCount,
-        restY, getHiddenDrop
+        restY, getHiddenDrop,
+        // Mismos dos datos que ya reciben
+        // galeria-reordenar.js/galeria-carrusel.js, con el
+        // mismo propósito: centrar por CENTROIDE el eje
+        // secundario cuando es X (modo vertical) — ver
+        // corregirSecundario más abajo. Opcionales por
+        // compatibilidad hacia atrás.
+        bboxesPorIndice,
+        ejePrincipal = "x"
     }
 ) {
 
     const span =
         config.reveal.span;
+
+    const ejeSecundario =
+        ejePrincipal === "x" ? "y" : "x";
+
+    /*
+        Mismo criterio que galeria-reordenar.js/
+        galeria-escena.js (verticesMundoDeFila): cuando el
+        eje secundario es X, no hay un "restY" físico
+        equivalente para el costado — se centra por
+        CENTROIDE (se resta el pivote propio de cada
+        elemento) en vez de dejar su origen local crudo.
+    */
+    function corregirSecundario(valor, cupID) {
+
+        if (ejeSecundario !== "x") return valor;
+        if (!bboxesPorIndice) return valor;
+
+        const bbox = bboxesPorIndice[cupID];
+
+        const pivotSecundario =
+            (bbox.min.x + bbox.max.x) / 2;
+
+        return valor - pivotSecundario;
+
+    }
+
+
+    /*
+        FIX (piso al 100%): "restY" es un colchón GLOBAL (el
+        peor caso entre todos los elementos, ver
+        galeria-escena.js) — usarlo para posicionar CADA
+        elemento dejaba flotando a cualquiera cuya geometría
+        no fuera tan "profunda" como ese peor caso. Acá se
+        usa la base PROPIA de cada elemento (misma cuenta que
+        "desplazamientoBase" en normalizarGeometriaElemento:
+        -bbox.min.y), para que el punto más bajo de CADA
+        elemento quede exactamente en su slot, sin importar
+        cómo se haya construido su geometría. Fallback a
+        "restY" si no llega "bboxesPorIndice" (compatibilidad
+        hacia atrás, mismo criterio que corregirSecundario).
+    */
+    function baseDe(cupID) {
+
+        if (!bboxesPorIndice) return restY;
+
+        return -bboxesPorIndice[cupID].min.y;
+
+    }
 
 
     /*
@@ -60,16 +116,42 @@ export function createRevealController(
         la penúltima hacia la primera (más cercana
         a la cámara, la más grande/dramática),
         quedando de cierre.
+
+        INVERTIDO EN VERTICAL (pedido explícito): leemos de
+        arriba hacia abajo, así que el elemento que se ve
+        desde el principio pasa a ser el de ABAJO (slot 0 —
+        calculatePositions arma la fila con el slot 0 en el
+        extremo de coordenada MÁS BAJA sobre el eje
+        principal, que en Y es "abajo") en vez del de
+        arriba (slot N-1). El resto de la cascada mantiene
+        el mismo criterio de siempre ("desde el más cercano
+        al hero, alejándose"), solo que ahora recorre hacia
+        ARRIBA (1, 2, ..., N-1) en vez de hacia abajo
+        (N-2, ..., 0). En horizontal, sin cambios.
     */
 
     const initialVisiblePosition =
-        Math.max(0, elementCount - 1);
+        ejePrincipal === "y"
+            ? 0
+            : Math.max(0, elementCount - 1);
 
     const revealOrder = [];
 
-    for (let i = elementCount - 2; i >= 0; i--) {
+    if (ejePrincipal === "y") {
 
-        revealOrder.push(i);
+        for (let i = 1; i < elementCount; i++) {
+
+            revealOrder.push(i);
+
+        }
+
+    } else {
+
+        for (let i = elementCount - 2; i >= 0; i--) {
+
+            revealOrder.push(i);
+
+        }
 
     }
 
@@ -92,13 +174,42 @@ export function createRevealController(
         // getOrder()): el drop depende del encuadre
         // vigente de la cámara, que puede cambiar por un
         // resize (ver getHiddenDrop() en galeria-escena.js).
-        const hiddenY =
-            restY - getHiddenDrop();
+        //
+        // PROPUESTA (ver comentario grande más abajo, en
+        // el cálculo de "y"): esto ya NO se usa para armar
+        // un "hiddenY" único y global. "getHiddenDrop()"
+        // devuelve una MAGNITUD (una distancia a bajar),
+        // no una posición absoluta — restarla directamente
+        // de "restY" solo era correcto porque, en
+        // horizontal, todos los elementos comparten el
+        // mismo "restY" real. Se guarda como
+        // "dropMagnitude" para aplicarla POR ELEMENTO más
+        // abajo, no una sola vez acá.
+        const dropMagnitude =
+            getHiddenDrop();
 
         const rotationWeights = {};
 
+        /*
+            Peso de foco CRUDO (0..1) por elemento — a
+            diferencia de "rotationWeights" (una campana que
+            sube y baja durante la subida, pensada para el
+            giro), este es monótono: 0 mientras el elemento
+            sigue escondido, sube parejo con "e" a medida que
+            se asienta, y quiere quedarse en 1 una vez arriba
+            — mismo rol que "focoWeight"/"pesoFoco" en
+            Maqueta.html (ver aplicarColorFoco), que
+            alimenta lucesPorCaja (galeria-luces.js). El cono
+            hero siempre vale 1 acá (igual que
+            aplicarColorFoco(heroSlot, 1) en la maqueta): es
+            el único visible desde el principio, así que es
+            el único con "foco" real durante todo "hero"/
+            "proyecto" y el inicio de "revelado".
+        */
+        const focoWeights = {};
 
-        if (elementCount === 0) return { rotationWeights };
+
+        if (elementCount === 0) return { rotationWeights, focoWeights };
 
 
         /*
@@ -113,14 +224,27 @@ export function createRevealController(
         const heroCone =
             cones[order[initialVisiblePosition]];
 
+        const heroCupID =
+            order[initialVisiblePosition];
+
         const heroPos =
             positions[initialVisiblePosition];
 
         heroCone.position.set(
-            heroPos.x, restY, heroPos.z
+            // "heroPos.y" generaliza el mismo criterio que
+            // ya usan galeria-escena.js/galeria-reordenar.js
+            // (baseDe(cupID) + slot.y): en horizontal es la
+            // base propia del hero + 0; en vertical, la
+            // altura real del hero dentro de la columna.
+            //
+            // "corregirSecundario" centra por CENTROIDE el
+            // eje secundario cuando es X — ver más arriba.
+            corregirSecundario(heroPos.x, heroCupID),
+            baseDe(heroCupID) + heroPos.y,
+            heroPos.z
         );
 
-        heroCone.material.opacity = 1;
+        focoWeights[heroCupID] = 1;
 
 
         revealOrder.forEach(
@@ -148,9 +272,45 @@ export function createRevealController(
                 const e =
                     ease(localT);
 
+                /*
+                    INVERTIDO EN VERTICAL (pedido explícito,
+                    ver el intercambio que originó este
+                    cambio): leemos de arriba hacia abajo, así
+                    que cada elemento ahora CAE desde arriba
+                    de su lugar en vez de SUBIR desde abajo —
+                    "dropMagnitude" (una distancia, sigue
+                    siendo la misma magnitud de siempre, ver
+                    más abajo) se suma en vez de restarse. En
+                    horizontal, sin cambios (sigue subiendo,
+                    como siempre).
+
+                    APROXIMACIÓN A REVISAR (no derivable solo
+                    de álgebra, a confirmar en la escena real):
+                    "dropMagnitude" se calibra en
+                    getHiddenDrop() (galeria-escena.js) contra
+                    el borde INFERIOR de pantalla — la distancia
+                    correcta para garantizar "fuera de cuadro
+                    por abajo". Acá se está reusando ESA MISMA
+                    magnitud para el borde SUPERIOR, que no
+                    tiene por qué medir exactamente lo mismo
+                    (el margen reservado arriba —navbar— y
+                    abajo —botones de orden— no son iguales, ver
+                    calcularTargetVertical en galeria-escena.js).
+                    Se prueba así primero por ser el cambio más
+                    chico; si algún elemento asoma por arriba
+                    antes de tiempo, hace falta una magnitud
+                    separada calibrada contra el borde superior,
+                    no ajustar acá a ojo.
+                */
+                const baseElemento =
+                    baseDe(order[posIndex]);
+
                 const y =
-                    hiddenY +
-                    (restY - hiddenY) * e;
+                    ejePrincipal === "y"
+                        ? (baseElemento + pos.y) +
+                          dropMagnitude * (1 - e)
+                        : (baseElemento + pos.y) -
+                          dropMagnitude * (1 - e);
 
                 /*
                     Un ligero rebote/asentamiento
@@ -163,15 +323,14 @@ export function createRevealController(
                     config.reveal.settleBounce;
 
                 cone.position.set(
-                    pos.x, y, pos.z
+                    corregirSecundario(pos.x, order[posIndex]),
+                    y,
+                    pos.z
                 );
 
                 cone.scale.setScalar(
                     localT >= 1 ? 1 : settle
                 );
-
-                cone.material.opacity = 1;
-
 
                 /*
                     Campana: 0 al arrancar a subir, máximo
@@ -196,10 +355,17 @@ export function createRevealController(
                         Math.PI
                     ) * config.reveal.rotationScale;
 
+                // "e", no "settle" ni la campana de arriba:
+                // el foco tiene que subir monótono con el
+                // asentamiento real del elemento, no rebotar
+                // ni volver a bajar — ver el comentario junto
+                // a la declaración de "focoWeights" más arriba.
+                focoWeights[order[posIndex]] = e;
+
             }
         );
 
-        return { rotationWeights };
+        return { rotationWeights, focoWeights };
 
     }
 

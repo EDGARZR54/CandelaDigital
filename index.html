@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="assets/favicon.ico" type="image/x-icon">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cascarones · Documentación digital y análisis geométrico del modernismo mexicano</title>
 <meta name="description" content="Documentación digital y análisis geométrico de cascarones de concreto del modernismo mexicano: historia, análisis estructural, fotografía y nubes de puntos.">
@@ -64,14 +65,13 @@
 
     <div class="contenedor hero__contenido">
       <div class="hero__texto">
-        <p class="eyebrow">Seis cascarones · Centro de México</p>
-        <h1>Cascarones de <span class="subrayado">concreto</span>, geometría hecha estructura</h1>
+        <p class="eyebrow">Documentación digital y análisis geométrico de</p>
+        <h1>Cascarones de <span class="subrayado">concreto</span> en México</h1>
         <p class="hero__parrafo">
-          Documentación digital y análisis geométrico de seis cascarones de concreto del
-          movimiento moderno en México, ubicados en Ciudad de México, Estado de México y Morelos.
-          Mediante fotogrametría y escaneo LiDAR se generan nubes de puntos y modelos
-          tridimensionales de alta precisión para estudiar su configuración formal, estructural
-          y su estado actual de conservación.
+          Seis cascarones de concreto del movimiento moderno mexicano, ubicados en Ciudad de
+          México, Estado de México y Morelos. Mediante fotogrametría y escaneo LiDAR se generan
+          nubes de puntos y modelos tridimensionales de alta precisión para estudiar su
+          configuración formal, estructural y su estado actual de conservación.
         </p>
         <div class="hero__acciones">
           <a href="galeria.html" class="boton boton--primario">Explorar edificios</a>
@@ -101,20 +101,20 @@
 
       <div class="cifras" style="margin-top: 3rem;">
         <div>
-          <p class="cifra__numero">6</p>
-          <p class="cifra__etiqueta">Cascarones documentados</p>
+          <p class="cifra__numero" data-cifra-final="6">0</p>
+          <p class="cifra__etiqueta">Meses de documentación (duración estimada del proyecto)</p>
         </div>
         <div>
-          <p class="cifra__numero">3</p>
-          <p class="cifra__etiqueta">Estados — CDMX, Edo. Méx., Morelos</p>
+          <!-- PLACEHOLDER: sustituir data-cifra-final por el conteo real de
+               fotografías (documentales + fotogrametría) en cuanto se tenga -->
+          <p class="cifra__numero" data-cifra-final="5000">0</p>
+          <p class="cifra__etiqueta">Fotografías capturadas — documentales y fotogrametría</p>
         </div>
         <div>
-          <p class="cifra__numero">2</p>
-          <p class="cifra__etiqueta">Técnicas de captura — fotogrametría y LiDAR</p>
-        </div>
-        <div>
-          <p class="cifra__numero">1</p>
-          <p class="cifra__etiqueta">Exposición pública de resultados</p>
+          <!-- PLACEHOLDER: sustituir data-cifra-final por la suma real de
+               m² documentados entre los 6 casos en cuanto se tenga -->
+          <p class="cifra__numero" data-cifra-final="3000">0</p>
+          <p class="cifra__etiqueta">m² de superficie documentada</p>
         </div>
       </div>
     </div>
@@ -127,6 +127,92 @@
 <div id="footer-placeholder"></div>
 
 <script src="js/navbar.js"></script>
+<script>
+  /*
+    Anima cada ".cifra__numero" desde 0 hasta el valor real
+    guardado en su atributo "data-cifra-final", disparado la
+    PRIMERA vez que la franja de cifras entra en el viewport
+    (no en cada scroll ni al cargar la página).
+
+    MECANISMO — IntersectionObserver, no un listener de scroll:
+    evita recalcular en cada frame de scroll; se dispara una
+    sola vez por elemento (se hace unobserve() apenas anima) y
+    no vuelve a correr si el usuario sube y baja de nuevo.
+
+    ACCESIBILIDAD — prefers-reduced-motion: quien lo tenga
+    activado ve el número final directo, sin conteo.
+  */
+  (function () {
+    'use strict';
+
+    var DURACION_MS = 1400;
+    var UMBRAL_VISIBLE = 0.4; // fracción del elemento visible para disparar el conteo
+    var reducirMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Desaceleración pronunciada al final: sube rápido al principio y
+    // "aterriza" suave en el valor real, en vez de un conteo lineal.
+    function easeOutExpo(t) {
+      return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+    }
+
+    function animarCifra(elemento) {
+      var valorFinal = parseInt(elemento.dataset.cifraFinal, 10);
+      if (isNaN(valorFinal)) return;
+
+      if (reducirMovimiento) {
+        elemento.textContent = valorFinal.toLocaleString('es-MX');
+        return;
+      }
+
+      var inicio = null;
+
+      function fotograma(marcaTiempo) {
+        if (inicio === null) inicio = marcaTiempo;
+
+        var progreso = Math.min((marcaTiempo - inicio) / DURACION_MS, 1);
+        var valorActual = Math.round(easeOutExpo(progreso) * valorFinal);
+
+        elemento.textContent = valorActual.toLocaleString('es-MX');
+
+        if (progreso < 1) {
+          requestAnimationFrame(fotograma);
+        } else {
+          // Asegura el valor exacto al cerrar: el redondeo de easeOutExpo
+          // en progreso=1 ya da valorFinal, pero esto es la garantía explícita.
+          elemento.textContent = valorFinal.toLocaleString('es-MX');
+        }
+      }
+
+      requestAnimationFrame(fotograma);
+    }
+
+    var cifras = document.querySelectorAll('.cifra__numero[data-cifra-final]');
+    if (!cifras.length) return;
+
+    // Sin soporte de IntersectionObserver (navegadores muy antiguos):
+    // se muestra el valor final directo, sin animación, en vez de dejar
+    // las cifras congeladas en "0".
+    if (!('IntersectionObserver' in window)) {
+      cifras.forEach(function (cifra) {
+        cifra.textContent = parseInt(cifra.dataset.cifraFinal, 10).toLocaleString('es-MX');
+      });
+      return;
+    }
+
+    var observador = new IntersectionObserver(function (entradas, obs) {
+      entradas.forEach(function (entrada) {
+        if (entrada.isIntersecting) {
+          animarCifra(entrada.target);
+          obs.unobserve(entrada.target);
+        }
+      });
+    }, { threshold: UMBRAL_VISIBLE });
+
+    cifras.forEach(function (cifra) {
+      observador.observe(cifra);
+    });
+  })();
+</script>
 <script type="module">
   import { crearFondo3D } from './js/three/fondo-3d.js';
 
