@@ -94,15 +94,16 @@ export function liftEnvelope(t, ramp = .28) {
 export function assignLayers(movements, eje = "x") {
 
     /*
-        GENERALIZACIÓN (ver notas-encuadre-3d.md): antes
-        esto siempre miraba superposición en X — correcto
-        mientras la fila creciera en X. "eje" deja elegir
-        sobre qué coordenada de "from"/"to" se mide esa
-        superposición (el eje PRINCIPAL de layout vigente,
-        ver galeria-escena.js) — Z sigue sin tocarse: sigue
-        siendo el eje sobre el que este mismo assignLayers
-        reparte los niveles del arco anti-colisión (layer/
-        layerMagnitude, más abajo), en los dos modos.
+        "eje" deja elegir sobre qué coordenada de
+        "from"/"to" se mide la superposición: la fila
+        puede crecer en X (layout horizontal) o en Y
+        (layout vertical), y este parámetro cubre los dos
+        casos con la misma lógica de "carriles" (el eje
+        PRINCIPAL de layout vigente, ver galeria-escena.js)
+        — Z sigue sin tocarse: sigue siendo el eje sobre el
+        que este mismo assignLayers reparte los niveles del
+        arco anti-colisión (layer/layerMagnitude, más
+        abajo), en los dos modos.
     */
     const items =
         movements.map(m => ({
@@ -286,7 +287,7 @@ export function projectToNdc(
        no es lo mismo que centrar la SILUETA proyectada
        del conjunto: con la cámara casi en el eje de la
        fila ("lineup shot"), el escorzo de perspectiva
-       no es lineal (ver encuadre-camara.md).
+       no es lineal.
 
     2) La segunda versión pasó a recibir "worldVertices"
        — los 8 vértices de bounding box por elemento, en
@@ -346,21 +347,19 @@ export function findCenteredLookAtPrincipal(
     if (worldVertices.length === 0) return 0;
 
     /*
-        GENERALIZACIÓN (ver notas-encuadre-3d.md, "Modelo
-        mental: eje principal"): esta función era
-        "findCenteredLookAtPrincipal", fija a X. Ahora resuelve el
-        lookAt sobre CUALQUIERA de los dos ejes horizontales
-        de layout ("x" en modo horizontal, "y" en modo
-        vertical) — Z sigue sin tocarse acá en ningún modo
-        (es el eje de profundidad, ver galeria-escena.js).
+        Esta función resuelve el lookAt sobre CUALQUIERA de
+        los dos ejes horizontales de layout ("x" en modo
+        horizontal, "y" en modo vertical) — Z sigue sin
+        tocarse acá en ningún modo (es el eje de
+        profundidad, ver galeria-escena.js).
 
         "lookAtSecundario" es el valor YA DECIDIDO del otro
         eje entre x/y (el que NO se resuelve acá): en modo
         horizontal es el lookAtY real (mediana de alturas,
         ver galeria-escena.js), en modo vertical sería el
-        lookAtX (probablemente casi fijo, ver tabla de ejes
-        en notas-encuadre-3d.md — "eje secundario, casi
-        fijo, solo pivote").
+        lookAtX (probablemente casi fijo, ver el eje
+        secundario en galeria-escena.js — casi fijo, solo
+        pivote).
 
         La correspondencia eje-mundo -> componente-NDC vale
         porque projectToNdc usa SIEMPRE up=(0,1,0) de mundo
@@ -370,15 +369,15 @@ export function findCenteredLookAtPrincipal(
         hace falta ninguna otra distinción entre los dos
         modos.
 
-        "targetNdcCenter" (nuevo): antes esto siempre
-        centraba en NDC 0 (mitad exacta de pantalla). Ahora
-        puede centrar en cualquier punto de esa banda —
-        necesario para dejar la columna centrada en el
-        alto REAL disponible (navbar arriba, botones de
-        orden abajo — ver calcularMagnitudRasante en
-        galeria-escena.js), no en el alto total de
-        pantalla. Con 0 (default) el comportamiento es
-        idéntico al de antes.
+        "targetNdcCenter": permite centrar en cualquier
+        punto de la banda visible, no solo en NDC 0 (mitad
+        exacta de pantalla) — necesario para dejar la
+        columna centrada en el alto REAL disponible (navbar
+        arriba, botones de orden abajo — ver
+        calcularMagnitudRasante en galeria-escena.js), no en
+        el alto total de pantalla. Con 0 (default), el
+        cálculo centra exactamente en la mitad de la
+        pantalla.
     */
 
     const coords =
@@ -443,11 +442,11 @@ export function findCenteredLookAtPrincipal(
         lookAt candidato DENTRO de ese rango que centre
         del todo la silueta (puede pasar con geometrías muy
         asimétricas). En vez de extrapolar hacia afuera
-        del rango —que es exactamente el
-        comportamiento que causaba el bug reportado—,
-        nos quedamos en el extremo con menor error
-        absoluto: sigue siendo un lookAt dentro de la
-        fila, nunca un ángulo de cámara degenerado.
+        del rango —que dejaría el lookAt fuera de la fila,
+        con un ángulo de cámara degenerado—, nos quedamos
+        en el extremo con menor error absoluto: sigue
+        siendo un lookAt dentro de la fila, nunca un
+        ángulo de cámara degenerado.
     */
 
     if ((errLo > 0) === (errHi > 0)) {
@@ -542,33 +541,29 @@ export function findFittedMagnitude(
 
 
     /*
-        GENERALIZACIÓN (ver notas-encuadre-3d.md): antes
-        esto siempre ajustaba el ANCHO (NDC.x) — correcto
-        en modo horizontal, donde el problema es que la
-        fila se recorta por los costados. En modo vertical
-        el problema análogo es el ALTO (NDC.y): una columna
-        de elementos, alta y angosta, encuadrada con el
-        margen calibrado para escritorio queda chica con
-        mucho vacío a los costados si solo se ajustara el
-        ancho — ver el diagnóstico completo en
-        notas-encuadre-3d.md, sección "calcularMagnitudRasante".
         "eje" decide qué componente NDC se lleva a ocupar
-        el cuadro completo.
+        el cuadro completo: en modo horizontal, ese
+        componente es el ANCHO (NDC.x), porque el problema
+        ahí es que la fila se recorta por los costados; en
+        modo vertical es el ALTO (NDC.y), porque una
+        columna de elementos, alta y angosta, encuadrada
+        con el margen calibrado para escritorio queda chica
+        con mucho vacío a los costados si solo se ajustara
+        el ancho.
 
-        "lookAtSecundario" (antes "lookAtY"): el valor YA
-        DECIDIDO del eje horizontal de layout que NO se
-        está ajustando acá — ver mismo parámetro en
-        findCenteredLookAtPrincipal, arriba.
+        "lookAtSecundario": el valor YA DECIDIDO del eje
+        horizontal de layout que NO se está ajustando acá —
+        ver mismo parámetro en findCenteredLookAtPrincipal,
+        arriba.
 
-        "targetSize"/"targetNdcCenter" (nuevos): antes
-        "el cuadro completo" era SIEMPRE 2 de NDC (-1 a 1),
-        centrado en 0. Ahora puede ser una banda más chica
-        y no necesariamente centrada en mitad de pantalla
-        — para dejarle lugar de verdad al navbar y a los
-        botones de orden en modo vertical (ver
-        calcularMagnitudRasante en galeria-escena.js). Con
-        los defaults (2 y 0) el comportamiento es idéntico
-        al de antes.
+        "targetSize"/"targetNdcCenter": permiten que "el
+        cuadro completo" sea una banda más chica que el
+        total de NDC (-1 a 1) y no necesariamente centrada
+        en mitad de pantalla — para dejarle lugar de verdad
+        al navbar y a los botones de orden en modo vertical
+        (ver calcularMagnitudRasante en galeria-escena.js).
+        Con los defaults (2 y 0), el cuadro completo es
+        efectivamente todo el NDC, centrado en 0.
     */
 
     function tamanoProyectado(m) {
@@ -858,22 +853,22 @@ export function findHiddenDrop(
 
    hero/proyecto quedan "clavados" (position: absolute)
    sobre TODA la ventana, en un z-index (4) por encima
-   de "#scene" — su opacidad llega a 0 en cuanto se sale
-   de su fase, pero opacity:0 NO apaga pointer-events: el
-   bloque de texto reactivado (heroTexto/proyectoContenedor,
-   ver galeria-dom.js) seguía robándole el clic al canvas
-   de más abajo en TODAS las demás fases, "fichas"
-   incluida — el arrastre para rotar la geometría en foco
-   (ver galeria-interaccion-ficha.js) nunca le llegaba al
-   raycaster porque el pointerdown se quedaba en este
-   bloque invisible antes de tocar el <canvas> (bug
-   reportado: "no me deja rotar").
+   de "#scene". Su opacidad llega a 0 en cuanto se sale
+   de su fase, pero opacity:0 NO apaga pointer-events por
+   sí solo: sin desactivarlo explícito, el bloque de texto
+   (heroTexto/proyectoContenedor, ver galeria-dom.js)
+   seguiría robándole el clic al canvas de más abajo en
+   TODAS las demás fases, "fichas" incluida — el arrastre
+   para rotar la geometría en foco (ver
+   galeria-interaccion-ficha.js) nunca le llegaría al
+   raycaster porque el pointerdown se quedaría en este
+   bloque invisible antes de tocar el <canvas>.
 
    Esta única función reemplaza toda asignación directa
    de "<panel>.style.opacity" en galeria.js, así opacidad
    y pointer-events viajan siempre juntos y no puede
-   repetirse el mismo bug en otro lado si se agrega una
-   fase nueva.
+   aparecer el mismo problema en otro lado si se agrega
+   una fase nueva.
 ================================================== */
 
 export function fijarOpacidadPanel(

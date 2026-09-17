@@ -100,20 +100,19 @@ export function createReorderController(
         ejePrincipal === "x" ? "z" : ejeSecundario;
 
     /*
-        PROPUESTA — centrado por centroide del eje
-        secundario (ver notas-encuadre-3d.md y el mismo
+        Centrado por centroide del eje secundario (mismo
         criterio ya aplicado en verticesMundoDeFila, en
         galeria-escena.js): cuando el secundario es X
         (modo vertical), no hay un "restY" físico
         (apoyado en el piso) equivalente para el costado
         — alinear por el borde/origen local de cada
-        geometría (lo que hacía el código antes de esto)
-        deja a cada elemento en un lugar lateral distinto
-        si sus pivotes locales no coinciden, en vez de
-        centrados en la misma línea vertical. Se les resta
-        su propio pivote (centro real del bbox en ese eje)
-        para que sea el CENTROIDE, no el origen local, el
-        que caiga en la coordenada compartida.
+        geometría deja a cada elemento en un lugar lateral
+        distinto si sus pivotes locales no coinciden, en
+        vez de centrados en la misma línea vertical. Se
+        les resta su propio pivote (centro real del bbox
+        en ese eje) para que sea el CENTROIDE, no el
+        origen local, el que caiga en la coordenada
+        compartida.
 
         Cuando el secundario es Y (horizontal, sin
         cambios), esto no se aplica: el borde/piso de cada
@@ -135,19 +134,19 @@ export function createReorderController(
     }
 
     /*
-        FIX (piso al 100%): "restY" es un colchón GLOBAL (el
-        MAYOR desplazamientoBase entre todos los elementos,
-        ver galeria-escena.js) — usarlo para posicionar CADA
-        elemento dejaba flotando a cualquiera cuya geometría
-        no fuera tan "profunda" como ese peor caso, que es
-        justo el motivo por el que el piso no quedaba debajo
-        del 100% de los objetos. Acá se usa la base PROPIA de
-        cada uno (misma cuenta que "desplazamientoBase" en
+        "restY" es un colchón GLOBAL (el MAYOR
+        desplazamientoBase entre todos los elementos, ver
+        galeria-escena.js): usarlo para posicionar CADA
+        elemento dejaría flotando a cualquiera cuya
+        geometría no fuera tan "profunda" como ese peor
+        caso, y el piso no quedaría debajo del 100% de los
+        objetos. Acá se usa la base PROPIA de cada uno
+        (misma cuenta que "desplazamientoBase" en
         normalizarGeometriaElemento: -bbox.min.y), para que
-        su punto más bajo real caiga exactamente en su slot.
-        Fallback a "restY" si no llega "bboxesPorIndice"
-        (dependencia opcional, mismo criterio que
-        corregirSecundario).
+        su punto más bajo real caiga exactamente en su
+        slot. Fallback a "restY" si no llega
+        "bboxesPorIndice" (dependencia opcional, mismo
+        criterio que corregirSecundario).
     */
     function baseDe(cupID) {
 
@@ -201,11 +200,8 @@ export function createReorderController(
         seguridad multiplicativo sobre esa cota (>= 1),
         no un factor sobre el spacing de la fila.
 
-        GENERALIZACIÓN: antes esto medía siempre Z
-        ("bbox.max.z - bbox.min.z"), porque el lift
-        siempre iba a Z. Ahora mide sobre "ejeLift" — en
-        horizontal sigue siendo Z exactamente igual que
-        antes (pixel-idéntico); en vertical pasa a medir
+        Esta cota mide sobre "ejeLift" — en horizontal es
+        Z (el lift siempre va a Z ahí); en vertical mide
         el ancho en X de cada elemento, porque ahí es
         donde realmente va el lift.
     */
@@ -257,22 +253,20 @@ export function createReorderController(
         computeRowPositions(order);
 
     /*
-        FIX (cono de luz saltando "de golpe" al terminar un
-        reordenamiento — reportado contra galeria-cono-luz.js):
         "positions" (arriba) es la fuente de verdad que
-        consume getPositions(), y hasta ahora quedaba
-        CONGELADA durante toda la animación de animateTo()
-        —solo se promovía a "newPositions" en el frame exacto
-        en que step() llega a t>=1 (ver más abajo)—, mientras
-        los propios conos SÍ se movían de a poco cada frame
-        (interpolando from/to con "e"). Cualquier consumidor
-        de getPositions() que ancle algo contra el LAYOUT (no
-        contra un elemento en particular) —el caso de
-        galeria-cono-luz.js: puntoDeDescanso() usa
-        getPositions()[slot] para los dos extremos del eje de
-        la luz— se quedaba leyendo el layout VIEJO todo el
-        reordenamiento entero, y saltaba de una sola vez al
-        layout nuevo en el último frame.
+        consume getPositions(); durante toda la animación
+        de animateTo() quedaría CONGELADA si solo se
+        promoviera a "newPositions" en el frame exacto en
+        que step() llega a t>=1 (ver más abajo), mientras
+        los propios conos SÍ se mueven de a poco cada
+        frame (interpolando from/to con "e"). Cualquier
+        consumidor de getPositions() que ancle algo contra
+        el LAYOUT (no contra un elemento en particular)
+        —el caso de galeria-cono-luz.js: puntoDeDescanso()
+        usa getPositions()[slot] para los dos extremos del
+        eje de la luz— se quedaría leyendo el layout VIEJO
+        todo el reordenamiento entero, y saltaría de una
+        sola vez al layout nuevo en el último frame.
 
         "positionsAnimadas": snapshot por-slot, recalculado en
         cada step() mientras hay animación en curso — mismo
@@ -595,7 +589,7 @@ export function createReorderController(
             positionsAnimadas: lerp por-slot entre el layout
             viejo (oldPositions) y el nuevo (newPositions), con
             la MISMA "e" que ya interpola cada cono individual
-            más abajo — ver el FIX grande junto a la
+            más abajo — ver el comentario grande junto a la
             declaración de "positionsAnimadas", arriba. Se
             recalcula todos los frames de la animación (barato:
             un array chico, un lerp por componente), y se limpia
@@ -632,20 +626,19 @@ export function createReorderController(
 
 
             /*
-                GENERALIZACIÓN (ver notas-encuadre-3d.md):
-                antes "restY" bastaba solo porque "to.y"/
-                "from.y" siempre valían 0 (layout en X). Con
-                "ejePrincipal" en "y" (columna vertical),
-                "to.y"/"from.y" pasan a ser la posición real
-                de cada elemento en la columna — sumarlos acá
+                Con "ejePrincipal" en "y" (columna vertical),
+                "to.y"/"from.y" son la posición real de cada
+                elemento en la columna, así que sumarlos acá
                 (baseDe(cupID) + y) es el mismo criterio que
                 ya usa verticesMundoDeFila() en
-                galeria-escena.js.
+                galeria-escena.js. En horizontal, "to.y"/
+                "from.y" valen 0 y esto se reduce a solo
+                "baseDe(cupID)".
 
-                FIX (piso al 100%): la altura de piso es
-                "baseDe(cupID)" — la base PROPIA de ESTE
-                elemento — no el "restY" global que se usaba
-                antes; ver el comentario de baseDe más arriba.
+                La altura de piso es "baseDe(cupID)" — la
+                base PROPIA de este elemento, no un "restY"
+                global (ver el comentario de baseDe más
+                arriba).
 
                 "corregirSecundario" (ver más arriba) hace lo
                 mismo del otro lado: cuando el secundario es

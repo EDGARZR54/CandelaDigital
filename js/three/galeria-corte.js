@@ -5,32 +5,29 @@
    geometría del elemento en foco durante "fichas" — solo
    recorta, NO intenta tapar/rellenar el corte.
 
-   VERSIÓN ANTERIOR (reemplazada): la primera versión de este
-   archivo portaba "createPlaneStencilGroup" del ejemplo
-   oficial de three.js "webgl_clipping_stencil" — una técnica
-   de stencil que TAPA el agujero del corte con una tapa
-   sólida, pensada para geometría CERRADA (un volumen sin
-   bordes, como el TorusKnot de ese demo: el stencil cuenta
-   cruces de caras front/back para saber "achá hay un agujero
-   en un sólido, hay que rellenarlo"). Las geometrías
-   paramétricas de esta galería (ver protomartir.js,
-   acceso-cardenas.js) son SUPERFICIES ABIERTAS —una sola capa,
-   sin volumen cerrado, ya renderizada como una malla
-   DoubleSide para simular espesor sin culling (ver
-   armarGroup3D en galeria-escena.js)—, no sólidos: no hay
-   ningún "adentro" real que rellenar, y el conteo de stencil
-   del ejemplo da resultados basura sobre geometría no cerrada
-   (el artefacto amarillo reportado). Cortar una lámina abierta
-   con un plano simplemente le saca un pedazo, sin nada
-   "detrás" que tapar — es el resultado geométricamente
-   correcto para este tipo de contenido, así que esta versión
-   NO arma stencil ni tapas: solo asigna "clippingPlanes" al
+   POR QUÉ SIN STENCIL NI TAPAS: la técnica de
+   "createPlaneStencilGroup" del ejemplo oficial de three.js
+   "webgl_clipping_stencil" tapa el agujero del corte con una
+   tapa sólida, y está pensada para geometría CERRADA (un
+   volumen sin bordes, como el TorusKnot de ese demo: el
+   stencil cuenta cruces de caras front/back para saber "acá
+   hay un agujero en un sólido, hay que rellenarlo"). Las
+   geometrías paramétricas de esta galería (ver
+   protomartir.js, acceso-cardenas.js) son SUPERFICIES
+   ABIERTAS —una sola capa, sin volumen cerrado, renderizada
+   como una malla DoubleSide para simular espesor sin culling
+   (ver armarGroup3D en galeria-escena.js)—, no sólidos: no
+   hay ningún "adentro" real que rellenar, y el conteo de
+   stencil da resultados basura sobre geometría no cerrada.
+   Cortar una lámina abierta con un plano simplemente le saca
+   un pedazo, sin nada "detrás" que tapar, que es el
+   resultado geométricamente correcto para este tipo de
+   contenido: este módulo solo asigna "clippingPlanes" al
    material que ya existe (una sola malla DoubleSide, ver
-   armarGroup3D en galeria-escena.js) y listo.
-   Si en algún momento se suma geometría CERRADA de verdad a la
-   galería, ahí sí valdría la pena reincorporar la técnica de
-   tapa — para lo que hay hoy, sería complejidad sin beneficio
-   (y con el bug de fondo que reportó el usuario).
+   armarGroup3D en galeria-escena.js). Si algún día se suma
+   geometría CERRADA de verdad a la galería, ahí sí valdría
+   la pena la técnica de tapa; para lo que hay hoy sería
+   complejidad sin beneficio.
 
    NO conoce el DOM: solo recibe "percent"/"invertido" ya
    decodificados — ver galeria-corte-controles.js para los
@@ -52,7 +49,7 @@
    siempre por el mismo eje local — visualmente, el corte
    "orbitaría" alrededor del objeto en vez de girar CON él.
 
-   La solución: cada eje tiene un plano LOCAL (normal/constant
+   Por eso cada eje tiene un plano LOCAL (normal/constant
    calculados en las coordenadas de la propia geometría — el
    mismo espacio que "geometry.boundingBox"/"bboxesPorIndice",
    ver galeria-escena.js/galeria-carrusel.js) que solo cambia
@@ -66,14 +63,13 @@
    sin tener que reasignárselo en cada frame.
    ====================================================
 
-   POR QUÉ "INVERTIR" NO ES UN ESPEJO — bug real de la primera
-   versión, reportado y corregido: invertir un eje NO debe
-   mover el límite del corte a la posición opuesta del rango
-   (eso lo espeja, un bug) — debe dejar el límite EXACTAMENTE
-   donde está y cambiar únicamente qué lado se conserva. Con el
-   bbox normalizado 0..1 y el corte en 0.25: sin invertir se ve
-   [0, 0.25]; invertido tiene que verse [0.25, 1] (complementario,
-   mismo límite) — nunca [0.75, 1] (que sería el límite
+   POR QUÉ "INVERTIR" NO ES UN ESPEJO: invertir un eje NO
+   mueve el límite del corte a la posición opuesta del rango
+   (eso lo espejaría) — deja el límite EXACTAMENTE donde está
+   y cambia únicamente qué lado se conserva. Con el bbox
+   normalizado 0..1 y el corte en 0.25: sin invertir se ve
+   [0, 0.25]; invertido se ve [0.25, 1] (complementario,
+   mismo límite), nunca [0.75, 1] (que sería el límite
    reflejado a (1 - 0.25), un eje distinto).
 
    Por eso "constantLocal" usa el MISMO "b = min + percent*
@@ -94,9 +90,9 @@
    "sin cortar" para la próxima vez que se vuelva a enfocar— y
    activa al nuevo.
 
-   HECHO — el bbox cacheado acá SÍ se invalida cuando
+   El bbox cacheado acá se invalida cuando
    galeria-panel-parametros.js reconstruye la geometría de
-   un cono en caliente (mismo caso que ya afecta al pivote
+   un cono en caliente (mismo caso que afecta al pivote
    de rotación): ver invalidarBboxCono(), exportada más
    abajo justamente para que ese panel la llame después de
    recalcular el bbox de cada elemento.
@@ -173,11 +169,10 @@ function planoLocalPara(eje, percent, invertido, bbox) {
 /*
     Refresca "cono.userData.corte" contra un bbox NUEVO,
     preservando el estado (percent/invertido) que el
-    visitante ya tenía puesto en cada eje — ver el
-    "IMPORTANTE" de la cabecera del archivo: exactamente el
-    caso que faltaba cubrir, ahora que
-    galeria-panel-parametros.js SÍ reconstruye geometría en
-    caliente.
+    visitante tenga puesto en cada eje — hace falta porque
+    galeria-panel-parametros.js reconstruye geometría en
+    caliente y el bbox cacheado acá deja de corresponderse
+    con la pieza (ver la cabecera del archivo).
 
     No-op si el cono todavía no tiene infraestructura de
     corte armada (nunca se activó "Corte" para él) — no hay
@@ -319,6 +314,38 @@ export function createCorteController(
         malla.material.clippingPlanes =
             planosArray;
 
+        /*
+            BUG conocido hasta ahora: el overlay de wireframe
+            (galeria-panel-material.js, "Mostrar malla") es
+            una malla/material APARTE de la sólida — nunca
+            heredó "clippingPlanes" solo por vivir en el
+            mismo cono, así que el corte se veía en la
+            superficie pero el wireframe seguía dibujándose
+            completo, sobresaliendo del lado cortado.
+
+            Se le asigna el MISMO array (no un clone): son
+            los mismos objetos Plane que sincronizarMundo()
+            muta in-place cada frame (ver la cabecera del
+            archivo), así que el overlay queda cortado en
+            sincronía sin que este módulo ni
+            galeria-panel-material.js tengan que coordinarse
+            por ningún otro canal.
+
+            "overlayMalla" puede no existir todavía (nunca se
+            prendió "Mostrar malla") — no-op en ese caso; ver
+            crearOverlayDeGrupo() en galeria-panel-material.js
+            para el caso simétrico (el overlay se crea DESPUÉS
+            de que este elemento ya esté cortando: ahí se lee
+            el array vigente de la malla sólida al construirse,
+            en vez de nacer sin cortar).
+        */
+        if (cono.userData.overlayMalla) {
+
+            cono.userData.overlayMalla.material.clippingPlanes =
+                planosArray;
+
+        }
+
         activoId = id;
         activoInfo = info;
 
@@ -337,6 +364,14 @@ export function createCorteController(
                 cono.userData.mallas;
 
             malla.material.clippingPlanes = [];
+
+            // Simétrico al fix de activar() — ver el
+            // comentario grande ahí.
+            if (cono.userData.overlayMalla) {
+
+                cono.userData.overlayMalla.material.clippingPlanes = [];
+
+            }
 
             /*
                 Vuelve el ESTADO (no solo los materiales) a

@@ -128,8 +128,7 @@ export function crearGeometriaConoSinusoidal(
       posiciona en escena con un desplazamiento vertical
       (restY) calculado UNA sola vez al construir la
       escena, el objeto queda flotando o hundido según
-      el valor de esos sliders (ver
-      geometria-recalculo-centroide.md).
+      el valor de esos sliders.
 
       Se traslada la pieza para que su punto más bajo
       quede siempre exactamente en Y=0, sin importar

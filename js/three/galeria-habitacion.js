@@ -7,16 +7,16 @@
    esquinas redondeadas en vez de un círculo perfecto o
    un cuadrado con costura visible en las esquinas).
 
-   Portado de Maqueta.html casi sin cambios — la única
-   diferencia real es de origen de datos: acá los
-   parámetros de geometría/margen salen de
+   Implementa la misma geometría atmosférica que
+   Maqueta.html, con dos diferencias de origen de datos:
+   acá los parámetros de geometría/margen salen de
    config.room (ver galeria-config.js) en vez de estar
    hardcodeados, y "actualizarPisoSegunGeometria" recibe
    "cones"/"restY"/"ejePrincipal" como argumentos frescos
    en cada llamada (los mismos vienen del closure de
    galeria-escena.js, que es quien de verdad los posee y
-   los actualiza) en vez de leer variables globales del
-   script, como hacía la maqueta.
+   los actualiza) en vez de depender de variables globales
+   del script.
 
    No proyecta sombra (ni pared ni piso tienen
    castShadow): son puramente receptores
@@ -24,16 +24,17 @@
    sigue siendo el "keyLight" configurado en
    galeria-escena.js.
 
-   "roomFloor" es ahora el ÚNICO receptor de esa sombra: la
-   "mesa" que convivía con él (un plano ShadowMaterial
-   invisible en galeria-escena.js) fue SACADA, igual que en
-   Maqueta.html. Un ShadowMaterial solo puede oscurecer,
-   nunca mostrar la "piscina de luz" —el parche más
-   iluminado donde el cono del spot toca el piso—, que sí se
-   ve sobre el MeshPhysicalMaterial real de roomFloor.
+   "roomFloor" es el ÚNICO receptor de esa sombra: no hay
+   una "mesa" aparte (un plano ShadowMaterial invisible),
+   igual que en Maqueta.html. Un ShadowMaterial solo puede
+   oscurecer, nunca mostrar la "piscina de luz" —el parche
+   más iluminado donde el cono del spot toca el piso—, que
+   sí se ve sobre el MeshPhysicalMaterial real de
+   roomFloor.
 ================================================== */
 
 import * as THREE from 'three';
+import { IS_MOBILE_TIER } from "./galeria-dispositivo.js";
 
 export function createHabitacion(scene, renderer, config) {
 
@@ -65,7 +66,14 @@ export function createHabitacion(scene, renderer, config) {
         función de dibujo.
     */
     const MAX_ANISO = renderer.capabilities.getMaxAnisotropy();
-    const TEX_ANISO = Math.min(8, MAX_ANISO);
+    // Gateado por IS_MOBILE_TIER — anisotropía alta multiplica
+    // el ancho de banda de muestreo por píxel sobre una malla
+    // (el piso) que cubre casi toda la pantalla casi siempre;
+    // 4 sigue siendo suficiente para que el moteado no se vea
+    // borroneado en ángulo rasante, sin pagar el costo de 8 en
+    // hardware más sensible a bandwidth.
+    const TEX_ANISO =
+        Math.min(IS_MOBILE_TIER ? 4 : 8, MAX_ANISO);
 
     function makeSpeckleTexture({ bg, count, rMin, rMax, gFn, size = 512 }) {
 
@@ -93,13 +101,27 @@ export function createHabitacion(scene, renderer, config) {
 
     }
 
+    /*
+        Gateado por IS_MOBILE_TIER: este bucle es costo de
+        ARRANQUE (sincrónico, sobre el hilo principal, antes
+        del primer frame), no de render por frame — en un
+        celular de gama baja, generar ~43.000 arcos acá se
+        siente como jank/freeze justo al cargar la galería. Es
+        ruido estocástico, así que bajar la densidad no cambia
+        el "look" del moteado, solo lo hace un poco menos denso
+        — imperceptible a la distancia normal de cámara.
+    */
     const eggBump = makeSpeckleTexture({
-        bg: "#808080", count: 25000, rMin: 0, rMax: 1.2,
+        bg: "#808080",
+        count: IS_MOBILE_TIER ? 10000 : 25000,
+        rMin: 0, rMax: 1.2,
         gFn: r => 128 - Math.floor(r * 45)
     });
 
     const eggRoughness = makeSpeckleTexture({
-        bg: "#ffffff", count: 18000, rMin: 0.3, rMax: 1.3,
+        bg: "#ffffff",
+        count: IS_MOBILE_TIER ? 7000 : 18000,
+        rMin: 0.3, rMax: 1.3,
         gFn: r => 40 + Math.floor(r * 40)
     });
 
@@ -284,17 +306,16 @@ export function createHabitacion(scene, renderer, config) {
                 uniform float bumpScale;
 
                 /*
-                    FIX: la maqueta (three r128) usaba "vUv", una
-                    única varying de UV compartida por todos los
-                    mapas. Desde que three separó las UV por mapa
-                    (ver uv_pars_fragment.glsl.js: vUv solo se
-                    declara con USE_UV/USE_ANISOTROPY, ninguno de
-                    los dos aplica acá porque este material no
-                    tiene "map" de color), la varying real que
-                    corresponde a bumpMap es "vBumpMapUv" — usar
+                    La varying real que corresponde a
+                    bumpMap es "vBumpMapUv", no "vUv": three
+                    separa la UV por mapa (ver
+                    uv_pars_fragment.glsl.js: vUv solo se
+                    declara con USE_UV/USE_ANISOTROPY,
+                    ninguno de los dos aplica acá porque este
+                    material no tiene "map" de color). Usar
                     "vUv" a secas compila a una variable
-                    inexistente y tira "Fragment shader is not
-                    compiled" (error real que motivó este fix).
+                    inexistente y tira "Fragment shader is
+                    not compiled".
                 */
                 vec2 dHdxy_fwd() {
                     vec2 dSTdx = dFdx( vBumpMapUv );
@@ -367,12 +388,12 @@ export function createHabitacion(scene, renderer, config) {
         corregirSecundario de galeria-revelado.js/
         galeria-reordenar.js para el eje secundario).
 
-        NOTA (seguimiento, no se resuelve en esta fase): el
-        cálculo del radio (más abajo, "radioMaximoXZ") recorre
-        el pivote de cada cono — barato, sin iterar vértices.
-        El cálculo de "minY" TAMPOCO recorre vértices (ver el
-        FIX grande más abajo): usa la posición/escala del
-        grupo + el bbox local del elemento, O(1) por cono.
+        NOTA DE RENDIMIENTO: el cálculo del radio (más abajo,
+        "radioMaximoXZ") recorre el pivote de cada cono —
+        barato, sin iterar vértices. El cálculo de "minY"
+        TAMPOCO recorre vértices (ver el comentario grande
+        más abajo): usa la posición/escala del grupo + el
+        bbox local del elemento, O(1) por cono.
     */
     function actualizarPisoSegunGeometria(
         cones, restY, ejePrincipal, bboxesPorIndice
@@ -386,32 +407,28 @@ export function createHabitacion(scene, renderer, config) {
             const bbox = bboxesPorIndice[id];
 
             /*
-                FIX (piso "respirando"/"temblando" al rotar la
-                geometría en vertical): antes acá se computaba
-                el mundo AABB del grupo con
-                "_boxMundoTmp.setFromObject(cono)" y se usaba
-                su min.y. Ese AABB incluye la ROTACIÓN actual
-                del objeto (tanto el spin del pivote,
-                galeria-rotacion.js, como el quaternion
-                completo del carrusel con yaw+pitch, más el
-                arrastre manual de galeria-interaccion-ficha.js),
-                así que su min.y se movía con cada frame de
-                giro. Como en vertical el piso sigue a minY
-                (ver más abajo), el piso subía y bajaba
-                acompañando la rotación — el bug reportado
-                ("el piso se mueve verticalmente, subir y
-                bajar, al rotar la geometría").
+                "baseY" tiene que ser independiente de la
+                rotación del objeto: la ROTACIÓN alrededor de
+                Y no debería mover el piso (preserva la Y de
+                cualquier punto), y el pitch del arrastre
+                manual (galeria-interaccion-ficha.js) es una
+                interacción efímera del visitante, no una
+                propiedad del layout — tampoco debería
+                reescribir el piso. Un AABB de mundo calculado
+                sobre el objeto ya rotado (por ejemplo con
+                setFromObject) SÍ incluye la rotación actual
+                (tanto el spin del pivote, galeria-rotacion.js,
+                como el quaternion completo del carrusel con
+                yaw+pitch, más el arrastre manual), así que su
+                min.y cambiaría con cada frame de giro — y como
+                en vertical el piso sigue a minY (ver más
+                abajo), terminaría subiendo y bajando al
+                acompañar la rotación.
 
-                La rotación alrededor de Y no debería mover el
-                piso (preserva la Y de cualquier punto), y el
-                pitch del arrastre manual es una interacción
-                del visitante, no una propiedad del layout —
-                tampoco debería reescribir el piso.
-
-                Se reemplaza por la base LÓGICA del elemento:
-                "posición Y del grupo + escala Y × bbox.min.y
-                (local)". Ese valor es independiente de la
-                rotación por construcción:
+                Por eso "baseY" se calcula desde la base
+                LÓGICA del elemento: "posición Y del grupo +
+                escala Y × bbox.min.y (local)". Ese valor es
+                independiente de la rotación por construcción:
                   - Y-rotation preserva la Y de cualquier
                     punto (y el pivote solo rota en Y, ver
                     galeria-rotacion.js).
@@ -426,11 +443,10 @@ export function createHabitacion(scene, renderer, config) {
                     motivo que el spin.
 
                 Con escala=1 y sin animar (reposo en "orden"),
-                da exactamente "positions[slot].y" —el mismo
-                valor que antes—, así que el resto del
-                sistema no se entera. Durante el blend de
-                "formar" transiciona suave de la base de la
-                columna a la base del círculo (0), sin
+                da exactamente "positions[slot].y", así que el
+                resto del sistema queda consistente. Durante el
+                blend de "formar" transiciona suave de la base
+                de la columna a la base del círculo (0), sin
                 wobble. Durante "rotar" (blend=1) queda
                 clavado en 0, porque el carrusel compone
                 "curvaY = baseElemento * scaleFinal" justo
@@ -439,10 +455,10 @@ export function createHabitacion(scene, renderer, config) {
                 en la altura del piso sin importar cuánto
                 crezca su escala por énfasis.
 
-                Bonus: evita el recorrido completo de
-                "_boxMundoTmp.setFromObject(cono)" (que
-                iteraba todos los vértices de la malla cada
-                frame) — O(1) por cono en vez de O(vértices).
+                Bonus: evita el recorrido completo de un AABB
+                de mundo (que iteraría todos los vértices de
+                la malla cada frame) — O(1) por cono en vez de
+                O(vértices).
             */
             const baseY =
                 cono.position.y +
@@ -451,39 +467,36 @@ export function createHabitacion(scene, renderer, config) {
             if (baseY < minY) minY = baseY;
 
             /*
-                Radio XZ: se mantiene la medición por pivote
-                (que sí necesita la posición de mundo real
+                Radio XZ: se mide por la posición de mundo
+                del PIVOTE (que sí necesita la posición real
                 del pivote para decidir cuánto agrandar el
-                piso). Mismo criterio que la versión
-                anterior — la rotación del pivote NO afecta
-                esta cuenta (getWorldPosition del pivote no
-                depende de la rotación del propio pivote, solo
-                de la cadena de padres).
+                piso) — la rotación del pivote NO afecta esta
+                cuenta (getWorldPosition del pivote no
+                depende de la rotación del propio pivote,
+                solo de la cadena de padres).
 
-                FIX (piso "respirando" por AABB de mundo
-                rotado): la versión original de este radio
-                recorría las 4 esquinas del AABB de mundo
-                (_boxMundoTmp) — un AABB alineado a los ejes
-                del mundo, alrededor de una forma que va
-                ROTANDO. A medida que gira, ese AABB crece y
-                encoge (un rectángulo alineado a los ejes que
-                envuelve una forma rotando no tiene tamaño
-                constante, aunque la forma en sí no cambie),
-                y eso hacía "respirar" la escala de toda la
-                sala (roomGroup.scale) frame a frame — visible
+                Esta medida tiene que ser INVARIANTE a la
+                rotación: un AABB de mundo (alineado a los
+                ejes del mundo, alrededor de una forma que va
+                ROTANDO) crece y encoge a medida que gira —
+                un rectángulo alineado a los ejes que envuelve
+                una forma rotando no tiene tamaño constante,
+                aunque la forma en sí no cambie — lo que
+                haría "respirar" la escala de toda la sala
+                (roomGroup.scale) frame a frame, visible
                 sobre todo en el moteado del piso, cuya UV
-                depende de esa escala. Se reemplaza por una
-                medida INVARIANTE a la rotación: la posición
-                de mundo del PIVOTE (el punto alrededor del
-                cual gira — no cambia con la rotación, solo
-                la orientación cambia) más "radioInscrito"
-                (mitad de la diagonal del bbox LOCAL, mismo
-                cálculo que ya usa calcularRadio() en
-                galeria-cono-luz.js): una esfera que cubre al
-                elemento sea cual sea su orientación actual.
-                Da un radio ligeramente más conservador que el
-                AABB exacto en un instante dado (la esfera es
-                un sobre-envolvente), pero constante — que es
+                depende de esa escala. Por eso el radio se
+                mide con la posición de mundo del PIVOTE (el
+                punto alrededor del cual gira — no cambia con
+                la rotación, solo la orientación cambia) más
+                "radioInscrito" (mitad de la diagonal del
+                bbox LOCAL, mismo cálculo que ya usa
+                calcularRadio() en galeria-cono-luz.js): una
+                esfera que cubre al elemento sea cual sea su
+                orientación actual. Da un radio ligeramente
+                más conservador que el AABB exacto en un
+                instante dado (la esfera es un
+                sobre-envolvente), pero constante — que es
                 justamente lo que hace falta acá.
             */
             const pivote = cono.userData.pivote;

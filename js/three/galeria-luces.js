@@ -127,25 +127,24 @@ export function createLucesAdicionales(scene, config) {
         galeria.js, junto a actualizarPisoSegunGeometria().
     */
     /*
-        FIX (escalar con el ancho real de la fila): las
-        posiciones X de "calidoPos"/"frioPos" venían
+        Las posiciones X de "calidoPos"/"frioPos" están
         calibradas a ojo (portadas de Maqueta.html) para EL
         ANCHO DE FILA QUE TENÍA ESA MAQUETA — unos pocos
         prismas con spacing chico. Con la geometría real de
         "galeria" (más elementos, geometrías más grandes/
-        variadas), esa misma constante en X deja a las luces
-        pegadas a un costado en vez de flanquear la fila,
-        sea cual sea su ancho real.
+        variadas), esa misma constante en X dejaría a las
+        luces pegadas a un costado en vez de flanquear la
+        fila, sea cual sea su ancho real.
 
-        Se resuelve igual que "roomGroup.scale" en
+        Por eso se escala igual que "roomGroup.scale" en
         galeria-habitacion.js: en vez de un valor absoluto,
-        una FRACCIÓN del ancho real ("xFactor", nuevo campo
+        una FRACCIÓN del ancho real ("xFactor", campo
         opcional en config.lightsAdicionales.calidoFrio,
-        junto a "calidoPos"/"frioPos" — ver galeria-config.js),
-        multiplicada por "anchoFilaActual" (el semiancho real
-        de la fila en X, ya calculado en
-        calcularLayoutDeFila() de galeria-escena.js, nunca
-        expuesto hasta ahora fuera de ese archivo).
+        junto a "calidoPos"/"frioPos" — ver
+        galeria-config.js), multiplicada por
+        "anchoFilaActual" (el semiancho real de la fila en
+        X, calculado en calcularLayoutDeFila() de
+        galeria-escena.js).
 
         Sin "xFactor" en config (compatibilidad hacia atrás,
         mismo criterio que "bboxesPorIndice" opcional en
@@ -154,13 +153,13 @@ export function createLucesAdicionales(scene, config) {
         así un config viejo que no lo defina no rompe.
 
         "xFactor" es del mismo tipo de constante "ajustar a
-        ojo" que ya tiene el resto del proyecto
-        (radioFactor, levelSeparationFactor...): un valor de
-        partida razonable es la fracción que ya daba el
-        resultado calibrado en Maqueta.html sobre EL ANCHO
-        DE ESA MAQUETA (calidoPos.x / anchoFilaDeLaMaqueta),
-        para arrancar en un lugar parecido y de ahí ajustar
-        a ojo contra el ancho real de "galeria".
+        ojo" que el resto del proyecto (radioFactor,
+        levelSeparationFactor...): un valor de partida
+        razonable es la fracción que da el resultado
+        calibrado en Maqueta.html sobre EL ANCHO DE ESA
+        MAQUETA (calidoPos.x / anchoFilaDeLaMaqueta), para
+        arrancar en un lugar parecido y de ahí ajustar a ojo
+        contra el ancho real de "galeria".
     */
     function posXEscalada(posConfig, anchoFilaActual) {
 
@@ -251,28 +250,28 @@ export function createLucesPorCaja(config, { cones, bboxesPorIndice, elementCoun
             );
 
         /*
-            FIX: la maqueta mide "alturaFraccion"/"zOffset"
-            desde el CENTRO de la caja (su malla nace centrada
-            en el origen, y "mesh.position.y = h/2" es lo que
-            hace que la base quede en y=0 — el centro real
-            queda a h/2 de altura, no en el origen local).
-            Acá el origen local de "malla" es la BASE del
-            elemento (normalizarGeometriaElemento dejó
-            bbox.min.y=0) y la cara FRONTAL en z=0 (no el
-            centro) — usar cfg.alturaFraccion/cfg.zOffset tal
-            cual, medidos desde el origen local, dejaba la luz
-            a la mitad de la altura real de la maqueta (le
-            faltaba sumar el medio-alto hasta el centro) y
-            corrida en Z por la mitad de la profundidad del
-            elemento (por medir desde la cara frontal en vez
-            del centro).
+            "alturaFraccion"/"zOffset" están calibrados
+            relativos al CENTRO de la caja: en Maqueta.html
+            la malla nace centrada en el origen
+            ("mesh.position.y = h/2" pone la base en y=0,
+            con el centro real a h/2 de altura). Acá el
+            origen local de "malla" es distinto — la BASE
+            del elemento (normalizarGeometriaElemento dejó
+            bbox.min.y=0) y la cara FRONTAL en z=0, no el
+            centro — así que aplicar
+            cfg.alturaFraccion/cfg.zOffset directo sobre el
+            origen local dejaría la luz a la mitad de la
+            altura real (falta sumar el medio-alto hasta el
+            centro) y corrida en Z por la mitad de la
+            profundidad del elemento (mide desde la cara
+            frontal en vez del centro).
 
-            Se corrige recomponiendo el CENTRO real del bbox
-            (alturaCentro/zCentro) y aplicando
-            alturaFraccion/zOffset relativos a ESE punto, no al
-            origen local — mismo punto de referencia que usaba
-            la maqueta, aunque el origen local de la malla acá
-            sea otro.
+            Por eso se recompone el CENTRO real del bbox
+            (alturaCentro/zCentro) y se aplican
+            alturaFraccion/zOffset relativos a ESE punto, no
+            al origen local — mismo punto de referencia que
+            usa Maqueta.html, aunque el origen local de la
+            malla acá sea otro.
         */
         const alturaCentro = (bbox.min.y + bbox.max.y) / 2;
         const zCentro = (bbox.min.z + bbox.max.z) / 2;
@@ -315,15 +314,14 @@ export function createLucesPorCaja(config, { cones, bboxesPorIndice, elementCoun
         "pesoDe" en galeria-rotacion.js: no aparecer en el
         mapa es lo mismo que valer 0, no un caso especial).
 
-        FIX: faltaba el gating por "ejePrincipal" que sí tiene
-        la maqueta (ver actualizarLucesSegunCamara,
-        Maqueta.html) — ahí "lucesPorCaja" solo se enciende en
-        layout VERTICAL; en horizontal se fuerzan a 0 cada
-        frame (los dos PointLight fijos "luzCalida"/"luzFria",
-        no estos, son los que iluminan en ese modo — ver
+        "lucesPorCaja" solo debe estar activo en layout
+        VERTICAL, igual que en Maqueta.html (ver
+        actualizarLucesSegunCamara ahí): en horizontal son
+        los dos PointLight fijos "luzCalida"/"luzFria" (ver
         actualizarSegunCamara más arriba en este mismo
-        archivo). Sin este chequeo, acá quedaban siempre
-        encendidas en las dos orientaciones a la vez.
+        archivo) los que iluminan, así que "lucesPorCaja" se
+        fuerza a 0 cada frame en ese modo, gateado por
+        "ejePrincipal".
     */
     function actualizar(focoWeights, ejePrincipal) {
 

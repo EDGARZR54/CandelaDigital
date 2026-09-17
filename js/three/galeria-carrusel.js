@@ -109,11 +109,11 @@
    un cono que quedó girado/inclinado en "fichas" seguiría
    así al volver a "orden"/"revelado".
 
-   Ya NO se usa getHiddenDrop(): nada sale del cuadro en
-   esta fase — todos los elementos quedan siempre sobre el
+   getHiddenDrop() no interviene en esta fase: ningún
+   elemento sale del cuadro — todos quedan siempre sobre el
    círculo, cada uno apoyado en su propia base (ver
-   "baseElemento" en el loop de update, el FIX del piso al
-   100%).
+   "baseElemento" en el loop de update, que calcula el apoyo
+   pleno en el piso para cada elemento individualmente).
 
    HISTÉRESIS DEL FOCO (displayIndex): "mejorSlot" (el
    vecino angular más cercano al punto de foco) es un
@@ -135,16 +135,15 @@
    MESETA DE DESCANSO (phi): la histéresis de arriba evita
    que la FICHA de texto cambie de lado cerca del cruce,
    pero no toca la posición/orientación real de la
-   geometría — "phi" seguía siendo un ease continuo parejo
-   sobre todo el tramo "rotar", así que el cono en foco
-   nunca dejaba de moverse un poco con cualquier scroll, por
-   chico que fuera. La solución completa
-   (indiceContinuo/targetU/pasoConDescanso — tres funciones
-   puras que reemplazan el ease parejo por una curva con
-   paradas reales) se movió a galeria-carrusel-descanso.js,
-   para no engordar este archivo con matemática que no
-   depende de THREE ni del resto del estado del carrusel —
-   ver ese archivo para el detalle, incluida
+   geometría — si "phi" fuera un ease continuo parejo sobre
+   todo el tramo "rotar", el cono en foco nunca dejaría de
+   moverse un poco con cualquier scroll, por chico que
+   fuera. Por eso "phi" usa una curva con paradas reales en
+   vez de un ease parejo, calculada por tres funciones puras
+   (indiceContinuo/targetU/pasoConDescanso) que viven en
+   galeria-carrusel-descanso.js, separadas de este archivo
+   porque no dependen de THREE ni del resto del estado del
+   carrusel — ver ese archivo para el detalle, incluida
    "sFracUniformePorSlot" vs. "sFracBasePorSlot".
 ================================================== */
 
@@ -618,9 +617,9 @@ export function createCarouselController(
             Interpola desde longitudCurva (theta=0, sin
             aporte de radioFactor todavía) hacia
             longitudGrande (theta=2π, círculo ya cerrado).
-            Con la fórmula ya unificada (ver puntoYOutward
-            más abajo — ya no hay una rama theta<EPS
-            aparte), la continuidad en theta=0 la garantiza
+            Con una única fórmula para todo el rango (ver
+            puntoYOutward más abajo, sin rama especial para
+            theta<EPS), la continuidad en theta=0 la garantiza
             "blend" multiplicando a "(curvaX - xBase)" en
             finalX/finalY/finalZ (más abajo): con blend=0,
             esos "final*" dan exactamente "xBase"/"yBase"/
@@ -780,8 +779,9 @@ export function createCarouselController(
                 targetU()/pasoConDescanso() también se
                 miden desde sFracUniformePorSlot en vez de
                 sFracBasePorSlot: si no, la meseta apuntaría
-                al centro físico viejo mientras el elemento
-                ya descansa en el ángulo parejo nuevo.
+                al centro físico original mientras el
+                elemento reposa en el ángulo uniforme
+                resultante.
             */
             const sFrac =
                 sFracBasePorSlot[slot] +
@@ -829,8 +829,9 @@ export function createCarouselController(
                 la POSICIÓN/orientación renderizada (por eso
                 "sFrac" se usa tal cual en puntoYOutward(),
                 arriba), pero acá mediríamos distancia al
-                ángulo crudo -π/2 — que ya no es el punto de
-                reposo real desde targetU()/pasoConDescanso():
+                ángulo crudo -π/2 — que no coincide con el
+                punto de reposo real de
+                targetU()/pasoConDescanso():
                 ahí "phi" en reposo solo cancela la parte de
                 "sFrac" SIN seam, dejando a propósito un resto
                 de exactamente 2π·seamAnimadoPorSlot[slot] en
@@ -964,15 +965,15 @@ export function createCarouselController(
                 (bbox.min.z + bbox.max.z) / 2;
 
             /*
-                FIX (piso al 100%): la altura de piso de ESTE
-                elemento es su propia base (misma cuenta que
-                "desplazamientoBase" en
+                APOYO PLENO EN EL PISO: la altura de piso de
+                ESTE elemento es su propia base (misma cuenta
+                que "desplazamientoBase" en
                 normalizarGeometriaElemento: -bbox.min.y), no
-                el "restY" GLOBAL que se usaba antes — ese es
-                el mayor desplazamientoBase de TODA la fila
-                (ver galeria-escena.js), así que dejaba
-                flotando a cualquier elemento cuya geometría
-                no fuera tan "profunda" como ese peor caso.
+                el "restY" GLOBAL — ese es el mayor
+                desplazamientoBase de TODA la fila (ver
+                galeria-escena.js), así que dejaría flotando a
+                cualquier elemento cuya geometría no fuera tan
+                "profunda" como ese peor caso.
             */
             const baseElemento = -bbox.min.y;
 
@@ -988,10 +989,10 @@ export function createCarouselController(
                 estar. Esto es lo que hace falta para X/Z
                 (donde el objetivo es el CENTROIDE sobre la
                 curva — ver "ANCLA" en la cabecera), pero NO
-                para Y — ver el FIX junto a "curvaY", más
-                abajo: ahí el objetivo es la BASE apoyada en
-                el piso, no el centroide, así que no se resta
-                "offsetWorld.y".
+                para Y — ver el comentario junto a "curvaY",
+                más abajo: ahí el objetivo es la BASE apoyada
+                en el piso, no el centroide, así que no se
+                resta "offsetWorld.y".
             */
             pivotLocal.set(pivotX, pivotY, pivotZ);
             offsetWorld
@@ -1029,7 +1030,7 @@ export function createCarouselController(
                 curvaY: la BASE del objeto (no el centroide)
                 tiene que quedar apoyada en el piso —
                 "baseElemento", la altura propia de este
-                elemento (ver el FIX del piso al 100%, más
+                elemento (ver el apoyo pleno en el piso, más
                 arriba). Sin escala animada, alcanza con eso
                 directo: el origen del mesh ya nace a
                 "-bbox.min.y" de su propia base, así que
@@ -1083,10 +1084,10 @@ export function createCarouselController(
                 propio lugar. En horizontal,
                 positions[slot].y siempre es 0, así que da
                 exactamente la base propia del elemento (ver
-                "baseElemento" más arriba: el FIX del piso al
-                100% — antes acá iba "restY", el peor caso
-                global, que dejaba flotando a los elementos
-                menos "profundos").
+                "baseElemento" más arriba, el apoyo pleno en
+                el piso — a diferencia de "restY", el peor
+                caso global, que dejaría flotando a los
+                elementos menos "profundos").
             */
             const xBase =
                 ejePrincipal === "y"
@@ -1132,23 +1133,21 @@ export function createCarouselController(
             // calcularon arriba (antes del bloque de
             // pivot/offsetWorld). Acá solo queda aplicar
             // posición/orientación al objeto (arriba) — la
-            // escala ya no se anima en esta fase (ver
-            // galeria-dolly-foco.js: el "acercamiento" del
-            // elemento en foco ahora lo hace la cámara, no
-            // el objeto), así que "cone.scale" ni se toca,
-            // queda en su valor de construcción (1).
+            // escala no se anima en esta fase: el
+            // "acercamiento" del elemento en foco lo hace la
+            // cámara (ver galeria-dolly-foco.js), no el
+            // objeto, así que "cone.scale" ni se toca, queda
+            // en su valor de construcción (1).
 
-            // Efecto de opacidad DESACTIVADO: las geometrías
-            // quedan siempre a opacidad plena. Ya no se
-            // escribe "cone.material.opacity" en absoluto
-            // (el proxy que lo resolvía se sacó de
-            // galeria-escena.js, ver ese archivo): el material
-            // nace en opacity 1 y nadie más la toca, así que
-            // no hace falta reafirmarla acá. "opacityFinal" no
-            // se borra más arriba porque panelOpacity (el
-            // fundido del panel de texto) y focoWeights (las
-            // luces, ver galeria-luces.js) siguen atados a
-            // ese mismo número.
+            // Las geometrías permanecen siempre a opacidad
+            // plena en esta fase: no se escribe
+            // "cone.material.opacity" en absoluto — el
+            // material nace en opacity 1 y nadie más la toca,
+            // así que no hace falta reafirmarla acá.
+            // "opacityFinal" se sigue calculando arriba porque
+            // panelOpacity (el fundido del panel de texto) y
+            // focoWeights (las luces, ver galeria-luces.js)
+            // siguen atados a ese mismo número.
 
             rotationWeights[cupID] =
                 emphasis * cfg.rotationScale * blend;

@@ -12,14 +12,12 @@
    elemento, esté o no en foco, una sensación de estar
    apoyado en el piso.
 
-   Portado de Maqueta.html (contactShadowTexture/
-   contactShadows/actualizarSombrasDeContacto). Sin
-   "pivotsY" (a diferencia de la maqueta): en este proyecto
-   el pivote de rotación nunca desplaza el elemento en Y
-   (ver posicionarPivote, galeria-escena.js — solo corrige
-   X/Z), así que "sobreElPiso" se simplifica a comparar
-   directo la Y del cono contra la base PROPIA de ese
-   elemento (ver "basePorIndice" más abajo).
+   No hace falta contemplar un desplazamiento en Y del
+   pivote: acá el pivote de rotación solo corrige X/Z (ver
+   posicionarPivote, galeria-escena.js), así que "está sobre
+   el piso" se resuelve comparando directo la Y del cono
+   contra la base PROPIA de ese elemento (ver
+   "basePorIndice" más abajo).
 ================================================== */
 
 import * as THREE from 'three';
@@ -97,13 +95,13 @@ export function createSombraContacto(
         -bbox.min.y). Se precalcula una vez — los bboxes
         LOCALES no cambian en toda la vida de la escena.
 
-        FIX (piso al 100%): antes esto era "restY", un único
-        valor GLOBAL (el mayor desplazamientoBase de toda la
-        fila). Como cada elemento ahora se apoya en SU base,
-        comparar contra el peor caso global daba falsos
-        negativos: un elemento perfectamente asentado en su
-        propio piso quedaba por DEBAJO de restY y su plano de
-        contacto no se dibujaba nunca.
+        Es un valor POR ELEMENTO, no uno global: cada
+        elemento se apoya en SU base, así que comparar contra
+        un único umbral para toda la fila (el mayor
+        desplazamientoBase) daría falsos negativos — un
+        elemento perfectamente asentado en su propio piso
+        quedaría por debajo de ese umbral y su plano de
+        contacto no se dibujaría nunca.
     */
     const basePorIndice =
         Array.from(
@@ -112,12 +110,12 @@ export function createSombraContacto(
         );
 
     /*
-        "pisoY": la Y de mundo del piso ahora mismo
+        "pisoY": la Y de mundo del piso en este frame
         (roomGroup.position.y, galeria-habitacion.js — 0 en
         horizontal, sigue al elemento más bajo en vertical),
-        no un valor fijo — mismo dato que ya persigue la
-        habitación, se le pasa fresco en cada llamada en vez
-        de leerlo de un closure propio.
+        no un valor fijo. Es el mismo dato que persigue la
+        habitación, y entra por parámetro en cada llamada en
+        vez de leerse de un closure propio.
     */
     function actualizar(pisoY) {
 
@@ -133,16 +131,11 @@ export function createSombraContacto(
             );
 
             /*
-                Antes acá también se chequeaba
-                "cono.material.opacity > 0.02" (vía un proxy
-                en galeria-escena.js que ya no existe): servía
-                para no dibujar el plano de contacto mientras
-                el elemento estaba desvanecido. Ninguna fase
-                anima esa opacidad — vale 1 siempre —, así que
-                la condición ya era redundante antes de sacar
-                el proxy. Queda solo el criterio de posición:
-                el plano se dibuja cuando el elemento está
-                efectivamente arriba de su propio piso.
+                Único criterio: posición. El plano se dibuja
+                cuando el elemento está efectivamente arriba
+                de su propio piso. No se mira la opacidad del
+                elemento porque ninguna fase la anima — vale
+                1 siempre.
             */
             plano.visible =
                 cono.position.y > basePorIndice[id] + 1e-3;
@@ -156,8 +149,8 @@ export function createSombraContacto(
         Mitad "sombra de contacto" del sistema día/noche —
         mismo criterio que actualizarTema() en
         galeria-cono-luz.js: recalcula "d" (día) con la misma
-        fórmula, leyendo config.tema directo, para no
-        depender de un orden de llamada entre módulos.
+        fórmula, leyendo config.tema directo, para no depender
+        de un orden de llamada entre módulos.
     */
     const temaCfg = config.tema;
 

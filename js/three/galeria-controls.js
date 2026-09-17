@@ -55,12 +55,11 @@ import { getScrollDelta } from "./galeria-scroll.js";
    "cones" ni de mallas de un generador procedural en
    particular — solo conoce las mallas que le pasen por
    setObjetoActivo(mallas). Así, cuando a futuro exista
-   la nube de puntos Potree en la escena (ver plan en
-   zoom3dScroll.md, sección 2: potree-core inserta su
-   octree como un THREE.Object3D más), el mismo dolly le
-   sirve sin tocar una línea acá — quien decide qué se
-   está mostrando (cono ideal o nube) simplemente le pasa
-   otras mallas.
+   la nube de puntos Potree en la escena (potree-core
+   insertaría su octree como un THREE.Object3D más), el
+   mismo dolly le sirve sin tocar una línea acá — quien
+   decide qué se está mostrando (cono ideal o nube)
+   simplemente le pasa otras mallas.
 
    GUARD DEL WHEEL, dos condiciones, ambas baratas:
      1) getPhase().phase === "fichas" — fuera de esa fase,
@@ -80,9 +79,8 @@ import { getScrollDelta } from "./galeria-scroll.js";
    stopPropagation(): el wheel nunca interfiere con el
    cambio de fase/sección por scroll de página.
 
-   CÁMARA FIJA DURANTE "fichas" (confirmado en
-   zoom3dScroll.md §3.10: galeria-carrusel.js no toca
-   "camera", y setCameraLado(1) es un no-op cuadro a
+   CÁMARA FIJA DURANTE "fichas" (galeria-carrusel.js no
+   toca "camera", y setCameraLado(1) es un no-op cuadro a
    cuadro una vez asentado) — por eso el dolly puede
    sumarse como un offset simple sobre una base quieta,
    sin competir con nada más que escriba camera.position
@@ -232,11 +230,9 @@ export function createZoomController(
     /*
         La llama galeria.js, cada frame de "fichas",
         después de que carousel.update(t) ya resolvió qué
-        elemento está en foco (ver el punto de enganche
-        exacto documentado en zoom3dScroll.md §3.10) — con
-        las mallas de ESE elemento (cones[id].userData.
-        mallas hoy; las de la nube activa el día que
-        exista, ver cabecera).
+        elemento está en foco — con las mallas de ESE
+        elemento (cones[id].userData.mallas hoy; las de
+        la nube activa el día que exista, ver cabecera).
     */
     function setObjetoActivo(mallas) {
 

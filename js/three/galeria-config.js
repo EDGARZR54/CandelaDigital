@@ -452,21 +452,21 @@ function normalizarElemento(feature, indice) {
 
 /*
     Color de los pines del mapa embebido, leído en vivo de
-    --color-terracota (variables.css) en vez de un hex propio —
-    mismo criterio que ya se aplicó en atlas.html y
-    mapadinamico.html: usa el token FIJO (--color-terracota), no
+    --color-rojo-terracota (variables.css) en vez de un hex propio —
+    mismo criterio que ya se aplica en atlas.html y
+    mapadinamico.html: usa el token FIJO (--color-rojo-terracota), no
     --color-primario (que en modo oscuro pasa por un color-mix()),
     para que el pin se vea igual en los dos temas. Si por algún
     motivo variables.css no llegó a cargar en la página que use
-    este CONFIG, cae al tono que estaba calibrado a mano antes.
+    este CONFIG, cae al mismo valor en hex ("#BF3B0B").
 */
 function colorPinDesdeVariables() {
 
     const valor = getComputedStyle(document.documentElement)
-        .getPropertyValue('--color-terracota')
+        .getPropertyValue('--color-rojo-terracota')
         .trim();
 
-    return valor ? `rgb(${valor})` : "#db6a40";
+    return valor ? `rgb(${valor})` : "#BF3B0B";
 
 }
 
@@ -675,37 +675,24 @@ export const CONFIG = {
             (ver galeria.js).
         */
         /*
-            HISTORIAL (sistema viejo, ya retirado): antes de
-            portar la maqueta esto era Fog lineal con
-            near/far fijos (12/26), que con el bounding box
+            Niebla exponencial (FogExp2, por density) en vez
+            de niebla lineal (near/far): con el bounding box
             real de la fila (distancia cámara→elemento más
-            lejano ≈29.4) dejaba el extremo de la fila
-            devorado por la niebla — se había resuelto con
-            "nearFactor"/"farFactor" relativos a la distancia
-            real. Ver el FIX debajo: ahora es FogExp2 (density,
-            no near/far), igual que la maqueta — el mismo
-            riesgo de fondo (niebla calibrada a una escala que
-            no es la del contenido real) sigue latente, pero
-            con otra forma.
-        */
-        /*
-            FIX: pasó de Fog lineal (near/far, con
-            "nearFactor"/"farFactor" relativos a la distancia
-            real cámara→fila — sistema viejo, del proyecto
-            real antes de portar la maqueta) a FogExp2
-            (density), igual que Maqueta.html — ver el
-            comentario grande junto a la construcción de
-            scene.fog en galeria-escena.js.
+            lejano ≈29.4), una niebla lineal con near/far
+            fijos deja el extremo de la fila devorado antes
+            de tiempo, salvo que near/far se calculen en
+            relación a esa distancia real. FogExp2 reproduce
+            el comportamiento de Maqueta.html — ver el
+            comentario junto a la construcción de scene.fog
+            en galeria-escena.js.
 
             0.038 es el valor literal de la maqueta, calibrado
             contra SU escala de prueba (cajas chicas, fila
             angosta). Con contenido real más grande esto puede
-            necesitar bajarse (mismo riesgo que motivó en su
-            momento el sistema nearFactor/farFactor dinámico
-            que reemplaza: con distancias reales más grandes
-            que las de prueba, una niebla calibrada al tamaño
-            chico "devora" el fondo de la fila antes de
-            tiempo) — se deja igual a la maqueta por ahora, a
+            necesitar bajarse: con distancias reales más
+            grandes que las de prueba, una niebla calibrada al
+            tamaño chico "devora" el fondo de la fila antes de
+            tiempo. Se deja igual a la maqueta por ahora, a
             revisar a ojo.
         */
         fog: {
@@ -729,7 +716,7 @@ export const CONFIG = {
         reales se calculan en vivo en galeria-escena.js a
         partir del bounding box REAL de la fila —necesario
         porque los parámetros de las fórmulas procedurales
-        son placeholders (ver encuadre-camara.md) y el
+        son placeholders y el
         ancho/alto de la fila varía bastante entre tandas
         de valores; un número fijo queda desactualizado
         apenas cambia la escala de las geometrías (llegó a
@@ -808,21 +795,20 @@ export const CONFIG = {
     lights: {
 
         ambient: {
-            // FIX: 0x11131c, no 0xffffff — valor real de la
-            // maqueta. En la práctica esto casi no se nota
+            // 0x11131c es el valor real de la maqueta (no
+            // 0xffffff). En la práctica esto casi no se nota
             // porque actualizarTemaLuces() pisa ambient.color
             // en cada frame (lerp WARM.ambient/COLD.ambient) ya
             // desde el primer tick, pero el valor de
             // construcción debe coincidir de todos modos.
             //
-            // FIX (compat r128 — ver galeria-compat-r128.js):
-            // faltaba el mismo reescalado ×π que ya tienen
-            // key/rim/calidoFrio/porCaja — se había dejado
-            // en 0.55 tal cual la maqueta, sin escalar. Bajo
-            // el modo legacy de r128 (el que calibró la
-            // maqueta, y el que reproduce el shim), TODA luz
-            // puntual/spot/ambient/hemisférica lleva el
-            // mismo "irradiance *= PI" — no solo las
+            // La intensidad lleva el mismo reescalado ×π que
+            // key/rim/calidoFrio/porCaja (compat r128 — ver
+            // galeria-compat-r128.js): bajo el modo legacy de
+            // r128 (el que calibró la maqueta, y el que
+            // reproduce el shim), TODA luz puntual/spot/
+            // ambient/hemisférica lleva el mismo
+            // "irradiance *= PI" — no solo las
             // puntuales/spot. 0.55 × π ≈ 1.728.
             color: 0x11131c,
             intensity: 1.728
@@ -853,10 +839,8 @@ export const CONFIG = {
         */
         key: {
             /*
-                FIX (auditoría contra Maqueta.html línea 1473):
-                estos valores tenían varios errores de
-                transcripción — quedan corregidos contra el
-                SpotLight real de la maqueta:
+                Estos valores reproducen el SpotLight real
+                de la maqueta:
 
                   new THREE.SpotLight(
                       0xfff1de, 6.5,
@@ -870,11 +854,11 @@ export const CONFIG = {
                   keyLight.shadow.normalBias = 0.0015;
                   keyLight.shadow.camera.far = 25;
 
-                "intensity" en particular estaba en 3.4 — ese
-                es en realidad INTENSIDAD_FOCO_MAX de
-                lucesPorCaja (config.lightsAdicionales.porCaja.
-                intensidadMax), no de keyLight: quedó pisado
-                por error al escribir esta sección.
+                "intensity" en la maqueta es 6.5 — no
+                confundir con INTENSIDAD_FOCO_MAX de
+                lucesPorCaja (config.lightsAdicionales.
+                porCaja.intensidadMax), que es un valor
+                distinto para otra luz.
 
                 REESCALADO por unidades fotométricas — ver
                 galeria-compat-r128.js. El factor real entre
@@ -884,21 +868,20 @@ export const CONFIG = {
                 shim (que reproduce el modo legacy de r128,
                 que también trae su propio ×π implícito) el
                 factor correcto es solo ×π: 6.5 (valor real
-                de la maqueta) × π ≈ 20.42.
+                de la maqueta) × π ≈ 20.42 — el valor que usa
+                esta intensidad, y no 81.68 (×4π), que
+                correspondería a la escena SIN el shim.
 
-                Este valor (81.68 = ×4π) quedó de una pasada
-                anterior, ANTES de tener el shim — estaba
-                sobrecorrigiendo por 4× para compensar a
-                mano la pérdida real, que en realidad tenía
+                La pérdida de brillo frente a la maqueta tiene
                 dos causas distintas (ver
                 galeria-compat-r128.js): la fórmula de
-                atenuación por distancia (ahora resuelta por
-                el shim + keyLight.distance fijo, ver
-                galeria-cono-luz.js) y el factor ×π (ahora
-                resuelto acá). SIN VERIFICAR visualmente
-                todavía (no hay forma de renderizar WebGL
-                acá) — punto de partida razonado, no un
-                valor confirmado con los ojos.
+                atenuación por distancia (resuelta por el
+                shim + keyLight.distance fijo, ver
+                galeria-cono-luz.js) y el factor ×π (resuelto
+                acá). SIN VERIFICAR visualmente todavía (no
+                hay forma de renderizar WebGL acá) — punto de
+                partida razonado, no un valor confirmado con
+                los ojos.
             */
             color: 0xfff1de,
             intensity: 20.42,
@@ -942,48 +925,37 @@ export const CONFIG = {
             Portado de Maqueta.html (LIGHT_CONE_CONFIG/
             alturaPuntoFinalLineaRosa/FACTOR_SUAVIZADO).
 
-            FIX: "alturaApex" pasa a ser "alturaApexFactor"
-            — auditado contra Maqueta.html línea 1397/1400:
-            ahí NO es un valor directo, es
-            "extensionEjeSecundario * 1.5" (la extensión
-            real de los bboxes en el eje secundario, ×1.5),
-            recalculado por galeria-cono-luz.js contra
-            "bboxesPorIndice" (ver alturaApexMinimo() ahí).
-            Un valor directo fijo (6, lo que había acá antes)
-            solo coincidía por la escala chica de las cajas
-            de prueba de la maqueta — con geometría real más
-            grande, la distancia horizontal apex→fila crece
-            con el ancho de la fila mientras la altura del
-            ápice quedaba fija, y la intersección del cono
-            con el piso deja de ser una elipse cerrada
-            (pasa a parábola/hipérbola, abierta hacia el
-            horizonte).
+            "apex.y" (la altura del ápice del cono) se
+            calcula con "alturaApexFactor" solo: multiplica
+            la extensión real de los elementos en el eje
+            secundario vigente (auditado contra Maqueta.html
+            línea 1397/1400, donde no es un valor directo
+            sino "extensionEjeSecundario * 1.5", recalculado
+            por galeria-cono-luz.js contra "bboxesPorIndice",
+            ver alturaApexMinimo() ahí). Un valor directo fijo
+            no sirve: con geometría real más grande, la
+            distancia horizontal apex→fila crece con el ancho
+            de la fila mientras la altura del ápice quedaría
+            fija, y la intersección del cono con el piso deja
+            de ser una elipse cerrada (pasa a parábola/
+            hipérbola, abierta hacia el horizonte).
 
-            FIX #2: lo de arriba (alturaApexFactor, atado a
-            la altura del elemento) NO ALCANZABA por sí solo
-            — seguía viéndose parábola con contenido real.
-            Auditado de nuevo, esta vez contra la posición
-            real del ápice (Maqueta.html línea ~1710): el
-            ápice es el REFLEJO de la cámara a través del
-            punto en foco — su offset horizontal ES la
-            distancia 3D completa cámara→target, que crece
-            con el ANCHO de la fila (la cámara se aleja para
-            que entre todo en cuadro), no con la altura de un
-            elemento. "alturaApexRatio"/"distanceMargenFactor"
-            (abajo) agregaban una componente PROPORCIONAL a
-            esa distancia para compensarlo.
-
-            REVERTIDO A PEDIDO: ese FIX #2 corregía la forma
-            de la piscina de luz en el piso, pero cambiaba
-            demasiado la ALTURA real de la luz respecto a
-            cómo se veía antes (el ápice terminaba muy por
-            encima de la escena en filas anchas). Se
-            revierte en galeria-cono-luz.js — "apex.y" vuelve
-            a ser solo "alturaApexMinimo()" (el FIX #1, de
-            arriba). "alturaApexRatio"/"distanceMargenFactor"
-            quedan declarados más abajo, SIN USO, por si se
+            "alturaApexRatio"/"distanceMargenFactor"
+            (declarados más abajo, SIN USO) representan un
+            enfoque alternativo que ata "apex.y" a la posición
+            real del ápice —el reflejo de la cámara a través
+            del punto en foco, cuyo offset horizontal es la
+            distancia 3D completa cámara→target y crece con
+            el ANCHO de la fila, no con la altura de un
+            elemento— en vez de a la altura del elemento más
+            alto. Ese enfoque corrige mejor la forma de la
+            piscina de luz en filas anchas, pero deja el
+            ápice muy por encima de la escena en esos casos,
+            así que "apex.y" usa solo "alturaApexFactor" por
+            ahora; los dos campos quedan declarados por si se
             retoma este camino con otro enfoque (p. ej. un
-            ratio más chico, o solo aplicado en algunas fases).
+            ratio más chico, o solo aplicado en algunas
+            fases).
         */
         conoLuz: {
             // Multiplicador sobre la extensión real de los
@@ -992,14 +964,12 @@ export const CONFIG = {
             // altura directa. 1.5 es el valor real de
             // Maqueta.html (alturaPuntoFinalLineaRosa =
             // extensionEjeSecundario * 1.5). Único término
-            // que fija "apex.y" ahora mismo — ver el FIX #2
-            // revertido en el comentario grande de arriba.
+            // que fija "apex.y" actualmente — ver el
+            // comentario grande de arriba.
             alturaApexFactor: 1.5,
-            // SIN USO (ver el FIX #2 revertido, comentario
-            // grande de arriba). NUEVO (FIX #2, ver el
-            // comentario grande de arriba): tan(elevación
-            // deseada del eje del cono sobre el piso),
-            // aplicado sobre "distancia"
+            // SIN USO (ver el comentario grande de arriba):
+            // tan(elevación deseada del eje del cono sobre el
+            // piso), aplicado sobre "distancia"
             // (cámara→target), no sobre el ancho de la fila
             // directamente — ese es justo el punto: no hace
             // falta saber el ancho real de la fila porque
@@ -1017,66 +987,67 @@ export const CONFIG = {
             // proyecto (radioFactor, levelSeparationFactor...)
             // — subir el número sube la luz (piscina más
             // redonda, sombras más cortas); bajarlo la acerca
-            // al piso (piscina más alargada, más parecida a
-            // lo que se veía antes de este FIX). SIN
-            // VERIFICAR visualmente todavía.
+            // al piso (piscina más alargada). SIN VERIFICAR
+            // visualmente todavía.
             alturaApexRatio: 1.0,
             /*
-                NUEVO (FIX #3 — el FIX #2 de arriba resolvía
-                la ELEVACIÓN del eje del cono, pero subir el
-                ápice también alarga la distancia real
-                ápice→elementos; "config.lights.key.distance"
-                (30, fijo, portado literal de Maqueta.html)
-                dejó de alcanzar: con los números reales —
-                ápice a y≈24, elementos a distApex 34-36 —
-                TODOS quedaban más allá del alcance de la
-                luz bajo la fórmula LINEAL del shim
-                (distance = donde la luz llega a cero), así
-                que solo se veía la porción de la elipse más
-                cercana al ápice, no la elipse completa.
+                "distanceMargenFactor" (declarado más abajo,
+                SIN USO junto con "alturaApexRatio") resuelve
+                un problema derivado de ese enfoque
+                alternativo: subir el ápice también alarga la
+                distancia real ápice→elementos, y
+                "config.lights.key.distance" (30, fijo,
+                portado literal de Maqueta.html) dejaría de
+                alcanzar — con números reales (ápice a y≈24,
+                elementos a distApex 34-36), todos quedarían
+                más allá del alcance de la luz bajo la fórmula
+                LINEAL del shim (distance = donde la luz llega
+                a cero), así que solo se vería la porción de
+                la elipse más cercana al ápice, no la elipse
+                completa.
 
-                "distanceMargenFactor" multiplica el largo
-                real del eje del cono (apex→target, "height"
-                en galeria-cono-luz.js) para dar el nuevo
-                keyLight.distance, tomando el MAYOR entre eso
-                y el piso fijo de la maqueta (config.lights.
-                key.distance — sigue sirviendo en escenas
-                chicas/cámara cerca, donde "height" es menor
-                a 30). 1.6 dejaría el corte ~60% más allá del
-                punto en foco — no hay una talla única (la
-                fila real se extiende a los costados del eje,
-                así que el elemento MÁS lejano del ápice queda
-                más allá de "height" solo): mismo tipo de
-                constante "ajustar a ojo" que alturaApexRatio,
-                subir el número extiende el alcance (más
-                elementos bien iluminados, pool más completo);
-                bajarlo lo vuelve a acercar al corte que se ve
-                en la imagen reportada. Es seguro subirlo sin
-                límite práctico bajo la fórmula LINEAL del
-                shim (a diferencia de antes del shim, con la
-                ventana Frostbite, donde un "distance" generoso
-                apagaba todo por otro motivo — ver el FIX #1
-                más abajo).
+                Multiplica el largo real del eje del cono
+                (apex→target, "height" en galeria-cono-luz.js)
+                para dar el keyLight.distance, tomando el
+                MAYOR entre eso y el piso fijo de la maqueta
+                (config.lights.key.distance — sigue sirviendo
+                en escenas chicas/cámara cerca, donde "height"
+                es menor a 30). 1.6 dejaría el corte ~60% más
+                allá del punto en foco — no hay una talla
+                única (la fila real se extiende a los costados
+                del eje, así que el elemento MÁS lejano del
+                ápice queda más allá de "height" solo): mismo
+                tipo de constante "ajustar a ojo" que
+                alturaApexRatio, subir el número extiende el
+                alcance (más elementos bien iluminados, pool
+                más completo); bajarlo lo acerca al corte que
+                muestra la elipse parcial descripta arriba. Es
+                seguro subirlo sin límite práctico bajo la
+                fórmula LINEAL del shim (a diferencia de la
+                ventana Frostbite sin el shim, donde un
+                "distance" generoso apagaba todo por otro
+                motivo — ver el comentario junto a
+                "margenDistancia", más abajo).
             */
-            // SIN USO (FIX #2 revertido — ver el comentario
-            // grande junto a "alturaApexFactor", arriba). Con
-            // "apex.y" de vuelta en "alturaApexMinimo()" solo,
-            // "height" (el largo del eje apex→target) vuelve a
-            // ser chico y "config.lights.key.distance" (30)
+            // SIN USO (ver el comentario grande junto a
+            // "alturaApexFactor", arriba). Con "apex.y"
+            // fijado solo por "alturaApexFactor", "height"
+            // (el largo del eje apex→target) vuelve a ser
+            // chico y "config.lights.key.distance" (30)
             // alcanza de sobra sin necesitar este margen.
             distanceMargenFactor: 1.6,
-            // SIN USO desde el FIX de compat r128 (ver
-            // galeria-compat-r128.js): keyLight.distance ya
-            // no se deriva de la geometría del cono, queda
-            // fijo en config.lights.key.distance (30, igual
-            // que Maqueta.html) — la fórmula de atenuación
+            // SIN USO desde que compat r128 (ver
+            // galeria-compat-r128.js) fija keyLight.distance
+            // en config.lights.key.distance (30, igual que
+            // Maqueta.html) en vez de derivarlo de la
+            // geometría del cono — la fórmula de atenuación
             // LINEAL que reproduce el shim necesita esa
             // distancia fija como la rampa completa 0→1, no
             // como un margen sobre un corte físico. Se deja
-            // declarado por si algún día se vuelve a
-            // necesitar un margen real (p. ej. si se
-            // abandona el shim), para no perder el valor de
-            // referencia de la maqueta.
+            // declarado por si algún día se necesita un
+            // margen real (p. ej. si se abandona el shim),
+            // para no perder el valor de referencia de la
+            // maqueta.
             margenDistancia: 4,
             // Suavizado exponencial del radio mientras NO
             // está congelado (ver FACTOR_SUAVIZADO en la
@@ -1086,8 +1057,8 @@ export const CONFIG = {
 
             /*
                 Margen sobre la distancia real ápice→cámara
-                que se le da a "keyLight.distance" (ver el
-                FIX actual en galeria-cono-luz.js). 1.0 =
+                que se le da a "keyLight.distance" (ver su
+                uso en galeria-cono-luz.js). 1.0 =
                 el corte esférico de la luz pasa exactamente
                 por la cámara; 1.1 = 10% más allá, para
                 cubrir cualquier punto visible que quede un
@@ -1139,7 +1110,14 @@ export const CONFIG = {
                 shader (queda quieto, pero visible).
             */
             dust: {
-                countMobile: 450,
+                // Bajado de 450: con blending aditivo y
+                // gl_PointSize de hasta ~14px, el overdraw de
+                // esta cantidad de partículas es
+                // desproporcionadamente caro en GPUs
+                // integradas móviles frente al aporte visual
+                // (efecto sutil, no un elemento central de la
+                // composición). countDesktop queda igual.
+                countMobile: 250,
                 countDesktop: 900,
                 umbralFoco: 0.05,
                 limiteFreeze: 2,
@@ -1274,10 +1252,10 @@ export const CONFIG = {
     */
     lightsAdicionales: {
 
-        // FIX (compat r128 — ver galeria-compat-r128.js y su
+        // Compat r128 (ver galeria-compat-r128.js y su
         // comentario en config.lights.key): TODAS las
         // intensidades de este bloque quedan reescaladas
-        // ×π (no ×4π, que era el factor sin el shim de
+        // ×π (no ×4π, que sería el factor sin el shim de
         // compat) contra el valor real de Maqueta.html.
         rim: {
             color: 0x2b4a6b,
@@ -1298,10 +1276,9 @@ export const CONFIG = {
         wallLight: {
             skyColor: 0xd4e0ee,
             groundColor: 0x8c7c64,
-            // FIX: faltaba el ×π — se había dejado en 105.0
-            // tal cual la maqueta, sin escalar (mismo olvido
-            // que "ambient" más arriba). Maqueta (r128):
-            // 105.0. ×π ≈ 329.87.
+            // Reescalado ×π como el resto del bloque (ver
+            // el comentario junto a "rim", arriba). Maqueta
+            // (r128): 105.0. ×π ≈ 329.87.
             intensity: 329.87
         },
 
@@ -1640,10 +1617,10 @@ export const CONFIG = {
         de "deltaY" del WheelEvent. Un "click" de rueda
         típico entrega un deltaY de ~100 — con 0.0025 eso
         es ~0.25 unidades de dolly por click, un ajuste
-        fino, no un salto (antes, en 0.02, un solo click
-        ya desplazaba 2 unidades: casi un cuarto del
-        recorrido útil de golpe — de ahí la sensación de
-        "demasiado zoom" reportada). Trackpads entregan
+        fino, no un salto (con 0.02, un solo click
+        desplazaría 2 unidades: casi un cuarto del
+        recorrido útil de golpe, demasiado zoom por click).
+        Trackpads entregan
         deltaY más chico y continuo, así que ahí el
         resultado es aún más gradual.
 

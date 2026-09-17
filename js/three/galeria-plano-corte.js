@@ -11,56 +11,47 @@
    bbox), útil para entender la orientación del corte más que
    su silueta exacta.
 
-   VISIBLE EN TODO EL RANGO [0,1], límites incluidos (pedido
-   explícito): antes se ocultaba el plano de un eje si
-   "percent" no era menor a 1 (el default, "sin cortar") —
-   eso lo dejaba invisible justo en percent=1.0 exacto, el
-   caso más común (el default de cada eje al arrancar). Ya no
-   depende de si ese eje está recortando geometría de verdad
-   en este momento: mientras el switch global esté prendido,
-   los 3 planos se ven siempre, en la posición que le
-   corresponda a cada "percent" actual.
+   VISIBLE EN TODO EL RANGO [0,1], límites incluidos: que un
+   eje se vea no depende de si está recortando geometría de
+   verdad en este momento. Mientras el switch global esté
+   prendido, los 3 planos se ven siempre, en la posición que
+   le corresponda a cada "percent" actual — incluido
+   percent=1.0 exacto, que es el default de cada eje al
+   arrancar y por lo tanto el caso más común.
 
    ====================================================
-   HISTORIA — por qué esto NO usa THREE.PlaneHelper (versión
-   anterior, con un bug real reportado por el usuario: el
-   plano se veía corrido respecto a la geometría, y no
-   giraba con el objeto ni en autorotado ni en arrastre
-   manual):
+   POR QUÉ NO SE USA THREE.PlaneHelper:
 
-   THREE.PlaneHelper SÍ calcula bien la orientación/posición
-   del plano matemático — eso se confirmó a fondo (ver el
-   historial de debug de este archivo, comparando a mano el
-   plano recalculado contra el que ya usaba el helper: distancia
-   ~0 siempre). El problema es otro, y es un límite conocido
-   del propio THREE.PlaneHelper: el cuadrado FINITO que dibuja
-   siempre queda centrado en el punto del plano más cercano al
-   ORIGEN DEL MUNDO (ver su updateMatrixWorld: "lookAt(normal)"
-   + "translateZ(-constant)" arrancando siempre desde
-   posición (0,0,0) de su padre) — no en el objeto que se está
-   cortando. Con geometría cerca del origen (como el ejemplo
-   oficial "webgl_clipping_stencil", del que viene la técnica)
-   eso no se nota. Acá los conos de "fichas" están dispuestos
-   sobre un arco lejos del origen — el punto "más cercano al
-   origen" cae en un lugar arbitrario, lejos de la geometría, y
-   como ese punto se recalcula distinto en cada frame según la
-   orientación del plano, el cuadrado se ve "flotando" en otro
-   lado y sin girar visiblemente CON el cono (gira alrededor del
-   origen del mundo, no alrededor del cono).
+   THREE.PlaneHelper calcula bien la orientación/posición del
+   plano matemático; el problema es un límite conocido del
+   helper a la hora de DIBUJARLO. El cuadrado FINITO que
+   dibuja siempre queda centrado en el punto del plano más
+   cercano al ORIGEN DEL MUNDO (ver su updateMatrixWorld:
+   "lookAt(normal)" + "translateZ(-constant)" arrancando
+   siempre desde la posición (0,0,0) de su padre), no en el
+   objeto que se está cortando. Con geometría cerca del
+   origen (como el ejemplo oficial "webgl_clipping_stencil",
+   del que viene la técnica) eso no se nota. Acá los conos de
+   "fichas" están dispuestos sobre un arco lejos del origen:
+   el punto "más cercano al origen" cae en un lugar
+   arbitrario, lejos de la geometría, y como se recalcula
+   distinto en cada frame según la orientación del plano, el
+   cuadrado se vería flotando en otro lado y girando
+   alrededor del origen del mundo en vez de alrededor del
+   cono.
 
-   LA SOLUCIÓN: dejar de posicionar nada en espacio de MUNDO.
-   Este módulo arma el cuadrado en espacio LOCAL (mismo bbox
-   que ya usa galeria-corte.js) centrado en el punto real del
-   corte —b, centroDelBboxEnLosOtrosDosEjes— y lo cuelga como
-   HIJO de "mallaFrontal", exactamente igual que las curvas de
-   galeria-corte-interseccion.js y que la caja de debug que se
-   usó para diagnosticar este bug. Al ser hijo, Three.js le
+   Por eso este módulo no posiciona nada en espacio de MUNDO.
+   Arma el cuadrado en espacio LOCAL (mismo bbox que usa
+   galeria-corte.js) centrado en el punto real del corte —b,
+   centroDelBboxEnLosOtrosDosEjes— y lo cuelga como HIJO de
+   "mallaFrontal", igual que las curvas de
+   galeria-corte-interseccion.js. Al ser hijo, Three.js le
    compone automáticamente toda la cadena de transforms
    (carrusel, autorotado, arrastre manual, énfasis) en cada
-   frame sin que este módulo tenga que sincronizar NADA a mano
-   — ni "sincronizarMundo()", ni matrixWorld, ni Plane de
-   mundo. Esto también simplifica el módulo: ya no hace falta
-   ningún dato de "planosMundo", alcanza con "bbox" y "estado".
+   frame sin que este módulo tenga que sincronizar NADA a
+   mano: ni "sincronizarMundo()", ni matrixWorld, ni Plane de
+   mundo. Por lo mismo no necesita ningún dato de
+   "planosMundo", le alcanza con "bbox" y "estado".
    ====================================================
 
    NO conoce el DOM (mismo criterio que
@@ -72,14 +63,14 @@
    switch): reposicionar/mostrar/ocultar es barato pero no hace
    falta hacerlo 60 veces por segundo si nadie tocó el corte —
    la ROTACIÓN/movimiento del cono no necesita ningún aviso
-   porque ahora es automática, por jerarquía (ver arriba).
+   porque es automática, por jerarquía (ver arriba).
 
    TAMAÑO DEL CUADRADO: proporcional a la diagonal del bbox
-   LOCAL del cono activo (mismo bbox que ya usa
+   LOCAL del cono activo (mismo bbox que usa
    galeria-corte.js) — así se ve bien apoyado sobre la
    geometría sin importar si el elemento en foco es grande o
-   chico, en vez de un tamaño fijo que a veces sobra y a veces
-   se queda corto.
+   chico, a diferencia de un tamaño fijo, que a veces sobra y
+   a veces se queda corto.
 ================================================== */
 
 
@@ -101,8 +92,8 @@ const FACTOR_TAMANO = 1.4;
     Cuánto se levanta cada línea sobre la superficie a lo
     largo de la normal del corte, en unidades LOCALES — evita
     z-fighting con la propia geometría que corta sin depender
-    de "depthTest:false" (que además tapaba mal contra otros
-    elementos transparentes de la escena).
+    de "depthTest:false", que tapa mal contra otros elementos
+    transparentes de la escena.
 */
 const LEVANTE_LOCAL = 0.01;
 
@@ -134,7 +125,8 @@ function tamanoParaBbox(bbox) {
     que "planoLocalPara" en galeria-corte.js); en los otros
     dos ejes, en el centro del bbox — así el cuadrado queda
     centrado sobre la geometría real, no sobre un punto
-    arbitrario (ver la cabecera, "LA SOLUCIÓN").
+    arbitrario (ver la cabecera, "POR QUÉ NO SE USA
+    THREE.PlaneHelper").
 */
 function centroParaCorte(eje, percent, bbox) {
 
@@ -177,10 +169,9 @@ function crearPlano() {
         new THREE.Vector3(-mitad, mitad, 0),
         new THREE.Vector3(-mitad, -mitad, 0),
         /*
-            Cruz en diagonales — une CORNERS opuestos (X) en
-            vez de midpoints de lados opuestos (+). Puramente
-            decorativa, para comparar look contra la versión
-            con cruz en +.
+            Cruz en diagonales: une esquinas opuestas (X), no
+            los midpoints de lados opuestos (+). Puramente
+            decorativa.
         */
         new THREE.Vector3(-mitad, -mitad, 0),
         new THREE.Vector3(mitad, mitad, 0),
@@ -238,7 +229,7 @@ function crearPlano() {
     Reposiciona/reorienta/reescala un grupo ya creado para el
     eje/percent/bbox vigentes — todo en espacio LOCAL de
     "mallaFrontal", del que este grupo cuelga como hijo (ver
-    la cabecera, "LA SOLUCIÓN").
+    la cabecera).
 */
 function reposicionar(grupo, eje, percent, bbox, tamano) {
 
@@ -264,10 +255,10 @@ function reposicionar(grupo, eje, percent, bbox, tamano) {
 export function createPlanoCorte({ scene } = {}) {
 
     /*
-        "scene" ya no hace falta para nada (ver la cabecera,
-        "LA SOLUCIÓN": ahora todo cuelga de "mallaFrontal", no
-        de "scene") — se sigue aceptando en la firma para no
-        tener que tocar el call site en galeria.js.
+        "scene" no se usa: todo cuelga de "mallaFrontal", no de
+        la escena (ver la cabecera). Se acepta en la firma para
+        mantener la misma forma de llamada que el resto de los
+        controladores de esta página.
     */
 
     let activo = false;
@@ -275,11 +266,11 @@ export function createPlanoCorte({ scene } = {}) {
     /*
         Un grupo por eje, creado UNA sola vez y reutilizado
         para siempre (se reposiciona/reescala y se
-        muestra/oculta según haga falta) — evita estar
-        creando/destruyendo geometría en cada cambio de foco,
-        a diferencia de las curvas de intersección (esas sí
-        cambian de FORMA en cada recorte, estos cuadrados no:
-        solo cambian dónde y sobre qué mallaFrontal cuelgan).
+        muestra/oculta según haga falta) — evita
+        crear/destruir geometría en cada cambio de foco. Las
+        curvas de intersección sí se rehacen, porque cambian
+        de FORMA en cada recorte; estos cuadrados no: solo
+        cambian dónde y sobre qué mallaFrontal cuelgan.
     */
     const grupos = {};
 
@@ -290,9 +281,9 @@ export function createPlanoCorte({ scene } = {}) {
     });
 
     /*
-        Qué mallaFrontal tiene los grupos puestos HOY — si
-        cambia el foco, hay que sacarlos de la vieja y
-        ponerlos en la nueva (mismo criterio que
+        Qué mallaFrontal tiene los grupos puestos — si cambia
+        el foco, se sacan de la anterior y se ponen en la
+        nueva (mismo criterio que
         "idConCurvasPuestas" en
         galeria-corte-interseccion.js).
     */
@@ -354,8 +345,8 @@ export function createPlanoCorte({ scene } = {}) {
         /*
             "estadoActivo": lo que devuelve
             corte.obtenerEstadoActivo() — null, o { cono,
-            bbox, estado } (ya no hace falta "planosMundo"
-            acá, ver la cabecera). Muestra/reposiciona los 3
+            bbox, estado }; "planosMundo" no se usa acá (ver
+            la cabecera). Muestra/reposiciona los 3
             cuadrados según el "percent" actual de cada eje
             (ver la cabecera: los 3 se ven siempre que el
             switch esté prendido, no solo mientras estén
@@ -387,21 +378,14 @@ export function createPlanoCorte({ scene } = {}) {
             const tamano = tamanoParaBbox(bbox);
 
             /*
-                Antes se ocultaba el plano de un eje si
-                "estado[eje].percent" NO era menor a 1 (el
-                default, "sin cortar" — ese umbral vivía en
-                una constante PERCENT_SIN_CORTE, ya
-                eliminada): la lectura era "percent=1 es el
-                default, sin cortar, nada que resaltar" —
-                pero eso dejaba al plano invisible justo en
-                el límite superior del rango [0,1]
-                (percent=1.0 exacto), y también en el
-                default de CADA eje al arrancar. Pedido
-                explícito: el plano tiene que verse en todo
-                el rango, límites incluidos — no depende de
-                si ese eje está "cortando de verdad" en este
-                momento, solo de si el switch global
-                "Mostrar plano de corte" está activo.
+                Los 3 ejes se muestran sin mirar su
+                "percent": el plano tiene que verse en todo
+                el rango [0,1], límites incluidos. Un umbral
+                del tipo "solo si percent < 1" lo dejaría
+                invisible justo en percent=1.0 exacto, que es
+                el default de cada eje al arrancar. La única
+                condición es el switch global "Mostrar plano
+                de corte" (ver la cabecera).
             */
             EJES.forEach(eje => {
 
@@ -434,9 +418,9 @@ export function createPlanoCorte({ scene } = {}) {
         /*
             Mismo momento que
             corteInterseccion.reset()/corte.reset()/etc. — los
-            4 puntos donde galeria.js sale de "fichas". Se
-            APAGA (no vuelve a prender solo, mismo criterio
-            que "Mostrar intersección": es un control
+            4 puntos donde galeria.js sale de "fichas". Queda
+            APAGADO (no se prende solo al volver, mismo
+            criterio que "Mostrar intersección": es un control
             secundario de visualización).
         */
         reset() {
@@ -449,28 +433,27 @@ export function createPlanoCorte({ scene } = {}) {
 
         /*
             Mallas hit-testables de los planos VISIBLES en
-            este momento — pedido explícito: técnicamente
-            cuelgan del mismo "mallaFrontal" que la geometría
-            real (ver la cabecera, "LA SOLUCIÓN"), y pueden
-            sobresalir bastante más allá de ella (ver
-            FACTOR_TAMANO) — sin esto, el wheel-zoom
-            (galeria-zoom.js) y el drag de rotación manual
-            (galeria-interaccion-ficha.js) sólo reconocían la
-            geometría real, así que apuntar justo al plano que
-            el visitante pidió ver con el switch no disparaba
-            nada, se sentía roto.
+            este momento. Los cuadrados cuelgan del mismo
+            "mallaFrontal" que la geometría real (ver la
+            cabecera) y pueden sobresalir bastante más allá
+            de ella (ver FACTOR_TAMANO): sin exponerlas, el
+            wheel-zoom (galeria-zoom.js) y el drag de rotación
+            manual (galeria-interaccion-ficha.js) reconocerían
+            solo la geometría real, y apuntar justo al plano
+            que el visitante pidió ver con el switch no
+            dispararía nada.
 
             Sólo la TAPA (Mesh sólido, área completa) entra
             acá, nunca las líneas de borde/cruz: un raycast
             contra LineSegments depende de un threshold en
             unidades de mundo, mucho menos confiable como
             área de agarre que un Mesh — mismo motivo por el
-            que la tapa ya es el elemento "grande" del grupo,
-            el borde es puramente decorativo (ver crearPlano).
+            que la tapa es el elemento "grande" del grupo y el
+            borde es puramente decorativo (ver crearPlano).
 
             No-op barato (array vacío) con el switch apagado
-            — mismo guard que ya usa "actualizar()" — así que
-            quien llame esto en cada frame (zoom) o de forma
+            — mismo guard que "actualizar()" — así que quien
+            llame esto en cada frame (zoom) o de forma
             perezosa en cada hit-test (interacción-ficha) no
             necesita chequear "activo" por su cuenta.
         */

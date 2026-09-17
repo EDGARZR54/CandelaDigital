@@ -61,7 +61,18 @@ import { smoothstep } from "./galeria-utils.js";
     de una vez compartirían esta misma geometría, pero hoy
     solo hay un cono de luz en toda la escena.
 */
-const CONO_RADIAL_SEGMENTS = 64;
+/*
+    Gateado por IS_MOBILE_TIER — mismo precedente que
+    shadowMapSize (config.lights.key) y dust.count
+    (config.lights.key.conoLuz.dust): el haz es una malla
+    semitransparente con blending aditivo, vista casi
+    siempre desde lejos/de costado, así que el faceteado
+    con menos segmentos no se nota en la práctica, y baja
+    de forma directa el conteo de vértices de una malla que
+    está activa en casi todas las fases.
+*/
+const CONO_RADIAL_SEGMENTS =
+    IS_MOBILE_TIER ? 28 : 64;
 
 const conoGeometriaBase =
     new THREE.ConeGeometry(1, 1, CONO_RADIAL_SEGMENTS, 1, true);
@@ -195,19 +206,17 @@ export function createConoLuz(
     const cfg = config.lights.conoLuz;
 
     /*
-        FIX (keyLight.angle daba NaN, y con angle NaN un
-        SpotLight no ilumina NADA ni proyecta sombra — ni
-        "piscina de luz" en el piso ni sombra del objeto):
         "angleMin"/"angleMax" NO viven en
         config.lights.conoLuz (el "cfg" de este módulo) sino
         en config.lights.key, junto al resto de los
         parámetros del SpotLight en sí (es de ahí que los lee
         galeria-escena.js al construirlo). Leerlos de "cfg"
-        daba undefined en las dos, y el clamp de más abajo
+        daría undefined en las dos, y el clamp de más abajo
         —Math.min(undefined, Math.max(undefined, x))— produce
-        NaN sin que ningún guard lo note: "anguloCalculado"
-        (el atan2) sale perfectamente bien, el NaN nace recién
-        en el clamp.
+        NaN sin que ningún guard lo note: con angle NaN un
+        SpotLight no ilumina NADA ni proyecta sombra — ni
+        "piscina de luz" en el piso ni sombra del objeto.
+        "anguloCalculado" (el atan2) es independiente de esto.
     */
     const keyCfg = config.lights.key;
 
@@ -215,14 +224,12 @@ export function createConoLuz(
     const ANGLE_MAX = keyCfg.angleMax;
 
     /*
-        FIX (elipse de la piscina de luz se corta en
-        parábola/hipérbola cuando la fila crece — auditado
-        contra Maqueta.html línea 1397): "alturaApex" NO es
-        una constante en la maqueta — es
+        "alturaApex" NO es una constante: es
         "extensionEjeSecundario * 1.5", con
         "extensionEjeSecundario" la extensión real (max-min)
         de los bboxes en el eje secundario de cámara (altura
-        del elemento más alto, en horizontal).
+        del elemento más alto, en horizontal) — mismo criterio
+        que Maqueta.html línea 1397.
 
         Por qué importa: la intersección de un SpotLight real
         (un cono 3D) con el piso (un plano) es una sección
@@ -230,12 +237,11 @@ export function createConoLuz(
         el semi-ángulo del cono (keyLight.angle) contra la
         ELEVACIÓN del eje del cono sobre el piso
         (atan2(altura, distanciaHorizontal)). Con "alturaApex"
-        fijo (6, valor que en la maqueta solo coincidía por la
-        escala chica de sus cajas de prueba) y la distancia
-        horizontal apex→fila creciendo con el ancho real de la
-        fila (geometría real, más grande), esa elevación se
-        derrumba por debajo del semi-ángulo — la luz "se
-        acuesta" y la piscina deja de cerrar en elipse.
+        fijo y la distancia horizontal apex→fila creciendo con
+        el ancho real de la fila (geometría real, más grande),
+        esa elevación se derrumbaría por debajo del
+        semi-ángulo — la luz "se acostaría" y la piscina
+        dejaría de cerrar en elipse.
 
         Se calcula UNA vez por cada eje posible (no una sola
         vez a secas: "ejePrincipal" puede cruzar horizontal↔
@@ -274,41 +280,38 @@ export function createConoLuz(
     };
 
     /*
-        FIX #2 (todavía parábola/hipérbola después del FIX #1
-        de arriba — reportado con el mismo diagnóstico
-        α-vs-θ): la altura del ápice NO alcanza con atarla a
-        la altura del elemento más alto — eso era la mitad de
-        la ecuación. La OTRA mitad, verificada contra
-        Maqueta.html línea ~1710-1720 (idéntica en los dos
-        proyectos): el ápice se ubica como el REFLEJO de la
-        cámara a través de "puntoEnLinea" —
-        "apex.xz = puntoEnLinea.xz + direcciónCámara *
-        distancia", con "distancia = camera.distanceTo(
-        puntoEnLinea)" la distancia 3D COMPLETA cámara→target—
-        así que el offset horizontal del ápice ES,
-        literalmente, la distancia cámara→fila. Esa distancia
-        crece con el ancho REAL de la fila (la cámara se aleja
-        para que entre todo en cuadro); la altura del elemento
-        más alto no tiene por qué crecer al mismo ritmo. En la
-        maqueta ambas magnitudes coincidían en orden de
-        magnitud por la escala chica de sus 6 cajas de prueba
-        (fila de ~9 unidades de ancho, caja más alta de 3.5) —
-        coincidencia de esa escena en particular, no una
-        relación real.
+        La altura del ápice no alcanza con atarla solo a la
+        altura del elemento más alto (ver "alturaApexMinimo"
+        más abajo) — eso es la mitad de la ecuación. La OTRA
+        mitad, verificada contra Maqueta.html línea
+        ~1710-1720 (idéntica en los dos proyectos): el ápice
+        se ubica como el REFLEJO de la cámara a través de
+        "puntoEnLinea" — "apex.xz = puntoEnLinea.xz +
+        direcciónCámara * distancia", con "distancia =
+        camera.distanceTo(puntoEnLinea)" la distancia 3D
+        COMPLETA cámara→target— así que el offset horizontal
+        del ápice ES, literalmente, la distancia cámara→fila.
+        Esa distancia crece con el ancho REAL de la fila (la
+        cámara se aleja para que entre todo en cuadro); la
+        altura del elemento más alto no tiene por qué crecer
+        al mismo ritmo. En la maqueta ambas magnitudes
+        coincidían en orden de magnitud por la escala chica de
+        sus 6 cajas de prueba (fila de ~9 unidades de ancho,
+        caja más alta de 3.5) — coincidencia de esa escena en
+        particular, no una relación real.
 
         La corrección: además del piso por contenido
-        (alturaApexMinimo, antes "alturaApexVigente" — se
-        conserva como mínimo razonable para filas angostas/
-        cámara muy cerca), sumar una componente PROPORCIONAL a
-        "distancia" (cfg.alturaApexRatio) — así la elevación
-        del eje del cono (atan2(alturaApex, distancia)) queda
-        INVARIANTE a la escala de la escena: si "distancia" se
-        duplica, "alturaApex" también, y el ángulo de elevación
-        se mantiene igual sin importar qué tan ancha sea la
-        fila real. Se aplica en el call site (ver más abajo,
-        junto a "apex.y ="), porque "distancia" recién existe
-        ahí (se computa una vez por frame contra la cámara
-        real).
+        (alturaApexMinimo — se conserva como mínimo razonable
+        para filas angostas/cámara muy cerca), sumar una
+        componente PROPORCIONAL a "distancia"
+        (cfg.alturaApexRatio) así la elevación del eje del
+        cono (atan2(alturaApex, distancia)) queda INVARIANTE a
+        la escala de la escena: si "distancia" se duplica,
+        "alturaApex" también, y el ángulo de elevación se
+        mantiene igual sin importar qué tan ancha sea la fila
+        real. Se aplica en el call site (ver más abajo, junto
+        a "apex.y ="), porque "distancia" recién existe ahí
+        (se computa una vez por frame contra la cámara real).
     */
     function alturaApexMinimo() {
 
@@ -556,23 +559,20 @@ export function createConoLuz(
         que el punto viva siempre sobre la línea central de
         la fila, no sobre cada elemento individual.
 
-        FIX (piso al 100%): esa altura de piso ahora es
-        "pos.y" (0 en horizontal), NO "restY". Desde que cada
-        elemento se apoya en su base propia
-        (-bbox.min.y, ver galeria-revelado.js/
+        Esa altura de piso es "pos.y" (0 en horizontal), NO
+        "restY". Desde que cada elemento se apoya en su base
+        propia (-bbox.min.y, ver galeria-revelado.js/
         galeria-reordenar.js/galeria-carrusel.js), el punto
         más bajo de CUALQUIER elemento en mundo queda
         exactamente en "slot.y": la cuenta es
         (-bbox.min.y) + slot.y + bbox.min.y = slot.y, sin
-        importar cómo se haya construido su geometría. Antes
-        acá iba "restY" (el peor caso global), que dejaba el
-        ancla de la luz por ENCIMA del piso real por
-        exactamente lo mismo que los elementos quedaban
-        flotando — o sea, aunque se arreglaran las mallas, el
-        cono habría seguido apuntando a la altura vieja.
+        importar cómo se haya construido su geometría. Usar
+        "restY" (el peor caso global) en cambio dejaría el
+        ancla de la luz por ENCIMA del piso real, apuntando a
+        una altura que no corresponde a ningún elemento en
+        particular.
 
-        FIX (centroide en el EJE PRINCIPAL — a pedido): el
-        "slot" es la posición del ORIGEN LOCAL del bbox de
+        El "slot" es la posición del ORIGEN LOCAL del bbox de
         cada geometría (ver calculatePositions en
         galeria-escena.js — el slot se calcula como "donde
         tiene que caer el bbox.min del elemento para no
@@ -581,30 +581,28 @@ export function createConoLuz(
         asimétricas, la coordenada del slot NO coincide con
         el centroide del elemento que lo ocupa: difieren en
         exactamente (bbox.min[eje] + bbox.max[eje]) / 2, el
-        centro del bbox en coordenadas LOCALES. Antes el
-        cono apuntaba a esa coordenada del slot (el borde),
-        así que en elementos asimétricos el haz quedaba
-        descentrado respecto del elemento. Ahora se suma ese
-        centro local en el eje principal para que el cono
-        apunte al CENTROIDE real del elemento en foco. Se
-        aplica al eje PRINCIPAL (no solo a X) por simetría:
-        en vertical (ejePrincipal="y") el razonamiento es
-        idéntico, solo cambia qué componente del vector
-        destino se corrige.
+        centro del bbox en coordenadas LOCALES. Si el cono
+        apuntara a esa coordenada del slot (el borde), en
+        elementos asimétricos el haz quedaría descentrado
+        respecto del elemento. Por eso se suma ese centro
+        local en el eje principal para que el cono apunte al
+        CENTROIDE real del elemento en foco. Se aplica al eje
+        PRINCIPAL (no solo a X) por simetría: en vertical
+        (ejePrincipal="y") el razonamiento es idéntico, solo
+        cambia qué componente del vector destino se corrige.
 
-        SIMPLIFICACIÓN CONSCIENTE (NO se resuelve en esta
-        pasada): sigue sin aplicarse corrección de centroide
-        en el EJE SECUNDARIO (ver "corregirSecundario" en
-        galeria-revelado.js/galeria-reordenar.js) — ese eje
-        se fuerza a 0 (piso) más abajo, y ese "0" es la
-        línea central de la fila en el piso, no la
-        coordenada del elemento. Es la misma simplificación
-        de antes: esto es solo el ANCLA de hacia dónde
-        apunta una luz, no un objeto que se renderiza, así
-        que un desvío chico en el secundario (a lo sumo
-        medio ancho de un elemento) no es perceptible. Si
-        llegara a notarse, portar el mismo corregirSecundario
-        que ya usan esos dos módulos.
+        SIMPLIFICACIÓN CONSCIENTE: sigue sin aplicarse
+        corrección de centroide en el EJE SECUNDARIO (ver
+        "corregirSecundario" en galeria-revelado.js/
+        galeria-reordenar.js) — ese eje se fuerza a 0 (piso)
+        más abajo, y ese "0" es la línea central de la fila
+        en el piso, no la coordenada del elemento. Esto es
+        solo el ANCLA de hacia dónde apunta una luz, no un
+        objeto que se renderiza, así que un desvío chico en
+        el secundario (a lo sumo medio ancho de un elemento)
+        no es perceptible. Si llegara a notarse, portar el
+        mismo corregirSecundario que ya usan esos dos
+        módulos.
     */
     function puntoDeDescanso(slot, ejeSecundario, destino) {
 
@@ -739,17 +737,15 @@ export function createConoLuz(
         keyLight.angle = anguloCongelado;
 
         /*
-            FIX (compat r128 — ver galeria-compat-r128.js):
-            "distance" ya NO se deriva de la geometría del
-            cono (altura/radio). Con la fórmula de
-            atenuación LINEAL de r128 (la que reproduce el
-            shim), "distance" no es un simple corte físico
-            más allá del cual no llega nada — es TODA la
-            rampa de caída, 0 en el ápice, 1 en el borde. Un
-            "distance" que sigue de cerca a la geometría del
-            cono (como hacía el hypot() de antes, pensado
-            para la ventana Frostbite de 0.169 sin el shim)
-            deja los elementos siempre cerca del borde de
+            "distance" NO se deriva de la geometría del cono
+            (altura/radio). Con la fórmula de atenuación
+            LINEAL de r128 (la que reproduce el shim de
+            compat — ver galeria-compat-r128.js), "distance"
+            no es un simple corte físico más allá del cual no
+            llega nada — es TODA la rampa de caída, 0 en el
+            ápice, 1 en el borde. Un "distance" que siguiera
+            de cerca a la geometría del cono (vía hypot())
+            dejaría los elementos siempre cerca del borde de
             esa rampa, es decir, siempre casi apagados.
 
             Se usa "keyCfg.distance" (30, el valor real de
@@ -758,32 +754,19 @@ export function createConoLuz(
             Maqueta.html línea ~1660) en las dos ramas
             (congelada y en vivo).
 
-            REVERTIDO: hubo un FIX #3 intermedio (Math.max
-            contra "height * cfg.distanceMargenFactor") para
-            compensar que el ápice quedaba mucho más lejos por
-            el FIX #2 de "alturaApexMinimo" — al revertir ESE
-            fix (ver el comentario junto a "apex.y =", en la
-            sección de arriba del archivo), este ya no hace
-            falta: la distancia real ápice→elementos vuelve a
-            ser chica, "keyCfg.distance" (30) vuelve a
-            alcanzar de sobra. "cfg.distanceMargenFactor" queda
-            declarado en config sin uso (ver el comentario ahí).
-
-            FIX ACTUAL (cobertura del CONO COMPLETO, con
-            alcance MÍNIMO SUFICIENTE): la cota natural para
-            "distance" es la distancia REAL del ápice a la
-            CÁMARA — cualquier punto que la cámara ve está a
-            lo sumo a esa distancia del ápice (más el margen
-            de "cfg.toleranciaDistancia" por si algún punto
-            visible queda un poco por detrás de la cámara
-            respecto del ápice). Reemplaza a la versión
-            anterior, que era un "×2" sobre
-            max(keyCfg.distance, hypot(...)): eso daba de
-            MÁS con la cámara lejos (aplana la rampa de
-            atenuación innecesariamente, menos "spot") y de
-            MENOS con la cámara cerca; la distancia real
-            ápice→cámara es la cota correcta y no depende
-            de ninguna constante calibrada a ojo.
+            La cota natural para "distance" es la distancia
+            REAL del ápice a la CÁMARA — cualquier punto que
+            la cámara ve está a lo sumo a esa distancia del
+            ápice (más el margen de "cfg.toleranciaDistancia"
+            por si algún punto visible queda un poco por
+            detrás de la cámara respecto del ápice). Un
+            margen de tipo "×2" sobre
+            max(keyCfg.distance, hypot(...)) daría de MÁS con
+            la cámara lejos (aplana la rampa de atenuación
+            innecesariamente, menos "spot") y de MENOS con la
+            cámara cerca; la distancia real ápice→cámara es
+            la cota correcta y no depende de ninguna
+            constante calibrada a ojo.
 
             Se conservan DOS pisos por seguridad, dentro del
             Math.max:
@@ -796,6 +779,15 @@ export function createConoLuz(
             El resultado se multiplica por
             cfg.toleranciaDistancia (~1.10) para dejar un
             margen chico por sobre la cámara.
+
+            "cfg.distanceMargenFactor" (declarado en
+            config.lights.conoLuz, ver el comentario ahí)
+            queda sin uso: la altura del ápice actual
+            (alturaApexMinimo() sola, ver el comentario junto
+            a "apex.y =", más abajo en el archivo) mantiene la
+            distancia real ápice→elementos chica, así que
+            "keyCfg.distance" (30) alcanza de sobra sin ese
+            margen extra.
         */
         keyLight.distance =
             Math.max(
@@ -825,15 +817,15 @@ export function createConoLuz(
     function update(focoWeights, carruselFormado, now) {
 
         /*
-            FIX: "now" viene de requestAnimationFrame (rAF) —
-            un DOMHighResTimeStamp en MILISEGUNDOS. La maqueta
+            "now" viene de requestAnimationFrame (rAF) — un
+            DOMHighResTimeStamp en MILISEGUNDOS. La maqueta
             alimenta "uTime" con THREE.Clock.getDelta(), que
-            da SEGUNDOS. Sin esta división, "uTime" avanzaba
-            ~1000× más rápido que en la maqueta — todo el
-            movimiento del polvo (torbellino, parpadeo, deriva
-            axial, todos calculados contra "uTime" en
-            DUST_VERTEX_SHADER) quedaba a una velocidad
-            absurda.
+            da SEGUNDOS. Por eso se divide entre 1000: sin
+            esa conversión, "uTime" avanzaría ~1000× más
+            rápido que en la maqueta — todo el movimiento del
+            polvo (torbellino, parpadeo, deriva axial, todos
+            calculados contra "uTime" en DUST_VERTEX_SHADER)
+            quedaría a una velocidad absurda.
         */
         const dt =
             lastNowDust === null
@@ -901,21 +893,21 @@ export function createConoLuz(
         // "igual que Maqueta.html" — ver más abajo), es una
         // altura de "foco" deliberada.
         //
-        // FIX: acá antes decía "vectorCamara[ejeSecundario]"/
-        // "apex[ejeSecundario]" — en horizontal (ejeSecundario
-        // = "y") esto coincidía por casualidad con aplanar/
-        // fijar la altura real. En vertical, ejeSecundario es
-        // "x": el empuje lateral quedaba aplanado en X en vez
-        // de en Y (así que el pitch de la cámara sí lo movía en
-        // altura, cuando tenía que quedar siempre horizontal),
-        // Y —lo que de verdad importa— la altura del ápice
-        // dejaba de ser fija: heredaba "puntoEnLinea.y" (la
-        // altura REAL del elemento en foco dentro de la
-        // columna), así que el eje del cono terminaba casi
-        // horizontal en vez de apuntando hacia abajo (ver el
-        // diagnóstico real: con un elemento en foco a
-        // target.y=8.559, el ápice — que debía fijarse en
-        // cfg.alturaApex=6 — terminaba TAMBIÉN en y=8.559).
+        // Se aplana/fija siempre en Y, no en "ejeSecundario":
+        // en horizontal (ejeSecundario = "y") ambas
+        // coordenadas coinciden, pero en vertical
+        // ejeSecundario es "x", y aplanar/fijar ahí en vez de
+        // en Y dejaría el empuje lateral en el eje
+        // equivocado —el pitch de la cámara movería el ápice
+        // en altura, cuando tiene que quedar siempre
+        // horizontal— y, lo que de verdad importa, la altura
+        // del ápice dejaría de ser fija: heredaría
+        // "puntoEnLinea.y" (la altura REAL del elemento en
+        // foco dentro de la columna), así que el eje del cono
+        // terminaría casi horizontal en vez de apuntando
+        // hacia abajo (con un elemento en foco a
+        // target.y=8.559, el ápice — que debe fijarse en
+        // cfg.alturaApex=6 — terminaría TAMBIÉN en y=8.559).
         camera.getWorldDirection(vectorCamara);
         vectorCamara.y = 0;
 
@@ -936,23 +928,24 @@ export function createConoLuz(
             .copy(puntoEnLinea)
             .addScaledVector(vectorCamara, distancia);
 
-        // FIX (ver el comentario grande más arriba): SIEMPRE
-        // "y", no "ejeSecundario" — la altura del ápice es fija
-        // en las dos orientaciones, igual que en Maqueta.html.
+        // Siempre se usa "y", no "ejeSecundario" (ver el
+        // comentario grande más arriba): la altura del ápice
+        // es fija en las dos orientaciones, igual que en
+        // Maqueta.html.
         //
-        // REVERTIDO (a pedido — el FIX #2 que combinaba esto
-        // con "distancia * cfg.alturaApexRatio" para forzar
-        // elipse en filas anchas cambiaba demasiado la altura
-        // real de la luz respecto a como se veía antes; ver
-        // "alturaApexRatio"/"distanceMargenFactor" en
+        // Queda como SOLO "alturaApexMinimo()" (extensión
+        // real del elemento más alto × alturaApexFactor) —
+        // mismo comportamiento que Maqueta.html
+        // (alturaPuntoFinalLineaRosa = extensionEjeSecundario
+        // * 1.5), sin ningún ajuste adicional por escala de
+        // fila: un enfoque que combinara esto con
+        // "distancia * cfg.alturaApexRatio" para forzar
+        // elipse en filas anchas cambiaría demasiado la
+        // altura real de la luz respecto a como se ve hoy
+        // (ver "alturaApexRatio"/"distanceMargenFactor" en
         // galeria-config.js, ambos sin uso desde acá pero
-        // dejados declarados por si se retoma este camino más
-        // adelante). Vuelve a ser SOLO "alturaApexMinimo()"
-        // (FIX #1: extensión real del elemento más alto ×
-        // alturaApexFactor) — mismo comportamiento que
-        // Maqueta.html (alturaPuntoFinalLineaRosa =
-        // extensionEjeSecundario * 1.5), sin el ajuste
-        // adicional por escala de fila.
+        // declarados por si se retoma este camino más
+        // adelante).
         apex.y = alturaApexMinimo();
 
 
@@ -1002,17 +995,15 @@ export function createConoLuz(
             );
 
         /*
-            FIX (cobertura del CONO COMPLETO, con alcance
-            MÍNIMO SUFICIENTE — mismo criterio que en
-            aplicarCongelado(), ver el comentario grande
-            ahí): la cota natural para "distance" es la
-            distancia REAL del ápice a la CÁMARA — cualquier
-            punto visible está a lo sumo a esa distancia del
-            ápice (más el margen de cfg.toleranciaDistancia).
-            Reemplaza al "×2" anterior, que daba de MÁS con
-            la cámara lejos (aplana la rampa lineal del
-            shim innecesariamente → menos "spot") y de MENOS
-            con la cámara cerca.
+            La cota natural para "distance" es la distancia
+            REAL del ápice a la CÁMARA (mismo criterio que en
+            aplicarCongelado(), ver el comentario grande ahí)
+            — cualquier punto visible está a lo sumo a esa
+            distancia del ápice (más el margen de
+            cfg.toleranciaDistancia). Un margen de tipo "×2"
+            daría de MÁS con la cámara lejos (aplana la
+            rampa lineal del shim innecesariamente → menos
+            "spot") y de MENOS con la cámara cerca.
 
             Se conservan dos pisos por seguridad dentro del
             Math.max:
@@ -1026,15 +1017,14 @@ export function createConoLuz(
             cfg.toleranciaDistancia (~1.10) para dejar un
             margen chico por sobre la cámara.
 
-            SUPERSEDIDO: el comentario viejo de acá hablaba
-            del hypot() original (pre-shim, ventana Frostbite
-            de 0.169) como "deja los elementos siempre cerca
-            del borde, siempre casi apagados". Eso valía
-            cuando "distance" era un corte físico puro; bajo
-            la fórmula LINEAL del shim, la rampa 0→1 se
-            estira con "distance" y ese problema no aplica
-            — pero el piso de la maqueta (30) sigue siendo
-            el mínimo para no oscurecer escenas chicas.
+            Bajo la fórmula LINEAL del shim, la rampa 0→1 se
+            estira con "distance"; un "distance" que
+            siguiera de cerca a la geometría del cono (vía
+            hypot() puro, sin la distancia a cámara) dejaría
+            los elementos siempre cerca del borde de esa
+            rampa, casi apagados — pero el piso de la maqueta
+            (30) sigue siendo el mínimo para no oscurecer
+            escenas chicas.
         */
         keyLight.distance =
             Math.max(

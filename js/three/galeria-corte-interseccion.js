@@ -353,6 +353,130 @@ export function createCorteInterseccion({ cones } = {}) {
     }
 
 
+    /*
+        Trabajo REAL de recomputar las curvas — ver
+        "actualizar" más abajo para el throttle que decide
+        CUÁNDO se llama a esto.
+
+        "estadoActivo": lo que devuelve
+        corte.obtenerEstadoActivo() — null, o { id, cono,
+        planosLocales, estado }. "estado" (percent/invertido
+        por eje) ya NO hace falta acá: se recalculan y
+        reemplazan las líneas de los 3 ejes siempre (ver el
+        comentario grande más abajo, en el forEach) — no-op
+        barato si el switch está apagado.
+    */
+    function recomputarAhora(estadoActivo) {
+
+        if (!activo) return;
+
+        if (!estadoActivo) {
+
+            limpiarConoActual();
+            return;
+
+        }
+
+        const { id, cono, planosLocales } =
+            estadoActivo;
+
+        if (id !== idConCurvasPuestas) {
+
+            limpiarConoActual();
+            idConCurvasPuestas = id;
+
+        }
+
+        const [mallaFrontal] = cono.userData.mallas;
+        const geometry = mallaFrontal.geometry;
+        const info = obtenerInfraestructura(cono);
+
+        /*
+            Ya NO se filtra por "percent < 1" (ver
+            galeria-plano-corte.js, mismo pedido explícito
+            aplicado acá): antes, un eje en su default
+            (percent=1, sin cortar) ni se procesaba, y
+            tampoco entraba en el recorte cruzado contra los
+            OTROS ejes. Ahora los 3 ejes se procesan siempre
+            — en la práctica, un eje en percent=1 (o 0) casi
+            nunca cruza ningún triángulo de la malla justo en
+            el borde del bbox, así que "segmentosCrudos" sale
+            vacío igual y no hay curva que dibujar (mismo
+            resultado visual que antes, pero ahora decidido
+            por la geometría real, no por un umbral
+            artificial) — y de paso, si algún día SÍ hay
+            geometría justo en ese borde, el recorte cruzado
+            contra ese eje también se aplica de forma
+            consistente, en vez de ignorarlo por estar en su
+            default.
+        */
+        EJES.forEach(eje => {
+
+            limpiarLinea(info, eje);
+
+            const otrosPlanos = EJES
+                .filter(otro => otro !== eje)
+                .map(otro => planosLocales[otro]);
+
+            const segmentosCrudos =
+                segmentosPlanoGeometria(
+                    geometry, planosLocales[eje]
+                );
+
+            const segmentosRecortados =
+                recortarSegmentos(
+                    segmentosCrudos, otrosPlanos
+                );
+
+            if (segmentosRecortados.length === 0) {
+
+                return;
+
+            }
+
+            const linea =
+                armarLineSegments(segmentosRecortados);
+
+            mallaFrontal.add(linea);
+            info.lineas[eje] = linea;
+
+        });
+
+    }
+
+
+    /*
+        THROTTLE POR rAF: "actualizar()" (más abajo) puede
+        llegar a llamarse muchas veces por frame — en
+        particular mientras se arrastra un slider de
+        "Corte" (galeria-corte-controles.js escucha
+        "input", que dispara seguido durante el drag, no
+        solo al soltar). Sin esto, cada uno de esos eventos
+        recorrería TODOS los triángulos de la malla × 3 ejes
+        de nuevo, aunque el resultado visual solo pueda
+        cambiar una vez por frame renderizado.
+
+        En vez de recomputar en el momento, se guarda el
+        ÚLTIMO estado recibido ("estadoPendiente" — solo
+        importa el más reciente, ninguno intermedio llega a
+        pintarse) y se agenda UN recomputo real por
+        requestAnimationFrame; si ya hay uno agendado, las
+        llamadas siguientes solo actualizan qué estado va a
+        usar, no agendan un segundo.
+    */
+    let rafPendiente = null;
+    let estadoPendiente;
+
+    function cancelarRafPendiente() {
+
+        if (rafPendiente === null) return;
+
+        cancelAnimationFrame(rafPendiente);
+        rafPendiente = null;
+
+    }
+
+
     return {
 
         /*
@@ -371,94 +495,32 @@ export function createCorteInterseccion({ cones } = {}) {
 
             activo = nuevoActivo;
 
-            if (!activo) limpiarConoActual();
+            if (!activo) {
+
+                cancelarRafPendiente();
+                limpiarConoActual();
+
+            }
 
         },
 
         /*
-            "estadoActivo": lo que devuelve
-            corte.obtenerEstadoActivo() — null, o { id, cono,
-            planosLocales, estado }. "estado" (percent/
-            invertido por eje) ya NO hace falta acá: se
-            recalculan y reemplazan las líneas de los 3 ejes
-            siempre (ver el comentario grande más abajo, en
-            el forEach) — no-op barato si el switch está
-            apagado.
+            Punto de entrada público — ver "THROTTLE POR
+            rAF" arriba para el porqué de no recomputar acá
+            mismo.
         */
         actualizar(estadoActivo) {
 
             if (!activo) return;
 
-            if (!estadoActivo) {
+            estadoPendiente = estadoActivo;
 
-                limpiarConoActual();
-                return;
+            if (rafPendiente !== null) return;
 
-            }
+            rafPendiente = requestAnimationFrame(() => {
 
-            const { id, cono, planosLocales } =
-                estadoActivo;
-
-            if (id !== idConCurvasPuestas) {
-
-                limpiarConoActual();
-                idConCurvasPuestas = id;
-
-            }
-
-            const [mallaFrontal] = cono.userData.mallas;
-            const geometry = mallaFrontal.geometry;
-            const info = obtenerInfraestructura(cono);
-
-            /*
-                Ya NO se filtra por "percent < 1" (ver
-                galeria-plano-corte.js, mismo pedido
-                explícito aplicado acá): antes, un eje en su
-                default (percent=1, sin cortar) ni se
-                procesaba, y tampoco entraba en el recorte
-                cruzado contra los OTROS ejes. Ahora los 3
-                ejes se procesan siempre — en la práctica,
-                un eje en percent=1 (o 0) casi nunca cruza
-                ningún triángulo de la malla justo en el
-                borde del bbox, así que "segmentosCrudos"
-                sale vacío igual y no hay curva que dibujar
-                (mismo resultado visual que antes, pero
-                ahora decidido por la geometría real, no por
-                un umbral artificial) — y de paso, si algún
-                día SÍ hay geometría justo en ese borde, el
-                recorte cruzado contra ese eje también se
-                aplica de forma consistente, en vez de
-                ignorarlo por estar en su default.
-            */
-            EJES.forEach(eje => {
-
-                limpiarLinea(info, eje);
-
-                const otrosPlanos = EJES
-                    .filter(otro => otro !== eje)
-                    .map(otro => planosLocales[otro]);
-
-                const segmentosCrudos =
-                    segmentosPlanoGeometria(
-                        geometry, planosLocales[eje]
-                    );
-
-                const segmentosRecortados =
-                    recortarSegmentos(
-                        segmentosCrudos, otrosPlanos
-                    );
-
-                if (segmentosRecortados.length === 0) {
-
-                    return;
-
-                }
-
-                const linea =
-                    armarLineSegments(segmentosRecortados);
-
-                mallaFrontal.add(linea);
-                info.lineas[eje] = linea;
+                rafPendiente = null;
+                recomputarAhora(estadoPendiente);
 
             });
 
@@ -484,6 +546,7 @@ export function createCorteInterseccion({ cones } = {}) {
         */
         reset() {
 
+            cancelarRafPendiente();
             activo = false;
             limpiarConoActual();
 

@@ -11,41 +11,37 @@
 
    "ninguno": no es un material propio (no hay
    "MeshNinguno" en Three.js) — es la malla sólida
-   OCULTA (malla.visible = false) +
-   el overlay de malla, si "Mostrar malla" está prendido
-   (si no, no se ve nada) — mismo criterio que
-   visor-geometrias.html. Con esto, más el switch que ya
-   existía, ahora se puede pedir "sólo alambre/malla, sin
+   OCULTA (malla.visible = false) + el overlay de malla,
+   si "Mostrar malla" está prendido (si no, no se ve
+   nada) — mismo criterio que visor-geometrias.html. Junto
+   con el switch, permite pedir "sólo alambre/malla, sin
    material sólido debajo".
 
-   OVERLAY DE MALLA — YA NO ES WireframeGeometry ÍNTEGRO
-   (una línea por cada arista de cada triángulo real, sin
-   importar la resolución del generador — ruidoso en
-   superficies con muchos triángulos): ahora se apoya en
+   OVERLAY DE MALLA: se apoya en
    galeria-malla-cuadricula.js, que detecta la cuadrícula
    UV paramétrica real de la geometría (si la hay) y arma
    sólo las isocurvas U/V que correspondan según la
    "densidad" elegida — mismo criterio, mismo código en
-   espíritu, que visor-geometrias.html. Si la geometría no
-   tiene cuadrícula UV detectable (generador sin UVs), ese
-   módulo cae solo de vuelta al wireframe íntegro como red
-   de seguridad — nunca una opción elegible desde acá.
+   espíritu, que visor-geometrias.html. No es un
+   WireframeGeometry íntegro (una línea por cada arista de
+   cada triángulo real, sin importar la resolución del
+   generador), que resulta ruidoso en superficies con
+   muchos triángulos. Si la geometría no tiene cuadrícula
+   UV detectable (generador sin UVs), ese módulo cae solo
+   de vuelta al wireframe íntegro como red de seguridad —
+   nunca una opción elegible desde acá.
 
-   YA NO ES lil-gui: vivía montado como un widget lil-
-   gui completo (con su propia tipografía/bordes/
-   sombra) adentro de la sección colapsable "Opciones
-   de visualización" — pero el colapso/expandido de esa
-   sección ya lo resuelve el panel derecho por su
-   cuenta (ver galeria-panel-derecho-secciones.js), así
-   que un segundo panel-adentro-del-panel, con su
-   propia tipografía en vez de la del sitio, sobraba.
-   Este archivo ahora solo cablea listeners nativos
-   sobre el HTML fijo de "#panel-material" (ver
-   galeria.html) — toda la lógica de materiales de
-   Three.js de acá abajo (construirMaterial,
-   actualizarMaterialDeGrupo) es la misma que cuando esto
-   era lil-gui; el overlay de malla sí cambió de técnica,
-   ver arriba.
+   El panel no es un widget lil-gui: el colapso/expandido
+   de la sección "Opciones de visualización" lo resuelve el
+   panel derecho por su cuenta (ver
+   galeria-panel-derecho-secciones.js), así que un segundo
+   panel-adentro-del-panel, con su propia tipografía en vez
+   de la del sitio, sobra. Este archivo solo cablea
+   listeners nativos sobre el HTML fijo de
+   "#panel-material" (ver galeria.html); toda la lógica de
+   materiales de Three.js de acá abajo (construirMaterial,
+   actualizarMaterialDeGrupo) es independiente de ese
+   cableado.
 
    A diferencia de galeria-panel-parametros.js (la
    carpeta "Forma", que sí depende de cuál elemento
@@ -74,12 +70,11 @@
    group.userData (ver construirElemento3D).
 
    EXPONE "actualizarAristasDeGrupo(group)" en su valor de
-   retorno — a diferencia de antes (no devolvía nada): lo
-   usa galeria-panel-parametros.js para mantener el
-   overlay de malla sincronizado cuando reconstruye la
-   geometría de un elemento (inyectado en su construcción,
-   ver galeria.js — mismo patrón "inyectar, no importar"
-   que onGeometriaReconstruida).
+   retorno: lo usa galeria-panel-parametros.js para
+   mantener el overlay de malla sincronizado cuando
+   reconstruye la geometría de un elemento (inyectado en su
+   construcción, ver galeria.js — mismo patrón "inyectar,
+   no importar" que onGeometriaReconstruida).
 ================================================== */
 
 import * as THREE from 'three';
@@ -99,32 +94,30 @@ import {
     y nada debajo, la pieza se vería casi transparente en
     vez de funcionar como un alambre real.
 
-    Ya NO es una "base" a multiplicar por nada: existía un
-    proxy en galeria-escena.js que la reescalaba cada frame
-    por el fundido de opacidad por distancia al foco, pero
-    esa fase ya no anima opacidad (ver galeria-carrusel.js/
-    galeria-revelado.js), así que el proxy se sacó y estos
-    dos valores son directamente la opacidad final del
-    overlay — ver actualizarAristasVisualDeGrupo.
+    Son la opacidad FINAL del overlay, no una base a
+    escalar: la fase de fichas no anima opacidad (ver
+    galeria-carrusel.js/galeria-revelado.js), así que nadie
+    los reescala cuadro a cuadro — ver
+    actualizarAristasVisualDeGrupo.
 */
 const OPACIDAD_ARISTAS_OVERLAY = 0.22;
 const OPACIDAD_ARISTAS_SIN_SUPERFICIE = 0.9;
 
 
 /*
-    DROPLIST EDITORIAL — reemplaza al <select> nativo de
-    "Tipo de material" (ver ".ficha__droplist" en galeria.css
-    para el porqué: tipografía inconsistente entre
-    navegadores + parpadeo blanco al abrir en modo oscuro,
-    ambos problemas de un popup que dibuja el navegador, no
-    este CSS).
+    DROPLIST EDITORIAL — ocupa el lugar del <select> nativo
+    de "Tipo de material" (ver ".ficha__droplist" en
+    galeria.css para el porqué: tipografía inconsistente
+    entre navegadores + parpadeo blanco al abrir en modo
+    oscuro, ambos problemas de un popup que dibuja el
+    navegador, no este CSS).
 
     Envuelve "#ficha-material-tipo" (el <ul role="listbox">)
-    para que se comporte como el <select> que reemplaza:
-    expone ".value" (string) y dispara un Event("change")
-    real cada vez que cambia — así el resto de este archivo
-    (estado.tipo, el addEventListener("change", ...) de más
-    abajo) no tuvo que tocarse, solo el wiring inicial.
+    para que se comporte como un <select>: expone ".value"
+    (string) y dispara un Event("change") real cada vez que
+    cambia, así el resto de este archivo (estado.tipo, el
+    addEventListener("change", ...) de más abajo) trabaja
+    contra la misma interfaz que con un control nativo.
 
     Devuelve el mismo <ul> recibido (con ".value" ya
     agregado), o null si no existe — mismo criterio de guard
@@ -151,13 +144,13 @@ function crearDroplist(lista) {
     if (inicial) valorSpan.textContent = inicial.textContent.trim();
 
     /*
-        Se saca la lista de "#panel-material" y se cuelga
-        directo de <body>: adentro quedaba atrapada por el
+        La lista cuelga directo de <body>, fuera de
+        "#panel-material": adentro quedaría atrapada por el
         "overflow:hidden" de ".ficha__seccion-contenido-inner"
         (necesario para la animación de colapso) y por el
         scroll de ".ficha__panel-cuerpo" — cualquiera de los
-        dos la recortaba apenas se acercaba al borde. Movida
-        a <body> con "position:fixed" calculada a mano (ver
+        dos la recorta apenas se acerca al borde. En <body>
+        con "position:fixed" calculada a mano (ver
         posicionar()), nada la recorta y nada la mueve sola.
 
         Los ids/aria-* siguen funcionando igual sin importar
@@ -223,11 +216,9 @@ function crearDroplist(lista) {
             opciones.find(li => li.dataset.value === lista.value);
 
         /*
-            "preventScroll": ya no hace falta como red de
-            seguridad (la lista dejó de estar adentro del
-            contenedor que scrolleaba), pero se deja puesto
-            por las dudas — enfocar nunca debería mover nada
-            de la página por su cuenta.
+            "preventScroll": red de seguridad — enfocar una
+            opción nunca debería mover la página ni ningún
+            contenedor scrolleable por su cuenta.
         */
         (activa || opciones[0])?.focus({ preventScroll: true });
     }
@@ -301,12 +292,12 @@ export function createMaterialPanel(container, cones) {
         Sin el contenedor (HTML desactualizado, o esta
         página todavía no lo tiene) no hay nada que
         cablear — mismo criterio de guard que el resto
-        de los controladores de esta página. A
-        diferencia de antes, ahora SÍ hace falta devolver
-        algo (ver "EXPONE" en la cabecera): un
+        de los controladores de esta página. Igual se
+        devuelve la misma forma de objeto que en el camino
+        normal (ver "EXPONE" en la cabecera), con un
         actualizarAristasDeGrupo() no-op, para que
-        galeria-panel-parametros.js pueda seguir llamándolo
-        sin chequear null cada vez — mismo criterio que el
+        galeria-panel-parametros.js pueda llamarlo sin
+        chequear null cada vez — mismo criterio que el
         resto de los guards de esta página (p. ej.
         createCorteControles con contenedor ausente).
     */
@@ -424,19 +415,17 @@ export function createMaterialPanel(container, cones) {
         de material elegido:
 
         - "solido": color de tema, uniforme, distinto
-          en frontal/trasera — con una sola malla
-          DoubleSide esto ya no lo decide "qué material se
-          le puso a qué mesh" (ver construirMaterialSolido
-          más abajo): ambos colores se calculan siempre
-          juntos y es el propio shader, en tiempo de
-          render, el que elige uno u otro según
-          gl_FrontFacing.
+          en frontal/trasera. Con una sola malla
+          DoubleSide no lo decide "qué material se le puso
+          a qué mesh" (ver construirMaterialSolido más
+          abajo): ambos colores se calculan siempre juntos
+          y es el propio shader, en tiempo de render, el
+          que elige uno u otro según gl_FrontFacing.
         - "estado"/"normales"/"ninguno": el color por
           estado de conservación que ya trae el grupo
-          (colorEstado), igual en ambas caras — mismo
-          comportamiento que el "solido" original de este
-          panel. En "normales" y "ninguno" ese color se
-          calcula igual pero construirMaterial() ni lo usa
+          (colorEstado), igual en ambas caras. En
+          "normales" y "ninguno" ese color se calcula igual
+          pero construirMaterial() ni lo usa
           (MeshNormalMaterial no toma color, y en "ninguno"
           la malla queda oculta): no vale la pena un branch
           aparte sólo para evitar ese cálculo de más,
@@ -452,20 +441,18 @@ export function createMaterialPanel(container, cones) {
 
 
     /*
-        Material para el tipo "sólido": misma superficie
-        MeshPhysicalMaterial de siempre (roughness/
-        metalness/clearcoat), pero con un parche de shader
-        (mismo mecanismo que floorMat en
-        galeria-habitacion.js: onBeforeCompile sobre chunks
-        de Three.js) que pisa el color base según
-        gl_FrontFacing — así una ÚNICA malla DoubleSide
-        sigue mostrando un color distinto en cada cara,
-        que es lo único que de verdad necesitaba dos
-        mallas antes (ver el comentario grande en
-        armarGroup3D, galeria-escena.js). El resto del
-        pipeline PBR (roughness map, clearcoat, luces,
-        sombras) sigue intacto: solo se pisa
-        "diffuseColor.rgb", nada más.
+        Material para el tipo "sólido": superficie
+        MeshPhysicalMaterial (roughness/metalness/
+        clearcoat) con un parche de shader (mismo mecanismo
+        que floorMat en galeria-habitacion.js:
+        onBeforeCompile sobre chunks de Three.js) que pisa
+        el color base según gl_FrontFacing — así una ÚNICA
+        malla DoubleSide muestra un color distinto en cada
+        cara, que es lo único para lo que harían falta dos
+        mallas (ver el comentario grande en armarGroup3D,
+        galeria-escena.js). El resto del pipeline PBR
+        (roughness map, clearcoat, luces, sombras) queda
+        intacto: solo se pisa "diffuseColor.rgb".
 
         "color" del constructor queda en blanco (1,1,1):
         es solo el valor de arranque antes de compilar el
@@ -500,6 +487,17 @@ export function createMaterialPanel(container, cones) {
             shader.uniforms.uColorTrasera =
                 { value: colorTrasera };
 
+            /*
+                Referencia guardada para poder mutar estos
+                uniforms más adelante (ver
+                actualizarColoresTemaSolido() más abajo) sin
+                tener que reconstruir el material entero —
+                mismo objeto "shader" que three.js compila UNA
+                vez por material; los uniforms viven ahí, no
+                en la instancia de THREE.Material.
+            */
+            material.userData.shader = shader;
+
             shader.fragmentShader =
                 shader.fragmentShader
                     .replace(
@@ -514,9 +512,8 @@ export function createMaterialPanel(container, cones) {
                         // gl_FrontFacing: true en la cara
                         // frontal según el winding de la
                         // geometría — mismo criterio de
-                        // "cara" que antes distinguía
-                        // FrontSide de BackSide entre las
-                        // dos mallas.
+                        // "cara" que distingue FrontSide
+                        // de BackSide.
                         diffuseColor.rgb =
                             gl_FrontFacing
                                 ? uColorFrontal
@@ -538,9 +535,10 @@ export function createMaterialPanel(container, cones) {
         galeria-escena.js ya guardó en
         group.userData (colorEstado = color por estado
         de conservación; se usa o no según el tipo,
-        ver colorParaTipo). Siempre DoubleSide: ya no hay
-        una malla frontal y otra trasera con "side"
-        distinto (ver armarGroup3D, galeria-escena.js).
+        ver colorParaTipo). Siempre DoubleSide: cada
+        elemento es una sola malla, no una frontal y otra
+        trasera con "side" distinto (ver armarGroup3D,
+        galeria-escena.js).
     */
     function construirMaterial(tipo, colorEstado, matCfg) {
 
@@ -608,20 +606,18 @@ export function createMaterialPanel(container, cones) {
             malla.material.opacity;
 
         /*
-            clippingPlanes también hay que preservarlos,
-            mismo motivo que "opacidadActual" arriba —
-            pero acá el costo de no hacerlo es más
-            visible: galeria-corte.js asigna el corte
-            activo directo sobre la instancia de material
+            clippingPlanes también se preservan, mismo
+            motivo que "opacidadActual" arriba — pero acá
+            el costo de no hacerlo es más visible:
+            galeria-corte.js asigna el corte activo directo
+            sobre la instancia de material
             ("malla.material.clippingPlanes = planosArray",
             ver activar() en ese archivo), UNA sola vez al
-            enfocar el elemento. Si acá se reemplaza el
-            material sin copiar ese array, el material
-            nuevo nace sin ningún corte asignado — el
-            elemento en foco dejaba de cortarse en cuanto
-            se cambiaba el tipo de material, hasta el
-            próximo cambio de foco (el único otro momento
-            en que algo reasigna clippingPlanes).
+            enfocar el elemento. Un material de reemplazo
+            sin ese array nace sin ningún corte asignado, y
+            el elemento en foco dejaría de cortarse hasta
+            el próximo cambio de foco (el único otro
+            momento en que algo reasigna clippingPlanes).
 
             Se copia el MISMO array (no un clone) a
             propósito: es el mismo objeto que
@@ -680,6 +676,56 @@ export function createMaterialPanel(container, cones) {
 
 
     /*
+        Alternativa liviana a actualizarTodosLosMateriales()
+        para el ÚNICO caso en que un cambio de tema requiere
+        tocar algo del tipo "sólido": los dos colores de
+        relleno (frontal/trasera) son uniforms del shader ya
+        compilado (ver "material.userData.shader" en
+        construirMaterialSolido), así que alcanza con
+        mutarlos in-place — ".copy()", no reasignar el
+        Vector/Color, así el shader sigue usando la misma
+        referencia — en vez de disponer y reconstruir un
+        MeshPhysicalMaterial (+ volver a correr
+        onBeforeCompile) para CADA elemento de la galería.
+        Mismo resultado visual, sin ningún trabajo de shader.
+
+        Si algún material todavía no compiló su shader por
+        primera vez (userData.shader ausente — a lo sumo el
+        primer frame de vida de ese material, ver el
+        comentario en construirMaterialSolido), se lo salta:
+        ya nace con los colores de tema correctos leídos en
+        el momento de su construcción, no hay nada stale que
+        corregir.
+    */
+    function actualizarColoresTemaSolido() {
+
+        if (estado.tipo !== "solido") return;
+
+        const colorFrontal = colorRellenoTemaFrontal();
+        const colorTrasera = colorRellenoTemaTrasera();
+
+        cones.forEach(group => {
+
+            const [malla] =
+                group.userData.mallas;
+
+            const shader =
+                malla.material.userData.shader;
+
+            if (!shader) return;
+
+            shader.uniforms.uColorFrontal.value
+                .copy(colorFrontal);
+
+            shader.uniforms.uColorTrasera.value
+                .copy(colorTrasera);
+
+        });
+
+    }
+
+
+    /*
         Overlay de aristas de UN grupo. Se guarda en
         group.userData.overlayMalla (no en una
         variable local de este módulo) para que
@@ -688,47 +734,39 @@ export function createMaterialPanel(container, cones) {
         de ese mismo grupo por un cambio en la
         carpeta "Forma".
 
-        CUELGA DE "pivote", NO DE "mallaFrontal" (fix Nº2
-        de este mismo overlay — el primero fue colgarlo de
-        "group.add()" original a "mallaFrontal.add()" para
-        seguir el autorotado, ver el historial de este
-        archivo; ESTE fix deshace ESE, por un motivo
-        distinto, ver abajo): la jerarquía real es "group"
-        (cono externo) → "pivote" (grupo intermedio,
-        corrido a pivotX/pivotZ — ver posicionarPivote() en
-        galeria-escena.js — y el que gira
-        galeria-rotacion.js para el autorotado, vía
-        pivote.rotation.y) → "mallaFrontal"/"mallaTrasera"
-        (corridas de vuelta -pivotX/-pivotZ DENTRO de
-        "pivote").
+        CUELGA DE "pivote", NO DE "mallaFrontal": la
+        jerarquía real es "group" (cono externo) →
+        "pivote" (grupo intermedio, corrido a pivotX/pivotZ
+        — ver posicionarPivote() en galeria-escena.js — y
+        el que gira galeria-rotacion.js para el autorotado,
+        vía pivote.rotation.y) →
+        "mallaFrontal"/"mallaTrasera" (corridas de vuelta
+        -pivotX/-pivotZ DENTRO de "pivote").
 
-        BUG ENCONTRADO colgando de "mallaFrontal": con tipo
-        de material "ninguno", este panel apaga
-        "mallaFrontal.visible" para ocultar la superficie
-        sólida (ver actualizarMaterialDeGrupo) — pero
-        WebGLRenderer.projectObject() CORTA la recursión
+        El overlay tiene que ser HERMANO de las mallas, no
+        hijo: con tipo de material "ninguno" este panel
+        apaga "mallaFrontal.visible" para ocultar la
+        superficie sólida (ver actualizarMaterialDeGrupo),
+        y WebGLRenderer.projectObject() CORTA la recursión
         entera apenas encuentra "object.visible === false",
-        SIN bajar a revisar a sus hijos. Con el overlay
-        colgado de "mallaFrontal", apagar la superficie
-        apagaba TAMBIÉN el overlay sin que
-        "overlay.visible" tuviera nada que ver — exactamente
-        lo contrario de lo pedido ("ninguno" tiene que
-        ocultar sólo la superficie, "Mostrar malla" sigue
-        siendo el único que decide la malla).
+        SIN bajar a revisar a sus hijos. Colgado de la
+        malla, apagar la superficie apagaría también el
+        overlay sin que "overlay.visible" tuviera nada que
+        ver, cuando "ninguno" debe ocultar sólo la
+        superficie y "Mostrar malla" es el único que decide
+        la malla.
 
-        LA SOLUCIÓN: colgar el overlay de "pivote" en cambio
-        (hermano de "mallaFrontal"/"mallaTrasera", no hijo
-        de ninguna de las dos) — así sigue heredando la
-        rotación de "pivote" (autorotado) sin depender de
-        "mallaFrontal.visible" para nada. El único costo:
-        como "pivote" no tiene el offset -pivotX/-pivotZ que
-        SÍ tiene "mallaFrontal" (ver posicionarPivote()), acá
-        SÍ hace falta sincronizar esa position a mano —
-        "overlay.position.copy(mallaFrontal.position)" acá
-        abajo, y de nuevo en reemplazarGeometriaAristas()
-        cada vez que la geometría se reconstruye (que es
-        cuando posicionarPivote() puede correr de nuevo con
-        un pivotX/pivotZ distinto). Rotation/scale no hacen
+        Colgado de "pivote", el overlay hereda igual la
+        rotación del autorotado sin depender de
+        "mallaFrontal.visible". El costo: como "pivote" no
+        tiene el offset -pivotX/-pivotZ que SÍ tiene
+        "mallaFrontal" (ver posicionarPivote()), esa
+        position se sincroniza a mano —
+        "overlay.position.copy(malla.position)" acá abajo,
+        y de nuevo en reemplazarGeometriaAristas() cada vez
+        que la geometría se reconstruye (que es cuando
+        posicionarPivote() puede correr de nuevo con un
+        pivotX/pivotZ distinto). Rotation/scale no hacen
         falta: "mallaFrontal" nunca tiene ninguna de las dos
         seteada (siempre identidad dentro de "pivote"), así
         que "overlay" tampoco las necesita.
@@ -779,6 +817,30 @@ export function createMaterialPanel(container, cones) {
 
         overlay.position.copy(malla.position);
 
+        /*
+            Hereda el "clippingPlanes" VIGENTE de la malla
+            sólida hermana — caso simétrico al fix de
+            galeria-corte.js (activar()/desactivar() del
+            corte, que a su vez propagan al overlay CUANDO
+            YA EXISTE): acá cubrimos el orden inverso, el
+            overlay recién nace DESPUÉS de que este elemento
+            ya esté cortando (el visitante prende "Mostrar
+            malla" con "Corte" ya activo). Sin esto, nacería
+            sin cortar (clippingPlanes por defecto de
+            THREE.Material) hasta el próximo cambio de foco.
+
+            Se copia la REFERENCIA (no un clone): si en este
+            momento el corte está activo para este elemento,
+            es el mismo array con los mismos objetos Plane
+            que corte.sincronizarMundo() muta in-place cada
+            frame — el overlay queda sincronizado sin que
+            este módulo necesite saber nada de "Corte". Si no
+            hay corte activo, es simplemente el array vacío
+            por defecto de la malla sólida.
+        */
+        overlay.material.clippingPlanes =
+            malla.material.clippingPlanes;
+
         pivote.add(overlay);
 
         group.userData.overlayMalla = overlay;
@@ -826,15 +888,15 @@ export function createMaterialPanel(container, cones) {
         prendió "Mostrar malla" para él).
 
         TAMBIÉN resincroniza "overlay.position" contra
-        "malla.position" (ver crearOverlayDeGrupo,
-        "LA SOLUCIÓN"): un no-op barato si nada cambió
-        (mismo caso del slider de densidad, donde
-        posicionarPivote() no corrió), pero necesario
-        cuando esto se llama desde actualizarAristasDeGrupo
-        tras una reconstrucción de geometría real —
-        posicionarPivote() (galeria-panel-parametros.js)
-        pudo haber movido mallaFrontal a un pivotX/pivotZ
-        distinto, y "overlay" (colgado de "pivote", no de
+        "malla.position" (ver crearOverlayDeGrupo): un
+        no-op barato si nada cambió (caso del slider de
+        densidad, donde posicionarPivote() no corre), pero
+        necesario cuando esto se llama desde
+        actualizarAristasDeGrupo tras una reconstrucción de
+        geometría real — posicionarPivote()
+        (galeria-panel-parametros.js) puede haber movido
+        mallaFrontal a un pivotX/pivotZ distinto, y
+        "overlay" (colgado de "pivote", no de
         "mallaFrontal") no se entera solo.
     */
     function reemplazarGeometriaAristas(group) {
@@ -868,15 +930,11 @@ export function createMaterialPanel(container, cones) {
         mostrarMalla) — mismo criterio que
         actualizarAristasVisual() en visor-geometrias.html.
 
-        Antes multiplicaba esta opacidad por
-        "malla.material.opacity" cada vez que se llamaba,
-        para que un proxy en galeria-escena.js pudiera
-        reescalarla cuadro a cuadro con el fundido por
-        distancia al foco. Esa fase ya no anima opacidad (ver
-        galeria-carrusel.js/galeria-revelado.js) y el proxy se
-        sacó, así que "base" es directamente la opacidad
-        final — no hace falta leer la malla ni guardar nada
-        en userData para que otro código la reescale después.
+        "base" es directamente la opacidad final: la fase de
+        fichas no anima opacidad (ver galeria-carrusel.js/
+        galeria-revelado.js), así que no hace falta leer la
+        opacidad de la malla ni guardar nada en userData
+        para que otro código la reescale por frame.
 
         No-op si el grupo no tiene overlay todavía.
     */
@@ -941,11 +999,10 @@ export function createMaterialPanel(container, cones) {
 
 
     /*
-        Wiring nativo — reemplaza los "gui.add(...)" de la
-        versión lil-gui de este archivo. "change" (no
-        "input") en el select: recién dispara cuando se
-        confirma la opción elegida, mismo comportamiento
-        que ya tenía el dropdown de lil-gui.
+        Wiring nativo de los controles de
+        "#panel-material". "change" (no "input") en el
+        select: dispara recién cuando se confirma la opción
+        elegida, no mientras se recorre la lista.
     */
     if (selectTipo) {
 
@@ -1009,21 +1066,22 @@ export function createMaterialPanel(container, cones) {
 
     /*
         Reactividad al tema: solo interesa cuando el
-        tipo activo es "solido" (colores del tema).
-        Mismo patrón que el MutationObserver de
-        fondo-3d.js, pero acotado acá adentro — así
-        este panel no depende de que galeria.js sepa
-        que también tiene que avisarle a él (además de
-        avisarle a actualizarColoresTema() de
-        galeria-escena.js para fondo/mesa).
+        tipo activo es "solido" (colores del tema) — ese
+        chequeo vive adentro de
+        actualizarColoresTemaSolido(), que además de
+        filtrar por tipo evita reconstruir materiales:
+        muta los uniforms de color directo sobre el shader
+        ya compilado de cada elemento (ver esa función más
+        arriba). Mismo patrón que el MutationObserver de
+        fondo-3d.js, pero acotado acá adentro — así este
+        panel no depende de que galeria.js sepa que también
+        tiene que avisarle a él (además de avisarle a
+        actualizarColoresTema() de galeria-escena.js para
+        fondo/mesa).
     */
     const observadorTema = new MutationObserver(() => {
 
-        if (estado.tipo === "solido") {
-
-            actualizarTodosLosMateriales();
-
-        }
+        actualizarColoresTemaSolido();
 
     });
 

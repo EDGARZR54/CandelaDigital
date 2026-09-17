@@ -172,27 +172,44 @@
       }
 
       // --- Color del pin ---
-      // Se lee de --color-terracota (variables.css) en vez de traer un
-      // hex propio: así el pin usa el MISMO terracota que el resto del
-      // sitio y se actualiza solo si ese valor cambia. A propósito lee
-      // --color-terracota (el token fijo) y NO --color-primario (que en
-      // modo oscuro sale de un color-mix()): el pin debe verse igual en
-      // los dos temas.
+      // Se lee de --color-rojo-terracota (variables.css) en vez de traer
+      // un hex propio: así el pin usa el MISMO terracota que el resto
+      // del sitio y se actualiza solo si ese valor cambia. A propósito
+      // lee --color-rojo-terracota (el token fijo) y NO --color-primario
+      // (que en modo oscuro sale de un color-mix()): el pin debe verse
+      // igual en los dos temas.
       const PIN_COLOR = `rgb(${
         getComputedStyle(document.documentElement)
-          .getPropertyValue('--color-terracota')
+          .getPropertyValue('--color-rojo-terracota')
           .trim()
       })`;
 
-      // Genera el SVG de un pin clásico (forma de gota) con el "hole"
-      // (círculo blanco) característico de los pines de mapa.
-      function buildPinSVG(color) {
-        return `
-          <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24">
-            <path fill="${color}" stroke="#ffffff" stroke-width="0.6"
-              d="M12 1.5C7.86 1.5 4.5 4.86 4.5 9c0 5.63 7.5 13.5 7.5 13.5S19.5 14.63 19.5 9c0-4.14-3.36-7.5-7.5-7.5z"/>
-            <circle cx="12" cy="9" r="2.6" fill="#ffffff"/>
-          </svg>`;
+      // Plantilla del SVG del pin (assets/pin.svg, editable a mano:
+      // forma, trazo, radio del hueco). Se pide UNA sola vez y se
+      // cachea acá — PIN_COLOR no cambia con el tema, así que no hace
+      // falta volver a pedir el archivo ni reconstruir la imagen más
+      // que la primera vez.
+      let plantillaPinPromesa = null;
+      function obtenerPlantillaPin() {
+        if (!plantillaPinPromesa) {
+          plantillaPinPromesa = fetch('assets/pin.svg').then(respuesta => {
+            if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+            return respuesta.text();
+          });
+        }
+        return plantillaPinPromesa;
+      }
+
+      // Pisa el fill del path "pin-fill" de la plantilla con el color
+      // vigente, sin importar qué color de vista previa traiga el
+      // archivo — así assets/pin.svg puede abrirse y editarse (forma,
+      // trazo, radio) sin que ese valor de fill le importe a esta
+      // función.
+      function coloreaPlantillaPin(svgTexto, color) {
+        return svgTexto.replace(
+          /(<path id="pin-fill" fill=")[^"]*(")/,
+          '$1' + color + '$2'
+        );
       }
 
       // Carga (si hace falta) la imagen "pin-marker" en el ImageManager
@@ -205,18 +222,20 @@
       // diff de setStyle() tiene éxito, el ImageManager es el MISMO
       // objeto de antes, así que "pin-marker" sigue registrado solo.
       function asegurarImagenPin() {
-        return new Promise((resolve, reject) => {
-          if (map.hasImage('pin-marker')) { resolve(); return; }
-          const svg = buildPinSVG(PIN_COLOR);
-          const img = new Image(96, 96);
-          img.onload = () => {
-            if (!map.hasImage('pin-marker')) {
-              map.addImage('pin-marker', img);
-            }
-            resolve();
-          };
-          img.onerror = reject;
-          img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+        if (map.hasImage('pin-marker')) return Promise.resolve();
+        return obtenerPlantillaPin().then(plantilla => {
+          return new Promise((resolve, reject) => {
+            const svg = coloreaPlantillaPin(plantilla, PIN_COLOR);
+            const img = new Image(96, 96);
+            img.onload = () => {
+              if (!map.hasImage('pin-marker')) {
+                map.addImage('pin-marker', img);
+              }
+              resolve();
+            };
+            img.onerror = reject;
+            img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+          });
         });
       }
 

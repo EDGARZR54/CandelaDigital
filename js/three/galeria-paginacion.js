@@ -24,11 +24,11 @@
    al revés, "qué punto clickeado corresponde a qué
    scrollY".
 
-   Ya no alcanza con "phaseController" solo, sin embargo:
-   este módulo además recibe "getOrder" (para etiquetar
-   cada dot de ficha según el elemento que REALMENTE ocupa
-   ese slot tras un reordenamiento — mismo contrato que ya
-   usa galeria-revelado.js) y "config" (para leer
+   Además de "phaseController", este módulo recibe
+   "getOrder" (para etiquetar cada dot de ficha según el
+   elemento que REALMENTE ocupa ese slot tras un
+   reordenamiento — mismo contrato que ya usa
+   galeria-revelado.js) y "config" (para leer
    config.carousel.formSpan y así traducir índice de ficha
    a scrollY exacto con la MISMA cuenta que usa
    galeria-carrusel.js, en vez de asumir una división
@@ -48,25 +48,25 @@
    de vidrio) que viaja sobre el rail — ver moverBlob() y
    ".paginacion__blob" en galeria.css.
 
-   IMPORTANTE (fix de un bug reportado: "no debería verse
-   'en su lugar' hasta que esté en el punto exacto" — la
-   página no tiene scroll-snap real, así que quedarse
-   quieto en cualquier punto DENTRO del rango de una fase
-   no es lo mismo que estar en el scrollY exacto al que
-   saltaría un click en ese dot): el blob YA NO salta entre
-   "punto activo A" y "punto activo B" de forma discreta.
-   En cambio, cada frame calcula el scrollY real (pxActual,
-   más abajo) y lo ubica en el continuo entre los DOS dots
-   vecinos que lo enmarcan, usando exactamente las mismas
-   fórmulas de aterrizaje que ya usan irAFase()/irAFicha()
-   para saltar al clickear (pxAterrizajeFase/
-   pxAterrizajeFicha) — el código YA sabía el punto exacto
-   para el click; ahora la misma cuenta también decide qué
-   tan "asentado" se ve el blob en todo momento. Solo se ve
-   como círculo perfecto, centrado, cuando el scroll real
-   coincide con ese punto exacto; en cualquier otro punto
-   del medio se ve como una pastilla estirada hacia el
-   vecino más cercano, en tránsito — ver moverBlob().
+   IMPORTANTE: la página no tiene scroll-snap real, así
+   que quedarse quieto en cualquier punto DENTRO del rango
+   de una fase no es lo mismo que estar en el scrollY
+   exacto al que saltaría un click en ese dot — el blob no
+   debe verse "en su lugar" hasta que esté en el punto
+   exacto. Por eso el blob no salta entre "punto activo A"
+   y "punto activo B" de forma discreta: en cambio, cada
+   frame calcula el scrollY real (pxActual, más abajo) y lo
+   ubica en el continuo entre los DOS dots vecinos que lo
+   enmarcan, usando exactamente las mismas fórmulas de
+   aterrizaje que usan irAFase()/irAFicha() para saltar al
+   clickear (pxAterrizajeFase/pxAterrizajeFicha): la misma
+   cuenta que resuelve el punto exacto del click también
+   decide qué tan "asentado" se ve el blob en todo momento.
+   Solo se ve como círculo perfecto, centrado, cuando el
+   scroll real coincide con ese punto exacto; en cualquier
+   otro punto del medio se ve como una pastilla estirada
+   hacia el vecino más cercano, en tránsito — ver
+   moverBlob().
 
    Las posiciones Y de cada dot y sus scrollY de aterrizaje
    se leen/calculan UNA vez (medirAnclas(), más abajo) y se
@@ -121,24 +121,24 @@ const FASES_CON_DOT = ["hero", "proyecto", "orden"];
     "t" LOCAL (0..1 de esa fase, no del scroll total) al
     que salta irAFase() al clickear cada dot — NO siempre
     conviene que sea t=0 (el borde matemático de inicio de
-    la fase). Bug reportado: "clickeo 'El proyecto' y no
-    veo el texto, se ve como antes" — causa: a diferencia
-    de "hero" (que ya arranca visible en t=0 y sólo se
-    desvanece más adelante, ver heroFadeEnvelope en
-    galeria-revelado.js), el panel de texto de "proyecto"
-    entra con SU PROPIO fundido de aparición (liftEnvelope
-    sobre config.proyecto.panelRamp, ver galeria-proyecto.js
-    y galeria-utils.js): en t=0 exacto, panelOpacity todavía
-    es 0 — recién termina de entrar en t=panelRamp y se
-    sostiene hasta 1-panelRamp. 0.5 (mitad de la meseta) es
-    un punto seguro dentro de esa meseta para CUALQUIER
-    valor de panelRamp, sin acoplarse al número exacto
-    configurado en galeria-config.js. "orden" no necesita
-    ajuste: su panel entra por una transición CSS disparada
-    por la clase "visible" (con su propia duración en tiempo
-    real, no atada a "t"), así que ya se ve bien saltando a
-    t=0 — mismo motivo por el que "hero" tampoco lo
-    necesita.
+    la fase). Caso a cuidar: a diferencia de "hero" (que ya
+    arranca visible en t=0 y sólo se desvanece más
+    adelante, ver heroFadeEnvelope en galeria-revelado.js),
+    el panel de texto de "proyecto" entra con SU PROPIO
+    fundido de aparición (liftEnvelope sobre
+    config.proyecto.panelRamp, ver galeria-proyecto.js y
+    galeria-utils.js): en t=0 exacto, panelOpacity todavía
+    es 0 — un click a "El proyecto" en t=0 aterrizaría con
+    el panel de texto todavía invisible. panelOpacity recién
+    termina de entrar en t=panelRamp y se sostiene hasta
+    1-panelRamp. 0.5 (mitad de la meseta) es un punto seguro
+    dentro de esa meseta para CUALQUIER valor de panelRamp,
+    sin acoplarse al número exacto configurado en
+    galeria-config.js. "orden" no necesita ajuste: su panel
+    entra por una transición CSS disparada por la clase
+    "visible" (con su propia duración en tiempo real, no
+    atada a "t"), así que ya se ve bien saltando a t=0 —
+    mismo motivo por el que "hero" tampoco lo necesita.
 */
 const T_ATERRIZAJE_FASE = {
     proyecto: 0.5
@@ -482,7 +482,8 @@ export function createPaginationController(
         solo elemento). tParaFicha() lo necesita para
         repartir "rotateT" en la misma cantidad de pasos que
         usa el carrusel real — usar "elementos.length" en su
-        lugar (el bug original) los corre a todos un paso.
+        lugar correría a todos los índices un paso respecto
+        de dónde centra realmente el carrusel.
     */
     const huecosReales =
         Math.max(1, elementos.length - 1);
@@ -522,8 +523,6 @@ export function createPaginationController(
 
 
     /*
-        FIX (bug reportado: "clickeo el último dot y el mapa
-        ve en otro lado... ya ocurrió el pin que debía ver"):
         "tParaFicha(huecosReales)" (el último índice) da
         rotateT=1 EXACTO — el único caso entre todos los
         dots donde el aterrizaje coincide con el límite
@@ -531,23 +530,23 @@ export function createPaginationController(
         límite de un tramo interno. getPhase() (ver
         galeria-fases.js) usa "y < acumulado + ancho"
         estricto: en CUALQUIER frontera interna, aterrizar
-        justo en el límite ya devuelve la fase SIGUIENTE en
+        justo en el límite devuelve la fase SIGUIENTE en
         t=0 (consistente, documentado ahí) — pero acá no hay
         fase siguiente dentro del presupuesto: cae al
         sentinel "final", la escena se LIBERA (ver
         ".liberada" en galeria.css) apenas se termina el
-        scroll, así que el mapa/carrusel ya no están
-        recibiendo "fichas" con el último elemento
-        centrado — quedan en cualquier otro estado, de ahí
-        "ya ocurrió, se pasó de largo".
+        scroll, así que un aterrizaje exacto en el límite
+        dejaría al mapa/carrusel en cualquier otro estado en
+        vez de recibir "fichas" con el último elemento
+        centrado.
 
         Se recorta 1px por debajo del final absoluto — un
         margen imperceptible dentro de la meseta de descanso
         del último elemento (que sigue teniendo largo real en
         píxeles de scroll, ver pxMesetaFicha() más abajo),
         pero suficiente para que "y" siga siendo
-        ESTRICTAMENTE menor que el total y getPhase() la seta
-        adentro de "fichas" en vez de "final".
+        ESTRICTAMENTE menor que el total y getPhase() la
+        ubique adentro de "fichas" en vez de "final".
     */
     function pxAterrizajeFicha(budget, indice) {
 
@@ -592,30 +591,23 @@ export function createPaginationController(
         tramos que lo tocan a cada lado — ver "MESETA DE
         DESCANSO" en galeria-carrusel-descanso.js).
 
-        BUG ENCONTRADO Y CORREGIDO (reportado: "el círculo de
-        la paginación ya llegó a la primera ficha y apenas se
-        empieza a animar la construcción del carrusel"): acá
-        había un caso especial para el índice 0 que hacía
-        arrancar su meseta en t=0 GLOBAL — el primer píxel de
-        la fase "fichas" — con el argumento de que durante
-        "formar" (t < cfgCarousel.formSpan, antes de que
-        "rotateT" siquiera arranque) el círculo se está
-        cerrando y "phi" ya vale 0 fijo, o sea el slot 0 YA
-        está en foco. Ese argumento es cierto para "qué
-        elemento está en foco" (relevante para
-        galeria-interaccion-ficha.js), pero NO para "cuándo el
-        DOT de paginación cuenta como asentado": con esa
-        meseta arrancando en t=0, el blob queda pegado del
-        todo (frac=1, ver update()) apenas se entra a "fichas"
-        — antes de que la animación de línea→círculo llegue
-        siquiera a la mitad, mucho antes de "formSpan" (el
-        punto real en el que termina "formar" y arranca la
-        rotación, el mismo que ya usa tParaFicha(0)). Fix: la
-        meseta del índice 0 arranca en "formSpan" — recién
-        cuando termina de formarse el carrusel — igual que
-        tParaFicha(0) ya usa ese mismo punto como su
-        aterrizaje "oficial". El resto de los índices no
-        necesita ningún caso especial ni piso extra: con
+        CASO ESPECIAL, índice 0: su meseta arranca en
+        "formSpan" (el punto en el que termina "formar" y
+        arranca la rotación, el mismo que ya usa
+        tParaFicha(0) como su aterrizaje "oficial"), NO en
+        t=0 GLOBAL. Durante "formar" (t < cfgCarousel.formSpan,
+        antes de que "rotateT" siquiera arranque) el círculo
+        se está cerrando y "phi" ya vale 0 fijo, así que el
+        slot 0 YA está en foco por ese criterio — cierto para
+        "qué elemento está en foco" (relevante para
+        galeria-interaccion-ficha.js), pero no sirve para
+        "cuándo el DOT de paginación cuenta como asentado":
+        si la meseta arrancara en t=0, el blob quedaría
+        pegado del todo (frac=1, ver update()) apenas se
+        entra a "fichas" — antes de que la animación de
+        línea→círculo llegue siquiera a la mitad, mucho antes
+        de "formSpan". El resto de los índices no necesita
+        ningún caso especial ni piso extra: con
         "mitadDescanso" siempre < 1 (tope 0.9/2, ver su
         cálculo más arriba), "rotateDesde" da positivo para
         cualquier índice >= 1, así que su "tDesde" ya cae
@@ -718,12 +710,13 @@ export function createPaginationController(
 
           - "mesetaDesdePx"/"mesetaHastaPx": el RANGO dentro
             del cual el punto cuenta como "asentado" — no
-            solo su "px" exacto (pedido: "no tendría que
-            verse en su lugar hasta que esté en el punto
-            exacto... había una lógica de descanso"). Para
-            fases fijas (sin lógica de descanso propia)
-            queda de ancho CERO, igual a "px": se comportan
-            igual que antes. Para fichas, se mide con
+            solo su "px" exacto: el punto no debe verse "en
+            su lugar" hasta que el scroll esté en el punto
+            exacto, así que también necesita su propia
+            ventana de descanso. Para fases fijas (sin
+            lógica de descanso propia) queda de ancho CERO,
+            igual a "px": un único instante exacto, sin
+            ventana. Para fichas, se mide con
             pxMesetaFicha() — la MISMA fórmula de meseta que
             ya usa el carrusel real (ver el comentario junto
             a "anchoTramoRotate" más arriba).
@@ -791,10 +784,10 @@ export function createPaginationController(
         ANCHO_BLOB más arriba): el blob se ubica por
         INTERPOLACIÓN entre las dos anclas vecinas "A" y "B"
         que enmarcan el scrollY real ("frac" 0..1: 0 = exacto
-        sobre A, 1 = exacto sobre B). No hay más un "punto
-        activo" discreto que dispare el movimiento — esta
-        función corre todos los frames (ya no hace falta
-        cuidar de llamarla solo cuando algo "cambió": es
+        sobre A, 1 = exacto sobre B). No hace falta un "punto
+        activo" discreto que dispare el movimiento: esta
+        función corre todos los frames sin necesidad de
+        cuidar de llamarla solo cuando algo "cambió" — es
         pura aritmética sobre valores ya cacheados por
         medirAnclas(), sin tocar el DOM salvo para escribir
         el propio estilo del blob).
@@ -951,9 +944,9 @@ export function createPaginationController(
                 moverBlob() para el estado "en reposo"), en
                 vez de seguir interpolando hacia el otro.
                 Para fases fijas la meseta es de ancho cero
-                (mesetaDesdePx === mesetaHastaPx === px): se
-                comportan exactamente igual que antes, un
-                único instante exacto.
+                (mesetaDesdePx === mesetaHastaPx === px): el
+                asentado ocurre en un único instante exacto,
+                sin rango.
             */
             if (px <= A.mesetaHastaPx) {
 

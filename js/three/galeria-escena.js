@@ -601,14 +601,14 @@ export async function createScene(
         colorFondoEscena();
 
     /*
-        FIX: la maqueta usa FogExp2 (caída exponencial suave
-        desde la cámara), no Fog lineal (sin efecto hasta
-        "near", full opaco recién en "far") — son curvas de
-        caída distintas, se notaba sobre todo en los
-        elementos del fondo de la fila.
+        Se usa FogExp2 (caída exponencial suave desde la
+        cámara) en vez de Fog lineal (sin efecto hasta
+        "near", full opaco recién en "far"): son curvas de
+        caída distintas, y con Fog lineal se nota sobre
+        todo en los elementos del fondo de la fila.
 
-        RIESGO A VIGILAR (motivo por el que existía el
-        sistema anterior de near/far dinámico, ver
+        RIESGO A VIGILAR (motivo por el que un near/far
+        dinámico sigue siendo una alternativa válida, ver
         config.scene.fog): con las cajas de prueba de la
         maqueta, distMax (cámara → punto más lejano de la
         fila) rondaba las 13-14 unidades; con contenido real
@@ -618,10 +618,9 @@ export async function createScene(
         esos comentarios) — con una density FIJA calibrada al
         tamaño de prueba de la maqueta, una fila real mucho
         más ancha podría quedar "devorada" por la niebla antes
-        de tiempo, igual que pasaba con el near/far fijo viejo
-        (ver el comentario que reemplaza este, más abajo en
-        config.scene.fog). Se deja igual a la maqueta por
-        ahora, a revisar a ojo con contenido real.
+        de tiempo, igual que pasaría con un near/far fijo (ver
+        el comentario en config.scene.fog). Se deja igual a la
+        maqueta por ahora, a revisar a ojo con contenido real.
     */
     scene.fog =
         new THREE.FogExp2(
@@ -680,16 +679,16 @@ export async function createScene(
     renderer.setPixelRatio(PIXEL_RATIO);
 
     /*
-        FIX: faltaba por completo — la maqueta sí lo seteaba
-        explícito (renderer.outputEncoding = THREE.sRGBEncoding;
+        Sin esto (renderer.outputEncoding = THREE.sRGBEncoding;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.0;). Sin esto el
-        renderer queda con NoToneMapping (el default de
-        Three.js) — highlights de las luces (sobre todo el
-        keyLight a intensidad 6.5, ver config.lights.key) se
-        recortan en vez de comprimirse con curva ACES, y el
-        color sale en el espacio de trabajo lineal en vez de
-        sRGB — se ve más plano/lavado que en la maqueta.
+        renderer.toneMappingExposure = 1.0;, tal como los
+        setea la maqueta) el renderer queda con NoToneMapping
+        (el default de Three.js): highlights de las luces
+        (sobre todo el keyLight a intensidad 6.5, ver
+        config.lights.key) se recortan en vez de comprimirse
+        con curva ACES, y el color sale en el espacio de
+        trabajo lineal en vez de sRGB — se ve más plano/lavado
+        que en la maqueta.
 
         "outputColorSpace"/"SRGBColorSpace", no
         "outputEncoding"/"sRGBEncoding": esta versión de three
@@ -947,8 +946,7 @@ export async function createScene(
         Eje principal del layout ("x" = fila horizontal;
         "y" = columna vertical, portrait) y eje secundario
         de CÁMARA (el que queda casi fijo en
-        cameraPosFromMagnitud, más abajo — ver tabla de
-        ejes en notas-encuadre-3d.md).
+        cameraPosFromMagnitud, más abajo).
 
         CONECTADO a "aspect < 1" — mismo criterio ("retrato")
         que ya usa calcularMagnitudRasante más abajo.
@@ -2073,7 +2071,26 @@ export async function createScene(
     }
 
 
-    const matCfg = config.material;
+    /*
+        clearcoat en MeshPhysicalMaterial fuerza un pase
+        extra de normales/reflexión en el shader — es de los
+        features más caros del material, y se paga por CADA
+        elemento de la fila (no es un costo fijo de escena).
+        Gateado por IS_MOBILE_TIER, mismo precedente que
+        shadowMapSize/dust.count: en mobile se arma un
+        matCfg propio con clearcoat=0 (roughness/metalness
+        se mantienen, son baratos) en vez de tocar
+        config.material directamente — así desktop no se ve
+        afectado y armarGroup3D no necesita saber de tiers.
+    */
+    const matCfg =
+        IS_MOBILE_TIER
+            ? {
+                  ...config.material,
+                  clearcoat: 0,
+                  clearcoatRoughness: 0
+              }
+            : config.material;
 
     const cones =
         preparados.map(({ modulo, geometry }, i) => {
@@ -2978,12 +2995,10 @@ export async function createScene(
             .copy(floorMat.color)
             .multiplyScalar(0.18);
 
-        // FIX: faltaba por completo — la maqueta también
-        // modula la densidad de la niebla con el día/noche
-        // (más clara/lejos se ve en modo día). No tenía
-        // sentido antes con Fog lineal (sin "density"), pero
-        // con FogExp2 (ver arriba) sí aplica igual que la
-        // maqueta.
+        // La densidad de la niebla también se modula con
+        // el día/noche (más clara/lejos se ve en modo día),
+        // igual que en la maqueta — aplica con FogExp2 (ver
+        // arriba), que sí tiene "density".
         scene.fog.density =
             FOG_DENSITY_BASE * (1 - 0.72 * d);
 
@@ -3186,7 +3201,7 @@ export async function createScene(
         // galeria-luces.js escale la posición X del par
         // cálido/frío con el ancho REAL de la fila en vez de
         // una constante calibrada a ojo para el ancho de
-        // Maqueta.html — ver el FIX en actualizarSegunCamara,
+        // Maqueta.html — ver actualizarSegunCamara en
         // galeria-luces.js.
         actualizarLucesAdicionalesSegunCamara: () =>
             lucesAdicionales.actualizarSegunCamara(
@@ -3198,9 +3213,9 @@ export async function createScene(
         // afuera (el mapa de foco vigente, que depende de la
         // fase — ver galeria.js), así que no se arma como un
         // wrapper sin argumentos como los de arriba.
-        // FIX: se agrega "ejePrincipal" (leído fresco del
-        // closure, igual que en actualizarLucesAdicionalesSegunCamara)
-        // — lucesPorCaja.actualizar() lo necesita para
+        // Se pasa "ejePrincipal" (leído fresco del closure,
+        // igual que en actualizarLucesAdicionalesSegunCamara)
+        // porque lucesPorCaja.actualizar() lo necesita para
         // apagarse en horizontal, igual que la maqueta.
         actualizarLucesPorCaja: (focoWeights) =>
             lucesPorCaja.actualizar(focoWeights, ejePrincipal),
@@ -3256,8 +3271,8 @@ export async function createScene(
     en Y (layout vertical) sin duplicar la función: el
     algoritmo de acumulado+gap+centrado es idéntico, solo
     cambia qué componente de cada bbox/posición se lee o
-    escribe (ver notas-encuadre-3d.md, "Modelo mental: eje
-    principal").
+    escribe (ver el "Modelo mental: eje principal" en
+    la documentación de encuadre 3D).
 
     Devuelve SIEMPRE {x, y, z}: la coordenada del eje
     principal se calcula por acumulado + gap, centrado al

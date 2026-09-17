@@ -59,10 +59,9 @@
 // de luces) y THREE.ColorManagement ANTES de que
 // cualquier otro módulo importado más abajo construya un
 // Renderer o compile un material — ver el comentario de
-// cabecera de galeria-compat-r128.js. (Si ya lo agregaste
-// en tu copia real del proyecto, este import es un no-op
-// duplicado — lo repongo acá porque el archivo que subiste
-// esta vez no lo tenía.)
+// cabecera de galeria-compat-r128.js. Si el parche ya
+// está aplicado en otro punto del proyecto, este import
+// es simplemente un no-op duplicado.
 import "./three/galeria-compat-r128.js";
 
 import { CONFIG } from "./three/galeria-config.js";
@@ -89,8 +88,8 @@ import { createConoLuz } from "./three/galeria-cono-luz.js";
 import { createInteraccionFicha } from "./three/galeria-interaccion-ficha.js";
 /*
     Dolly de cámara sobre el objeto 3D en foco (cono o,
-    a futuro, nube Potree — ver zoom3dScroll.md) activado
-    por wheel cuando el cursor está sobre ese objeto, sin
+    a futuro, nube Potree) activado por wheel cuando el
+    cursor está sobre ese objeto, sin
     tocar window.scrollY en ningún momento — y, hermano
     directo, paneo de cámara por arrastre con el botón
     derecho sobre ese mismo objeto: no mueve el objeto,
@@ -603,13 +602,14 @@ async function initGaleria() {
         );
 
     /*
-        FIX (cono de luz saltando "de golpe" al terminar un
-        reordenamiento): último "focoWeights" conocido de la
-        fase "orden" — ver el comentario grande junto a su
-        uso, en el bloque "phase === 'orden'" de tick() más
-        abajo. Arranca en {} (nadie en foco): antes de la
-        primera vez que se entra a "orden" no importa, ese
-        bloque todavía no corrió.
+        Último "focoWeights" conocido de la fase "orden",
+        para que el cono de luz no salte "de golpe" al
+        terminar un reordenamiento — ver el comentario
+        grande junto a su uso, en el bloque
+        "phase === 'orden'" de tick() más abajo. Arranca en
+        {} (nadie en foco): antes de la primera vez que se
+        entra a "orden" no importa, ese bloque todavía no
+        corrió.
     */
     let focoWeightsOrdenActual = {};
 
@@ -1625,6 +1625,24 @@ async function initGaleria() {
 
         requestAnimationFrame(tick);
 
+        /*
+            Pestaña/app en segundo plano: no hay nada que
+            mostrar, así que no vale la pena actualizar
+            física de fases, sombras, tema, ni renderizar.
+            El navegador de escritorio YA throttlea rAF en
+            tabs ocultas, pero en WebViews/navegadores
+            móviles ese throttling es menos confiable — este
+            corte es explícito y no depende de eso. Se sigue
+            pidiendo el próximo frame (arriba) para que el
+            loop retome solo apenas la pestaña vuelve a
+            primer plano, sin necesidad de un listener de
+            visibilitychange aparte: todo lo que sigue de
+            acá (fases, reorder, tema) ya lee tiempo real
+            ("now"/scroll), así que saltarse frames no deja
+            ningún estado a medio camino.
+        */
+        if (document.hidden) return;
+
 
         const { phase, t } =
             phases.getPhase(now);
@@ -2022,29 +2040,26 @@ async function initGaleria() {
             */
 
             /*
-                FIX (cono de luz saltando "de golpe" al
-                terminar un reordenamiento — reportado
-                contra galeria-cono-luz.js): ANTES,
-                "conoLuz.update()"/"actualizarLucesPorCaja()"
-                vivían LOS DOS adentro de este mismo
-                "if (!reorder.isAnimating())", así que
-                mientras una animación de animateTo() estaba
-                en curso NUNCA se llamaban — el keyLight y el
-                cono visible quedaban completamente
-                CONGELADOS en la posición de ANTES del
+                "conoLuz.update()" y "actualizarLucesPorCaja()"
+                se llaman siempre, dentro y fuera de
+                "reorder.isAnimating()", en vez de vivir los
+                dos adentro de este mismo "if" — si vivieran
+                ahí, mientras una animación de animateTo()
+                está en curso nunca se llamarían: el keyLight
+                y el cono visible quedarían completamente
+                congelados en la posición de antes del
                 reordenamiento, mientras los propios conos
-                (elementos) sí se movían de a poco cada frame
+                (elementos) sí se mueven de a poco cada frame
                 vía reorder.step() (ver más arriba en tick()).
                 Recién en el primer frame en que
-                reorder.isAnimating() pasa a false, este "if"
-                se vuelve a cumplir y conoLuz.update() corre
-                con el layout YA terminado — ahí es el salto
-                "de golpe" reportado. Interpolar
-                "positions" en galeria-reordenar.js (fix
-                previo) no alcanzaba por sí solo: de nada
-                sirve un getPositions() que interpola en vivo
-                si quien lo consume no se llega a llamar
-                mientras dura la interpolación.
+                reorder.isAnimating() pasa a false, ese "if"
+                se cumpliría y conoLuz.update() correría con
+                el layout ya terminado, generando un salto
+                de golpe. Interpolar "positions" en
+                galeria-reordenar.js no alcanza por sí solo:
+                de nada sirve un getPositions() que interpola
+                en vivo si quien lo consume no se llega a
+                llamar mientras dura la interpolación.
 
                 La separación real que hace falta es otra:
                 "reveal.update(1)" SÍ debe seguir gateada

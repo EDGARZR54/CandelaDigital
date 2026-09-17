@@ -3,73 +3,49 @@
 
    Mapa dentro del cuadrado del panel derecho de la
    ficha (".ficha__panel-cuadro"/"#panel-derecho-cuadro"
-   en galeria.html — hasta acá era un placeholder vacío,
-   ver el comentario ahí).
+   en galeria.html).
 
-   ORIGEN: este módulo es una adaptación de un prototipo
-   standalone (mapadinamico.html, en la raíz del sitio,
-   MISMA carpeta que galeria.html — por eso las rutas
-   "data/..." de acá abajo son las mismas que usaba ese
-   archivo). Ese prototipo:
+   CÓMO SE CONECTA CON EL RESTO DE LA PÁGINA:
 
-     - Leía window.scrollY por su cuenta, con su propio
-       listener de "scroll", para decidir en qué punto
-       del recorrido (A -> B -> C -> ...) debería estar
-       la cámara del mapa.
-     - Volvía a hacer fetch() de "data/edificios.geojson"
-       por su cuenta, en el orden crudo del archivo.
-     - Ocupaba TODA la ventana (100vw/100vh, position:
-       sticky) con su propio overlay de texto narrativo
-       por edificio (#sections-container).
-
-   NADA de eso se replica acá — por pedido explícito
-   ("esto ya se hace con la geometría, no es necesario
-   replicarlo, solo conectarlo"):
-
-     - El "progreso" del recorrido NO sale de un listener
+     - El "progreso" del recorrido no sale de un listener
        de scroll propio: es "focoContinuo", un número que
-       ya calcula carousel.update() en galeria-carrusel.js
-       a partir del mismo "t" de la fase "fichas" — no el
-       "t" crudo en sí (la primera versión de este archivo
-       usaba "t * (elementCount - 1)" directo y eso
-       desincronizaba el vuelo del mapa del centrado real
-       de la geometría, sobre todo en el primer elemento;
-       ver el comentario junto a "focoContinuo" en
-       galeria-carrusel.js, y junto a update() más abajo,
-       para el porqué exacto). Cuando hace falta leer
-       scroll crudo (para la histéresis de "¿el visitante
-       siguió scrolleando después de soltar el mapa?", ver
-       más adelante REANUDACIÓN más abajo), se pide a
-       galeria-scroll.js, el punto único de lectura para
+       calcula carousel.update() en galeria-carrusel.js a
+       partir del "t" de la fase "fichas". No es el "t"
+       crudo: "t * (elementCount - 1)" desincroniza el
+       vuelo del mapa del centrado real de la geometría,
+       sobre todo en el primer elemento (ver el comentario
+       junto a "focoContinuo" en galeria-carrusel.js, y
+       junto a update() más abajo, para el porqué exacto).
+       Cuando hace falta leer scroll crudo (para la
+       histéresis de "¿el visitante siguió scrolleando
+       después de soltar el mapa?", ver update()), se pide
+       a galeria-scroll.js, el punto único de lectura para
        toda la página — nunca window.scrollY directo.
-     - El GeoJSON NO se vuelve a pedir: "elementos" ya
-       viene cargado por galeria.js (mismo array que ya
-       usa "panelDerecho" para coordenadas/dirección, ver
-       galeria-config.js) y se recibe tal cual acá. Cada
-       elemento ya trae su propio "coordenadas" ([lng,
-       lat] crudo — ver ese campo en galeria-config.js).
+     - El GeoJSON no se pide por red acá: "elementos" ya
+       viene cargado por galeria.js (mismo array que usa
+       "panelDerecho" para coordenadas/dirección, ver
+       galeria-config.js) y se recibe tal cual. Cada
+       elemento trae su propio "coordenadas" ([lng, lat]
+       crudo — ver ese campo en galeria-config.js).
      - Los pines siempre muestran TODOS los edificios,
        en su posición geográfica real, sin importar el
        "order" vigente — el "order" (ver getOrder más
        abajo, viene de galeria-reordenar.js) solo decide
        la SECUENCIA en la que la cámara los visita a
        medida que avanza "fichas", exactamente la misma
-       secuencia en la que el carrusel 3D ya los muestra.
+       secuencia en la que el carrusel 3D los muestra.
      - El mapa ocupa solo el cuadrado (contenedor real
        que le pasa galeria.js), no la ventana completa —
-       por eso tampoco hace falta la lógica de "el wheel
-       le pertenece al mapa, la página avanza por scrollbar/
-       teclado" que tenía el prototipo: acá el mapa es un
-       widget más chico que la ventana, así que el wheel
-       arriba del mapa hace zoom del mapa (comportamiento
-       estándar de cualquier mapa incrustado) y el wheel
-       afuera sigue haciendo scrollear la página, sin
-       ningún manejo especial.
+       por eso no hay ningún manejo especial del wheel: es
+       un widget más chico que la ventana, así que el
+       wheel arriba del mapa hace zoom del mapa
+       (comportamiento estándar de cualquier mapa
+       incrustado) y el wheel afuera scrollea la página.
 
    CARGA DIFERIDA: MapLibre GL (~200kb) + Turf no se
    cargan al abrir la página — recién cuando el scroll
-   entra a la fase "orden" (una fase ANTES de "fichas",
-   pedido explícito) se inyectan sus <script>/<link> y se
+   entra a la fase "orden" (una fase ANTES de "fichas")
+   se inyectan sus <script>/<link> y se
    arma el mapa, así ya está listo para cuando el
    visitante llega al cuadrado, sin haber pagado ese peso
    si nunca llega tan lejos. Ver cargar() más abajo.
@@ -107,16 +83,12 @@ const ANCHO_MINIMO_MAPA_PX = 780;
 
 
 /*
-    Inyecta un <script> clásico (no ES module — MapLibre/
-    Turf no se cargan vía import map porque el prototipo
-    original los usa como globals "maplibregl"/"turf", y
-    replicar ese mismo mecanismo probado es menos riesgo
-    que introducir un import ESM sin haberlo probado
-    contra esta versión exacta de la librería). Idempotente:
-    si el mismo <script src> ya está en el documento (por
-    ejemplo, reset() + cargar() llamados de nuevo), no lo
-    duplica — espera a que termine de cargar si todavía
-    está en vuelo.
+    Inyecta un <script> clásico (no ES module): MapLibre y
+    Turf se consumen como globals "maplibregl"/"turf", no
+    por import map. Idempotente: si el mismo <script src>
+    ya está en el documento (por ejemplo, reset() +
+    cargar() llamados de nuevo), no lo duplica — espera a
+    que termine de cargar si todavía está en vuelo.
 */
 function cargarScript(src) {
 
@@ -202,21 +174,48 @@ function easeInOutQuad(t) {
 
 
 /*
-    Mismo SVG de pin (forma de gota + "hole" blanco) que
-    ya tenía el prototipo — se deja tal cual, no era parte
-    de lo que había que desacoplar del scroll.
+    Plantilla del SVG del pin (assets/pin.svg, editable a mano: forma,
+    trazo, radio del hueco). Se pide UNA sola vez y se cachea acá —
+    "colorPin" no cambia con el tema (ver "cfg.colorPin" en
+    galeria-config.js), así que no hace falta volver a pedir el archivo
+    ni reconstruir la imagen más que la primera vez.
 */
-function buildPinSVG(color) {
+let plantillaPinPromesa = null;
 
-    return (
-        '<svg xmlns="http://www.w3.org/2000/svg" ' +
-        'width="96" height="96" viewBox="0 0 24 24">' +
-        '<path fill="' + color + '" stroke="#ffffff" ' +
-        'stroke-width="0.6" d="M12 1.5C7.86 1.5 4.5 4.86 ' +
-        '4.5 9c0 5.63 7.5 13.5 7.5 13.5S19.5 14.63 19.5 ' +
-        '9c0-4.14-3.36-7.5-7.5-7.5z"/>' +
-        '<circle cx="12" cy="9" r="2.6" fill="#ffffff"/>' +
-        '</svg>'
+function obtenerPlantillaPin() {
+
+    if (!plantillaPinPromesa) {
+
+        plantillaPinPromesa =
+            fetch("assets/pin.svg").then(respuesta => {
+
+                if (!respuesta.ok) {
+
+                    throw new Error("HTTP " + respuesta.status);
+
+                }
+
+                return respuesta.text();
+
+            });
+
+    }
+
+    return plantillaPinPromesa;
+
+}
+
+/*
+    Pisa el fill del path "pin-fill" de la plantilla con el color
+    vigente, sin importar qué color de vista previa traiga el archivo
+    — así assets/pin.svg puede abrirse y editarse (forma, trazo,
+    radio) sin que ese valor de fill le importe a esta función.
+*/
+function coloreaPlantillaPin(svgTexto, color) {
+
+    return svgTexto.replace(
+        /(<path id="pin-fill" fill=")[^"]*(")/,
+        "$1" + color + "$2"
     );
 
 }
@@ -224,14 +223,12 @@ function buildPinSVG(color) {
 
 /*
     Hex de la etiqueta de estado en el popup, derivado en vivo de
-    ESTADO_COLOR (galeria-config.js) — antes este archivo mantenía su
-    propia copia manual de esos mismos 4 tonos convertidos a hex
-    (COLOR_ESTADO_HEX), con el riesgo de que alguno se actualizara en
-    un archivo y no en el otro. ESTADO_COLOR sigue siendo la ÚNICA
-    fuente de verdad (vive en {r,g,b} para los conos 3D en THREE);
-    acá solo se convierte a "#rrggbb" para poder usarlo en CSS
-    inline del popup. El fallback ("#666666") para categorías fuera
-    del vocabulario cerrado se mantiene igual que antes.
+    ESTADO_COLOR (galeria-config.js), que es la ÚNICA fuente de
+    verdad de esos tonos (vive en {r,g,b} para los conos 3D en
+    THREE): acá solo se convierte a "#rrggbb" para poder usarlo en
+    el CSS inline del popup, sin una segunda copia manual que pueda
+    quedar desincronizada. Las categorías fuera del vocabulario
+    cerrado caen al gris "#666666".
 */
 function rgbObjAHex({ r, g, b }) {
 
@@ -302,8 +299,7 @@ export function createMapaController({
     let listo = false;
 
     /*
-        Igual que en el prototipo: guarda el bbox (con
-        offset) de TODOS los edificios, para que
+        Bbox (con offset) de TODOS los edificios, para que
         map.getCenter() nunca caiga afuera de esa caja,
         sea cual sea el origen del movimiento (recorrido
         automático, drag, zoom).
@@ -312,10 +308,10 @@ export function createMapaController({
     let clampingCenter = false;
 
     /*
-        "targetFloatIndex" ya no sale de un listener de
-        scroll propio (ver cabecera): lo fija update(t),
-        llamado por galeria.js con el MISMO "t" que ya
-        recibe carousel.update(t) en la fase "fichas".
+        "targetFloatIndex" lo fija update(), llamado por
+        galeria.js en la fase "fichas" con el
+        "focoContinuo" que expone carousel.update() (ver
+        cabecera y update() más abajo).
     */
     let targetFloatIndex = 0;
 
@@ -324,14 +320,13 @@ export function createMapaController({
     let legOriginDirty = true;
 
     /*
-        Igual que en el prototipo: mientras el visitante
-        arrastra/hace zoom a mano, el mapa no escribe
-        sobre la cámara — la reanudación automática recién
-        ocurre cuando el scroll real (no el "t" suavizado)
-        se movió más que "umbralReanudarPx" desde que
-        empezó la interacción manual. Acá "scrollY" sale
-        de galeria-scroll.js (punto único de lectura), no
-        de window.scrollY directo.
+        REANUDACIÓN: mientras el visitante arrastra/hace
+        zoom a mano, el mapa no escribe sobre la cámara —
+        el recorrido automático se retoma recién cuando el
+        scroll real (no el "t" suavizado) se movió más que
+        "umbralReanudarPx" desde que empezó la interacción
+        manual. "scrollY" sale de galeria-scroll.js (punto
+        único de lectura), no de window.scrollY directo.
     */
     let userInteracting = false;
     let scrollYAlEmpezarInteraccion = 0;
@@ -431,47 +426,51 @@ export function createMapaController({
              MapLibre tuvo que reconstruir el estilo entero
              en vez de "diffear" — ver el comentario grande
              junto a actualizarTema() sobre por qué puede
-             pasar), este evento dispara y basta con
-             volver a llamarla.
-          2. Al cambiar de tema (actualizarTema()) NO hace
-             falta volver a cargarla "a mano": si el diff
-             de setStyle() tiene éxito, el ImageManager es
-             el MISMO objeto de antes (no se recrea), así
-             que "pin-marker" sigue registrado sin tocar
-             nada — solo la capa/fuente necesitan ir
-             incluidas en el JSON fusionado que se le pasa
-             a setStyle() (ver más abajo).
+             pasar), ese evento dispara y basta con
+             llamarla de vuelta.
+          2. Al cambiar de tema (actualizarTema()) no hace
+             falta invocarla: si el diff de setStyle()
+             tiene éxito, el ImageManager es el MISMO
+             objeto (no se recrea), así que "pin-marker"
+             sigue registrado — solo la capa/fuente
+             necesitan ir incluidas en el JSON fusionado
+             que se le pasa a setStyle() (ver más abajo).
     */
     function asegurarImagenPin() {
 
-        return new Promise((resolve, reject) => {
+        if (map.hasImage("pin-marker")) {
 
-            if (map.hasImage("pin-marker")) {
+            return Promise.resolve();
 
-                resolve();
-                return;
+        }
 
-            }
+        return obtenerPlantillaPin().then(plantilla => {
 
-            const svg = buildPinSVG(cfg.colorPin);
-            const img = new Image(96, 96);
+            return new Promise((resolve, reject) => {
 
-            img.onload = () => {
+                const svg =
+                    coloreaPlantillaPin(plantilla, cfg.colorPin);
 
-                if (!map.hasImage("pin-marker")) {
+                const img = new Image(96, 96);
 
-                    map.addImage("pin-marker", img);
+                img.onload = () => {
 
-                }
+                    if (!map.hasImage("pin-marker")) {
 
-                resolve();
+                        map.addImage("pin-marker", img);
 
-            };
+                    }
 
-            img.onerror = reject;
-            img.src =
-                "data:image/svg+xml;charset=utf-8," +
-                encodeURIComponent(svg);
+                    resolve();
+
+                };
+
+                img.onerror = reject;
+                img.src =
+                    "data:image/svg+xml;charset=utf-8," +
+                    encodeURIComponent(svg);
+
+            });
 
         });
 
@@ -521,12 +520,12 @@ export function createMapaController({
     /*
         Construye el FeatureCollection que consume
         MapLibre/Turf a partir de "elementos" (ya cargado
-        por galeria.js) — NO vuelve a hacer fetch() del
-        GeoJSON. Autor(es)/Estado de conservación se leen
-        del mismo array "ficha" que ya arma
-        normalizarElemento() en galeria-config.js (buscando
-        por label), en vez de duplicar esos datos en un
-        campo aparte solo para el popup del mapa.
+        por galeria.js), sin pedir el GeoJSON por red.
+        Autor(es)/Estado de conservación se leen del mismo
+        array "ficha" que arma normalizarElemento() en
+        galeria-config.js (buscando por label), en vez de
+        duplicar esos datos en un campo aparte solo para el
+        popup del mapa.
 
         Elementos sin "coordenadas" (ver ese campo en
         galeria-config.js — null si el Feature no era un
@@ -580,22 +579,20 @@ export function createMapaController({
 
 
     /*
-        Misma fórmula que el prototipo (computeCameraState):
-        a partir de UN índice flotante, calcula lng/lat/zoom
+        A partir de UN índice flotante, calcula lng/lat/zoom
         interpolando entre el punto A (índice entero hacia
         abajo) y el punto B (el siguiente), con dos rampas
         independientes (zoom / pan) que se solapan un poco
         en los bordes.
 
-        DIFERENCIA con el original: "coordsEnOrden" ya no
-        sale de "coordinates[]" en el orden crudo del
-        GeoJSON — se arma en update() a partir de
-        getOrder(), la MISMA secuencia que ya usa el
-        carrusel 3D (ver galeria-carrusel.js) para decidir
-        qué elemento va en cada "slot". Así el mapa visita
-        los edificios en el mismo orden en que el visitante
-        los ve pasar en la geometría, incluso después de
-        reordenar (fase "orden").
+        "coordsEnOrden" no es el orden crudo del GeoJSON:
+        se arma en update() a partir de getOrder(), la
+        MISMA secuencia que usa el carrusel 3D (ver
+        galeria-carrusel.js) para decidir qué elemento va
+        en cada "slot". Así el mapa visita los edificios en
+        el mismo orden en que el visitante los ve pasar en
+        la geometría, incluso después de reordenar (fase
+        "orden").
     */
     function computeCameraState(floatIndex, coordsEnOrden) {
 
@@ -609,52 +606,44 @@ export function createMapaController({
             Math.min(index0 + 1, n - 1);
 
         /*
-            FIX (bug reportado: "en el mapa de la última
-            ficha no parece llegar hasta el pin"):
-            "index0 === index1" SOLO pasa en el borde final
-            (index0 === n - 1: no queda ningún tramo
-            siguiente al que volar, ver "index1" arriba). El
-            resto de esta función (legOrigin + interpolación
-            por "frac") asume que SIEMPRE hay un tramo real
-            entre dos coordenadas distintas — en el borde
-            final esa asunción ya no vale.
+            BORDE FINAL: "index0 === index1" SOLO pasa
+            cuando index0 === n - 1, es decir, cuando no
+            queda ningún tramo siguiente al que volar (ver
+            "index1" arriba). El resto de esta función
+            (legOrigin + interpolación por "frac") asume que
+            SIEMPRE hay un tramo real entre dos coordenadas
+            distintas, y en el borde final esa asunción no
+            vale.
 
-            Antes, al llegar acá con index0 === index1, el
-            código de más abajo capturaba "legOrigin" desde
+            Por eso acá se devuelve la coordenada REAL del
+            último pin directo, sin pasar por legOrigin/frac
+            en absoluto: es el mismo target al que llegaría
+            la fórmula de abajo en frac=1 (zoom
+            cfg.zoomCerca, lng/lat = coord1), servido en
+            TODOS los frames de esta meseta. Así el
+            suavizado exponencial de update() converge
+            asintóticamente sobre el pin.
+
+            Pasar por la fórmula general acá dejaría la
+            cámara congelada: "legOrigin" se capturaría de
             map.getCenter() (la posición REAL, ya suavizada
-            por update() — nunca coincide exacto con el
+            por update(), que nunca coincide exacto con el
             target mientras dura la interpolación
-            exponencial) y, como "frac" queda fijo en 0 para
-            siempre en este caso, la cámara devolvía ESE
-            "legOrigin" como ideal en TODOS los frames
-            siguientes: quedaba congelada con el rezago
-            residual del suavizado tal como estaba en el
-            instante exacto en que "index0" cruzó a n-1, sin
-            margen para seguir acercándose.
+            exponencial) y, como "frac" queda fijo en 0 en
+            este caso, ese mismo valor volvería como ideal
+            en todos los frames siguientes, con el rezago
+            residual del suavizado del instante exacto en
+            que "index0" cruzó a n-1 y sin margen para
+            seguir acercándose. En cualquier índice
+            intermedio ese rezago se corrige solo, porque el
+            tramo siguiente vuelve a apuntar a una
+            coordenada real; en el borde final no hay tramo
+            siguiente que lo corrija.
 
-            En cualquier índice intermedio ese mismo rezago
-            SÍ se termina corrigiendo, porque el tramo
-            siguiente vuelve a apuntar a una coordenada real
-            (no a un "legOrigin" ya potencialmente
-            desactualizado) — achicando la distancia de nuevo
-            en cada frame hasta casi desaparecer antes del
-            próximo cruce. En el borde final no hay tramo
-            siguiente que la corrija: por eso el síntoma
-            aparece solo ahí.
-
-            Se resuelve devolviendo la coordenada REAL del
-            último pin directo (sin pasar por legOrigin/frac
-            en absoluto) — mismo target final al que ya
-            llegaría la fórmula de abajo en frac=1 (zoom
-            cfg.zoomCerca, lng/lat = coord1), solo que ahora
-            servido en TODOS los frames de esta meseta, no
-            solo el último. El propio suavizado exponencial
-            de update() converge asintóticamente sobre ese
-            target en los frames siguientes, en vez de copiar
-            un valor ya viejo. "legOriginDirty = true" deja
-            el estado listo para que, si el visitante
-            scrollea de vuelta hacia atrás, el próximo tramo
-            real capture un "legOrigin" fresco de nuevo.
+            "legOriginDirty = true" deja el estado listo
+            para que, si el visitante scrollea hacia atrás,
+            el próximo tramo real capture un "legOrigin"
+            fresco.
         */
         if (index0 === index1) {
 
@@ -780,9 +769,9 @@ export function createMapaController({
         está cargando/lista no hace nada — así galeria.js
         puede llamarla en cada frame de la fase "orden" sin
         preocuparse de "solo la primera vez" (mismo
-        criterio que ya usa el resto del motor: recalcular/
-        reintentar cada frame es más simple que acordarse de
-        un flag afuera, ver fijarOpacidadPanel).
+        criterio que el resto del motor: recalcular/
+        reintentar cada frame es más simple que sostener un
+        flag afuera, ver fijarOpacidadPanel).
     */
     async function cargar() {
 
@@ -848,11 +837,10 @@ export function createMapaController({
                 antialias: true,
                 maplibreLogo: false,
                 /*
-                    "compact": el mapa acá es un widget
-                    chico (el cuadrado), no la pantalla
-                    completa como en el prototipo — el
-                    control de atribución completo no
-                    entra cómodo a ese tamaño.
+                    "compact": el mapa es un widget chico
+                    (el cuadrado), y el control de
+                    atribución completo no entra cómodo a
+                    ese tamaño.
                 */
                 attributionControl: { compact: true }
             });
@@ -883,12 +871,11 @@ export function createMapaController({
                 si CUALQUIER capa pide esta imagen y no está
                 registrada en el ImageManager vigente en ese
                 momento, MapLibre dispara este evento antes de
-                darla por "faltante" — alcanza con volver a
-                cargarla. Cubre el caso límite en que
-                actualizarTema() (más abajo) tuvo que caer a
-                una reconstrucción completa del estilo (el
-                diff sincrónico falló) en vez de una fusión
-                sin baches.
+                darla por "faltante" — alcanza con cargarla
+                de vuelta. Cubre el caso límite en que
+                actualizarTema() (más abajo) cae a una
+                reconstrucción completa del estilo porque el
+                diff sincrónico falló.
             */
             map.on("styleimagemissing", e => {
 
@@ -1060,39 +1047,31 @@ export function createMapaController({
     /*
         Un frame de vuelo de cámara.
 
-        FIX (bug reportado: "apenas la primera geometría
-        termina de centrarse, el mapa ya se está alejando
-        hacia el segundo punto"): el primer argumento YA
-        NO es "t" (el progreso 0..1 de TODA la fase
-        "fichas", del que este módulo derivaba antes
-        "t * (elementCount - 1)" a mano). Ahora es
-        "focoContinuo", un número que expone
-        carousel.update() — ver ese campo en
-        galeria-carrusel.js — que llega a cada entero
+        El primer argumento es "focoContinuo", el número
+        que expone carousel.update() (ver ese campo en
+        galeria-carrusel.js), NO el "t" 0..1 de toda la
+        fase "fichas": "focoContinuo" llega a cada entero
         EXACTAMENTE en el mismo instante en que ese
-        elemento se centra en la geometría 3D (mismo
-        criterio que ya se usó para "panelOpacity": atarse
-        al número que YA gobierna la geometría, no
-        recalcular una aproximación aparte).
+        elemento se centra en la geometría 3D — mismo
+        criterio que "panelOpacity": atarse al número que
+        gobierna la geometría, no recalcular una
+        aproximación aparte.
 
-        Por qué la aproximación anterior (t*(n-1)) estaba
-        mal: "t" completo incluye el tramo "formar" al
-        arranque de "fichas" (la geometría todavía
-        armándose en círculo, ANTES de que empiece a rotar
-        entre elementos) — durante todo ese tramo,
-        "t*(n-1)" ya avanzaba de forma lineal hacia el
-        elemento 1, mientras la geometría real seguía
-        con el elemento 0 perfectamente centrado y quieto
-        (phi=0 durante todo "formar"). El mapa arrancaba a
-        volar antes de tiempo, ya lejos del primer punto
-        para cuando la ficha del primer elemento recién
-        terminaba de asentarse. "focoContinuo" no tiene
-        ese problema: vale exactamente 0 durante todo
-        "formar" (ver galeria-carrusel.js) y solo empieza
-        a moverse cuando la geometría empieza a rotar de
-        verdad — y de ahí en más, con la MISMA meseta/
-        transición (pasoConDescanso) que ya gobierna phi,
-        no una interpolación lineal aparte.
+        Una aproximación del estilo "t * (n - 1)" no sirve:
+        "t" incluye el tramo "formar" al arranque de
+        "fichas" (la geometría todavía armándose en
+        círculo, ANTES de empezar a rotar entre elementos),
+        y durante todo ese tramo avanzaría linealmente
+        hacia el elemento 1 mientras la geometría real
+        sigue con el elemento 0 centrado y quieto (phi=0
+        durante todo "formar"). El mapa saldría a volar
+        antes de tiempo, ya lejos del primer punto para
+        cuando la ficha del primer elemento recién termina
+        de asentarse. "focoContinuo" vale exactamente 0
+        durante todo "formar" (ver galeria-carrusel.js) y
+        solo se mueve cuando la geometría rota de verdad,
+        con la MISMA meseta/transición (pasoConDescanso)
+        que gobierna phi.
 
         "now" es el mismo timestamp de requestAnimationFrame
         que ya circula por todo tick(), para que la lectura
@@ -1169,7 +1148,7 @@ export function createMapaController({
     /*
         Último tamaño conocido del contenedor del mapa —
         usado por mostrar() para no llamar a map.resize()
-        de más (ver el FIX de más abajo).
+        de más (ver ahí).
     */
     let anchoMapaAnterior = 0;
     let altoMapaAnterior = 0;
@@ -1179,38 +1158,27 @@ export function createMapaController({
         ser visible (fase "fichas") — no-op mientras el
         mapa no esté listo.
 
-        FIX (bug reportado: "no me deja arrastrar el
-        mapa" — el cursor cambiaba a "grabbing" al hacer
-        click, pero sostenerlo y mover el mouse no movía
-        el mapa): antes esta función llamaba a
-        map.resize() sin condición en TODOS los frames de
-        "fichas" (el comentario original decía "es barato,
-        solo remide si cambió" — cierto para el TRABAJO que
-        hace resize() puertas adentro, pero no para el
-        efecto colateral que tiene sobre los handlers de
-        gesto de MapLibre).
+        map.resize() SOLO se llama cuando el tamaño real
+        del contenedor CAMBIÓ (redimensión de ventana /
+        cambio de layout), comparando contra el último
+        tamaño conocido, y nunca mientras el visitante está
+        interactuando a mano ("userInteracting", mismo
+        criterio que usa update() para no pisarle la cámara
+        mientras arrastra/hace zoom).
 
+        El motivo es un efecto colateral de resize():
         MapLibre resetea el estado interno de sus handlers
         de interacción (dragPan incluido) cada vez que
-        recibe un resize, justamente para no seguir
-        arrastrando matemática de posición atada a un
-        tamaño de contenedor que ya cambió. El problema es
-        que acá se disparaba un resize() en CADA frame
-        (~60 veces por segundo) aunque el contenedor no
-        hubiera cambiado de tamaño en absoluto — eso
-        cortaba cualquier arrastre en curso un frame
-        después de haber empezado, antes de que el primer
-        pointermove llegara a mover algo.
-
-        Ahora sólo se llama a map.resize() cuando el
-        tamaño real del contenedor CAMBIÓ (redimensión de
-        ventana / cambio de layout), comparando contra el
-        último tamaño conocido — y, como resguardo
-        adicional, nunca mientras el visitante está
-        interactuando a mano ("userInteracting" ya existe
-        más arriba para exactamente este propósito: mismo
-        criterio que ya usa update() para no pisarle la
-        cámara al visitante mientras arrastra/hace zoom).
+        recibe uno, justamente para no seguir arrastrando
+        matemática de posición atada a un tamaño de
+        contenedor que ya cambió. Llamarlo sin condición en
+        todos los frames de "fichas" (~60 veces por
+        segundo) corta cualquier arrastre en curso un frame
+        después de empezar, antes de que el primer
+        pointermove llegue a mover algo: el cursor cambia a
+        "grabbing" pero el mapa no se mueve. El trabajo que
+        hace resize() puertas adentro sí es barato; el
+        reseteo de handlers no.
     */
     function mostrar() {
 
@@ -1238,10 +1206,10 @@ export function createMapaController({
         "fichas" (mismo lugar donde ya se llama
         carousel.reset()/interaccionFicha.reset() en
         galeria.js) — limpia el estado de interacción
-        manual y fuerza que, al volver a "fichas", el
-        próximo tramo capture de nuevo su "legOrigin" desde
-        la posición real de la cámara, en vez de arrastrar
-        un estado de un visitante que ya se fue de la fase.
+        manual y hace que, al volver a "fichas", el próximo
+        tramo capture su "legOrigin" desde la posición real
+        de la cámara, en vez de arrastrar el estado de un
+        visitante que ya se fue de la fase.
         No-op si el mapa todavía no cargó.
     */
     function reset() {
@@ -1261,40 +1229,34 @@ export function createMapaController({
         dispara actualizarColoresTema() para la escena 3D
         (ver galeria.js, "observadorTema").
 
-        POR QUÉ NO "map.setStyle(url)" a secas (bug
-        reportado dos veces: "al cambiar de tema los pines
-        desaparecen"): pasarle una URL a setStyle() dispara
-        un fetch async por dentro — hay una ventana de
-        tiempo, documentada como bug abierto en el propio
-        repo de MapLibre/Mapbox ("setStyle(URL) is a race
-        condition"), donde el swap real del estilo puede
-        terminar de aplicarse DESPUÉS de que cualquier
-        addSource()/addLayer() nuestro ya corrió, así que el
-        swap se los lleva puestos sin importar qué evento se
-        use para esperar (se probó primero con "style.load",
-        que ni siquiera dispara siempre en esta versión, y
-        depués con un sondeo de "styledata"/isStyleLoaded()
-        que sigue cayendo en la misma ventana: el primer
-        chequeo síncrono puede dar "true" contra el estilo
-        VIEJO, todavía no reemplazado).
-
-        LA SOLUCIÓN: en vez de pedirle a MapLibre que baje
-        la URL, el JSON del estilo se baja ACÁ (fetch propio)
-        y se le inyectan la fuente "edificios" y la capa
-        "edificios-pines" ANTES de pasárselo a setStyle() —
-        ya como objeto, no URL. Con un objeto (no string),
+        El JSON del estilo se baja ACÁ (fetch propio) y se
+        le inyectan la fuente "edificios" y la capa
+        "edificios-pines" ANTES de pasárselo a setStyle(),
+        ya como objeto, no como URL. Con un objeto,
         MapLibre puede "diffear" el estilo actual contra el
         nuevo de forma SINCRÓNICA (setState(), sin red de
-        por medio) — no hay ningún tick intermedio en el que
-        algo pueda colarse. Como la fuente/capa ya vienen
-        incluidas en el JSON nuevo, el diff no genera
-        ninguna operación de "quitar" para ellas: sencillamente
-        seguían ahí. La imagen "pin-marker" (agregada en
-        runtime con addImage(), no vive en el JSON del
-        estilo) tampoco se pierde: mientras el diff tenga
-        éxito, es el MISMO objeto Style de antes, así que su
-        ImageManager no se recrea — no hace falta volver a
-        cargarla.
+        por medio): no hay ningún tick intermedio en el que
+        algo pueda colarse. Como la fuente/capa vienen
+        incluidas en el JSON, el diff no genera ninguna
+        operación de "quitar" para ellas. La imagen
+        "pin-marker" (registrada en runtime con addImage(),
+        no vive en el JSON del estilo) tampoco se pierde:
+        mientras el diff tenga éxito es el MISMO objeto
+        Style, así que su ImageManager no se recrea.
+
+        POR QUÉ NO "map.setStyle(url)" a secas: pasarle una
+        URL dispara un fetch async por dentro, y hay una
+        ventana de tiempo — documentada como bug abierto en
+        el propio repo de MapLibre/Mapbox, "setStyle(URL)
+        is a race condition" — donde el swap real del
+        estilo puede aplicarse DESPUÉS de que un
+        addSource()/addLayer() propio ya corrió, así que el
+        swap se los lleva puestos y los pines desaparecen.
+        Ningún evento sirve para esperarlo: "style.load" no
+        dispara siempre en esta versión, y un sondeo de
+        "styledata"/isStyleLoaded() cae en la misma ventana
+        (el primer chequeo síncrono puede dar "true" contra
+        el estilo VIEJO, todavía no reemplazado).
 
         Único borde suelto: si el diff llegara a fallar (el
         propio motor de MapLibre puede lanzar una excepción

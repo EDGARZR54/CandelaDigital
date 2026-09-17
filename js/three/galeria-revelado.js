@@ -88,18 +88,19 @@ export function createRevealController(
 
 
     /*
-        FIX (piso al 100%): "restY" es un colchón GLOBAL (el
-        peor caso entre todos los elementos, ver
+        APOYO PLENO EN EL PISO: "restY" es un colchón
+        GLOBAL (el peor caso entre todos los elementos, ver
         galeria-escena.js) — usarlo para posicionar CADA
-        elemento dejaba flotando a cualquiera cuya geometría
-        no fuera tan "profunda" como ese peor caso. Acá se
-        usa la base PROPIA de cada elemento (misma cuenta que
-        "desplazamientoBase" en normalizarGeometriaElemento:
-        -bbox.min.y), para que el punto más bajo de CADA
-        elemento quede exactamente en su slot, sin importar
-        cómo se haya construido su geometría. Fallback a
-        "restY" si no llega "bboxesPorIndice" (compatibilidad
-        hacia atrás, mismo criterio que corregirSecundario).
+        elemento dejaría flotando a cualquiera cuya
+        geometría no fuera tan "profunda" como ese peor
+        caso. Acá se usa la base PROPIA de cada elemento
+        (misma cuenta que "desplazamientoBase" en
+        normalizarGeometriaElemento: -bbox.min.y), para que
+        el punto más bajo de CADA elemento quede exactamente
+        en su slot, sin importar cómo se haya construido su
+        geometría. Fallback a "restY" si no llega
+        "bboxesPorIndice" (compatibilidad hacia atrás, mismo
+        criterio que corregirSecundario).
     */
     function baseDe(cupID) {
 
@@ -117,17 +118,16 @@ export function createRevealController(
         a la cámara, la más grande/dramática),
         quedando de cierre.
 
-        INVERTIDO EN VERTICAL (pedido explícito): leemos de
-        arriba hacia abajo, así que el elemento que se ve
-        desde el principio pasa a ser el de ABAJO (slot 0 —
-        calculatePositions arma la fila con el slot 0 en el
-        extremo de coordenada MÁS BAJA sobre el eje
-        principal, que en Y es "abajo") en vez del de
+        EN VERTICAL: leemos de arriba hacia abajo, así que
+        el elemento que se ve desde el principio es el de
+        ABAJO (slot 0 — calculatePositions arma la fila con
+        el slot 0 en el extremo de coordenada MÁS BAJA sobre
+        el eje principal, que en Y es "abajo"), no el de
         arriba (slot N-1). El resto de la cascada mantiene
         el mismo criterio de siempre ("desde el más cercano
-        al hero, alejándose"), solo que ahora recorre hacia
-        ARRIBA (1, 2, ..., N-1) en vez de hacia abajo
-        (N-2, ..., 0). En horizontal, sin cambios.
+        al hero, alejándose"), solo que recorre hacia ARRIBA
+        (1, 2, ..., N-1) en vez de hacia abajo (N-2, ..., 0).
+        En horizontal, sin cambios.
     */
 
     const initialVisiblePosition =
@@ -175,16 +175,14 @@ export function createRevealController(
         // vigente de la cámara, que puede cambiar por un
         // resize (ver getHiddenDrop() en galeria-escena.js).
         //
-        // PROPUESTA (ver comentario grande más abajo, en
-        // el cálculo de "y"): esto ya NO se usa para armar
-        // un "hiddenY" único y global. "getHiddenDrop()"
-        // devuelve una MAGNITUD (una distancia a bajar),
-        // no una posición absoluta — restarla directamente
-        // de "restY" solo era correcto porque, en
-        // horizontal, todos los elementos comparten el
-        // mismo "restY" real. Se guarda como
-        // "dropMagnitude" para aplicarla POR ELEMENTO más
-        // abajo, no una sola vez acá.
+        // "getHiddenDrop()" devuelve una MAGNITUD (una
+        // distancia a bajar), no una posición absoluta:
+        // restarla directamente de un "restY" único solo
+        // es correcto en horizontal, donde todos los
+        // elementos comparten el mismo "restY" real. Se
+        // guarda como "dropMagnitude" para aplicarla POR
+        // ELEMENTO más abajo (ver el cálculo de "y"), no
+        // como un "hiddenY" único y global.
         const dropMagnitude =
             getHiddenDrop();
 
@@ -273,34 +271,30 @@ export function createRevealController(
                     ease(localT);
 
                 /*
-                    INVERTIDO EN VERTICAL (pedido explícito,
-                    ver el intercambio que originó este
-                    cambio): leemos de arriba hacia abajo, así
-                    que cada elemento ahora CAE desde arriba
-                    de su lugar en vez de SUBIR desde abajo —
-                    "dropMagnitude" (una distancia, sigue
-                    siendo la misma magnitud de siempre, ver
-                    más abajo) se suma en vez de restarse. En
-                    horizontal, sin cambios (sigue subiendo,
-                    como siempre).
+                    EN VERTICAL: leemos de arriba hacia
+                    abajo, así que cada elemento CAE desde
+                    arriba de su lugar, no SUBE desde abajo —
+                    "dropMagnitude" (una distancia, ver más
+                    abajo) se suma en vez de restarse. En
+                    horizontal, sigue subiendo, como siempre.
 
-                    APROXIMACIÓN A REVISAR (no derivable solo
-                    de álgebra, a confirmar en la escena real):
+                    APROXIMACIÓN A CONFIRMAR EN LA ESCENA REAL
+                    (no derivable solo de álgebra):
                     "dropMagnitude" se calibra en
                     getHiddenDrop() (galeria-escena.js) contra
                     el borde INFERIOR de pantalla — la distancia
                     correcta para garantizar "fuera de cuadro
-                    por abajo". Acá se está reusando ESA MISMA
+                    por abajo". Acá se reusa ESA MISMA
                     magnitud para el borde SUPERIOR, que no
                     tiene por qué medir exactamente lo mismo
                     (el margen reservado arriba —navbar— y
                     abajo —botones de orden— no son iguales, ver
                     calcularTargetVertical en galeria-escena.js).
-                    Se prueba así primero por ser el cambio más
-                    chico; si algún elemento asoma por arriba
-                    antes de tiempo, hace falta una magnitud
+                    Es la aproximación más simple disponible;
+                    si algún elemento asoma por arriba antes
+                    de tiempo, hace falta una magnitud
                     separada calibrada contra el borde superior,
-                    no ajustar acá a ojo.
+                    no ajustar este valor a ojo.
                 */
                 const baseElemento =
                     baseDe(order[posIndex]);
@@ -394,8 +388,8 @@ export function createRevealController(
     Fundido del hero de texto ("Cascarones de
     concreto...") y del indicador de scroll
     ("Desliza"), en función del progreso PROPIO de la
-    fase "hero" (0..1) — ya no comparte tiempo con la
-    cascada de conos (ver el comentario grande más
+    fase "hero" (0..1) — independiente del progreso de
+    la cascada de conos (ver el comentario grande más
     arriba). Función pura: no toca el DOM ni conos,
     devuelve los valores para que galeria.js los
     aplique.
