@@ -18,6 +18,15 @@ export const PARAMETROS_DEFECTO = {
   H_apex: 17.735  // Altura del pico de la cresta (Slider ID 8)
 };
 
+/*
+    Ver la-muela.js para el porqué de este export — mismo
+    criterio. 150×150 es, de los 4 generadores de la
+    galería, la resolución más alta (45.000 triángulos) sin
+    relación aparente con la curvatura real de la
+    superficie — candidato directo al escalado mobile.
+*/
+export const RESOLUCION_DEFECTO = { x: 150, y: 150 };
+
 /**
  * Evalúa la superficie paramétrica (u, v) -> Point3D
  */

@@ -31,6 +31,17 @@ export const PARAMETROS_DEFECTO = {
   Z: 8,                 // Progreso / Elevación del Hypar (0 = Plano horizontal, >0 = Hypar)
 };
 
+/*
+    Ver la-muela.js para el porqué de este export — mismo
+    criterio. 40×40 ya es la resolución más chica de toda
+    la galería (una silla de montar simple, 4 esquinas), así
+    que el escalado mobile la deja en un piso razonable
+    (24×24, ver el clamp mínimo de 8 en
+    obtenerResolucionGateada) sin necesidad de tratarla
+    distinto acá.
+*/
+export const RESOLUCION_DEFECTO = { x: 40, y: 40 };
+
 /**
  * Evalúa la superficie del Hypar en función de los parámetros normalizados uNorm y vNorm (0 a 1).
  *

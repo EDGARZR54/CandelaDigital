@@ -39,6 +39,14 @@ export const PARAMETROS_DEFECTO = {
   H_apex: 11.791  // Altura de los picos/crestas
 };
 
+/*
+    Ver la-muela.js para el porqué de este export — mismo
+    criterio. Mismo 150×150 "heredado de la plantilla" que
+    protomartir.js (ver la nota al inicio del archivo) —
+    mismo candidato al escalado mobile.
+*/
+export const RESOLUCION_DEFECTO = { x: 150, y: 150 };
+
 
 export function superficieConoSinusoidal(uNorm, vNorm, destino, parametros = {}) {
   const {

@@ -53,7 +53,10 @@
    ver galeria-escena.js) y un nombre para el título.
 ================================================== */
 
-import { obtenerFuncionConstructora } from "./galeria-generadores.js";
+import {
+    obtenerFuncionConstructora,
+    obtenerResolucionGateada
+} from "./galeria-generadores.js";
 import {
     normalizarGeometriaElemento,
     posicionarPivote
@@ -175,8 +178,60 @@ export function createParamPanel(
 
     let elementoActualId = null;
 
+    /*
+        THROTTLE POR rAF para reconstruirGeometria() — mismo
+        criterio que ya se aplicó en
+        galeria-corte-interseccion.js, pero acá el trabajo
+        por tick es más caro (reconstruye la geometría
+        entera + bbox + pivote + posibles recálculos de
+        corte/overlay en cascada, ver "onGeometriaReconstruida"/
+        "actualizarAristasDeGrupo" más abajo), así que importa
+        todavía más: sin esto, arrastrar un slider de
+        "Geometría" reconstruye TODO eso en cada evento
+        "input" (varios por frame), no una vez por frame
+        renderizado.
+
+        No hace falta guardar "el último valor pendiente"
+        aparte: "parametros" (el mismo objeto que arma
+        mostrar() más abajo) ya se muta in-place ANTES de
+        agendar el rAF, así que cuando el callback agendado
+        corre, ya lee los valores más recientes por sí solo.
+
+        Solo protege el camino del SLIDER (drag continuo) —
+        "Restaurar predeterminados" es una acción puntual,
+        se mantiene inmediata (ver crearBotonRestaurar más
+        abajo).
+    */
+    let rafPendiente = null;
+
+    function cancelarRafPendiente() {
+
+        if (rafPendiente === null) return;
+
+        cancelAnimationFrame(rafPendiente);
+        rafPendiente = null;
+
+    }
+
+    function reconstruirGeometriaThrottled(
+        group, modulo, parametros
+    ) {
+
+        if (rafPendiente !== null) return;
+
+        rafPendiente = requestAnimationFrame(() => {
+
+            rafPendiente = null;
+            reconstruirGeometria(group, modulo, parametros);
+
+        });
+
+    }
+
 
     function limpiar() {
+
+        cancelarRafPendiente();
 
         container.innerHTML = "";
         elementoActualId = null;
@@ -199,8 +254,18 @@ export function createParamPanel(
         const construirGeometria =
             obtenerFuncionConstructora(modulo);
 
+        // Mismo gating que la construcción inicial en
+        // galeria-escena.js (ver
+        // obtenerResolucionGateada) — acá pesa doble: no
+        // solo reduce el detalle final, reduce el costo de
+        // CADA rebuild mientras se arrastra el slider (ver
+        // el throttle en reconstruirGeometriaThrottled más
+        // abajo).
+        const resolucion =
+            obtenerResolucionGateada(modulo);
+
         const nuevaGeometria =
-            construirGeometria(parametros);
+            construirGeometria(parametros, resolucion);
 
         // Mismo criterio de alineación (cara frontal en
         // z=0) y mismo recálculo de bbox/sphere que la
@@ -553,7 +618,7 @@ export function createParamPanel(
 
                         parametros[key] = nuevoValor;
 
-                        reconstruirGeometria(
+                        reconstruirGeometriaThrottled(
                             group, modulo, parametros
                         );
 
@@ -587,6 +652,15 @@ export function createParamPanel(
                         }
 
                     });
+
+                    // Acción puntual (un click, no un drag):
+                    // se cancela cualquier rebuild throttled
+                    // que hubiera quedado agendado de un
+                    // slider recién tocado, y se reconstruye
+                    // ACÁ MISMO, sin esperar al próximo
+                    // frame — mismo criterio que corte.reset()
+                    // en galeria-corte-interseccion.js.
+                    cancelarRafPendiente();
 
                     reconstruirGeometria(
                         group, modulo, parametros

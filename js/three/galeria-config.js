@@ -1110,14 +1110,15 @@ export const CONFIG = {
                 shader (queda quieto, pero visible).
             */
             dust: {
-                // Bajado de 450: con blending aditivo y
-                // gl_PointSize de hasta ~14px, el overdraw de
-                // esta cantidad de partículas es
-                // desproporcionadamente caro en GPUs
-                // integradas móviles frente al aporte visual
-                // (efecto sutil, no un elemento central de la
-                // composición). countDesktop queda igual.
-                countMobile: 250,
+                // En 0: el visitante en mobile probablemente
+                // ni lo nota (efecto sutil, se ve de cerca y
+                // con foco), y elimina overdraw aditivo por
+                // completo en vez de solo reducirlo. El resto
+                // del pipeline de polvo (galeria-cono-luz.js)
+                // ya tolera 0 partículas sin ninguna rama
+                // especial: una BufferGeometry vacía
+                // simplemente no dibuja nada.
+                countMobile: 0,
                 countDesktop: 900,
                 umbralFoco: 0.05,
                 limiteFreeze: 2,

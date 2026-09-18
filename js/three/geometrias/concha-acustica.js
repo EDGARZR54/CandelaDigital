@@ -30,6 +30,13 @@ export const PARAMETROS_DEFECTO = {
   numModulos: 3       // 3 módulos seleccionados del Panel ID 295 -> 7 arcos en serie
 };
 
+/*
+    Ver la-muela.js para el porqué de este export — mismo
+    criterio (leído por obtenerResolucionGateada() en
+    galeria-generadores.js).
+*/
+export const RESOLUCION_DEFECTO = { x: 120, y: 120 };
+
 /**
  * Arco 1: Cresta (V_k). Curvatura cóncava al arrancar (dome), C1-continua
  * con la extensión lineal en s=1.

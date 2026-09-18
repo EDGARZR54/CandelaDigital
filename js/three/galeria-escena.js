@@ -26,7 +26,10 @@ import {
     projectToNdc,
     smoothstep
 } from "./galeria-utils.js";
-import { obtenerFuncionConstructora } from "./galeria-generadores.js";
+import {
+    obtenerFuncionConstructora,
+    obtenerResolucionGateada
+} from "./galeria-generadores.js";
 import { IS_MOBILE_TIER } from "./galeria-dispositivo.js";
 import { createHabitacion } from "./galeria-habitacion.js";
 import { createLucesAdicionales, createLucesPorCaja } from "./galeria-luces.js";
@@ -240,8 +243,19 @@ async function prepararGeometria(elemento) {
     const construirGeometria =
         obtenerFuncionConstructora(modulo);
 
+    /*
+        "undefined" en desktop (o si el módulo no exporta
+        RESOLUCION_DEFECTO) — el generador cae solo en su
+        propio default interno, mismo comportamiento que
+        antes de este cambio. Ver
+        obtenerResolucionGateada() en
+        galeria-generadores.js para el porqué del factor.
+    */
+    const resolucion =
+        obtenerResolucionGateada(modulo);
+
     const geometry =
-        construirGeometria();
+        construirGeometria(undefined, resolucion);
 
     const { bbox, desplazamientoBase } =
         normalizarGeometriaElemento(geometry);
@@ -884,15 +898,52 @@ export async function createScene(
     // arriba) ya existe a esta altura — no hace falta armar
     // nada más acá.
 
-    // Geometrías: un módulo procedural por elemento (ver
-    // prepararGeometria arriba). Se resuelven todas en
-    // paralelo porque import() es asíncrono, y porque el
-    // espaciado de la fila necesita el bbox real de cada
-    // una antes de poder fijar "positions".
-    const preparados =
-        await Promise.all(
-            elementos.map(prepararGeometria)
+    /*
+        Geometrías: un módulo procedural por elemento (ver
+        prepararGeometria arriba). ANTES esto era
+        "await Promise.all(elementos.map(prepararGeometria))"
+        — dispara todos los import() en paralelo, lo cual
+        está bien, pero como la parte SINCRÓNICA de cada
+        prepararGeometria (ParametricGeometry +
+        computeVertexNormals, potencialmente decenas de
+        miles de evaluaciones por elemento) corre completa
+        apenas cada import resuelve, y todos los import()
+        de módulos ya cacheados resuelven casi juntos, el
+        resultado real era: todos esos builds sincrónicos
+        uno atrás del otro, SIN ceder el hilo principal ni
+        una sola vez entre medio — un único bloque de JS
+        que puede durar varios segundos con muchos
+        elementos, y durante el cual el navegador no
+        procesa scroll/touch (se siente como que la página
+        se congeló, no como que "va lento").
+
+        Ahora se arma secuencial, con un yield real al
+        hilo principal (requestAnimationFrame) entre cada
+        elemento — el navegador puede pintar y procesar
+        input en esos huecos. El costo total de armar todo
+        es prácticamente el mismo (la heurística no reduce
+        trabajo, solo lo reparte); lo que cambia es que la
+        página deja de sentirse congelada mientras carga.
+
+        El espaciado de la fila necesita el bbox real de
+        TODOS los elementos antes de poder fijar
+        "positions", así que "preparados" sigue esperando
+        a que esto termine entero antes de seguir — este
+        cambio no adelanta cuándo la fila queda lista, solo
+        evita que llegar hasta ahí bloquee el hilo principal
+        de punta a punta.
+    */
+    const preparados = [];
+
+    for (const elemento of elementos) {
+
+        preparados.push(
+            await prepararGeometria(elemento)
         );
+
+        await new Promise(requestAnimationFrame);
+
+    }
 
     /*
         bbox de cada elemento, indexado por

@@ -22,6 +22,15 @@ export const PARAMETROS_DEFECTO = {
   arrayCount: 2      // Piezas del Linear Array
 };
 
+/*
+    Resolución por defecto de crearGeometriaConoSinusoidal
+    — exportada para que galeria-generadores.js
+    (obtenerResolucionGateada) pueda escalarla por
+    IS_MOBILE_TIER sin que este archivo necesite saber nada
+    de tiers de dispositivo.
+*/
+export const RESOLUCION_DEFECTO = { x: 80, y: 80 };
+
 
 /**
  * Evalúa la superficie del Hypar recortado garantizando normales hacia ARRIBA (+Y).

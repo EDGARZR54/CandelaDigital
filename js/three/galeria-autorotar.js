@@ -60,17 +60,41 @@
    su propio label.
 
    RESET AL VOLVER A "fichas": arranca ENCENDIDO por
-   default (mismo criterio que el resto de los controles de
-   "fichas" — carousel/zoom/mapa/etc. — que también
-   reinician su estado por defecto en los mismos 4 puntos
-   donde galeria.js sale de esa fase). Así, cada vez que el
-   visitante entra a una ficha nueva, el modelo arranca
-   girando — nunca hereda el "apagado" que haya dejado en
-   la ficha anterior.
+   default en DESKTOP (mismo criterio que el resto de los
+   controles de "fichas" — carousel/zoom/mapa/etc. — que
+   también reinician su estado por defecto en los mismos 4
+   puntos donde galeria.js sale de esa fase). Así, cada vez
+   que el visitante entra a una ficha nueva, el modelo
+   arranca girando — nunca hereda el "apagado" que haya
+   dejado en la ficha anterior.
+
+   En MOBILE (IS_MOBILE_TIER) el default es el opuesto:
+   arranca APAGADO, y cada reset() vuelve a "apagado" — un
+   giro constante fuerza al renderer a seguir pintando
+   frame tras frame sin que el visitante haga nada, y en un
+   dispositivo ya limitado de recursos eso pesa. Sigue
+   siendo un switch real: el visitante en mobile puede
+   prenderlo a mano si quiere: esto solo cambia el punto de
+   partida, no le saca la opción a nadie.
 ================================================== */
+
+import { IS_MOBILE_TIER } from "./galeria-dispositivo.js";
 
 
 export function createAutorotarToggle(boton) {
+
+    /*
+        Gateado por IS_MOBILE_TIER: el giro constante
+        durante "fichas" fuerza al renderer a seguir
+        pintando frame tras frame aunque el visitante no
+        toque nada — en un dispositivo ya justo de
+        recursos, apagar esto por default es trabajo por
+        frame que directamente deja de pasar, no solo una
+        reducción de detalle. Sigue siendo un switch real:
+        el visitante en mobile puede prenderlo a mano si
+        quiere, esto solo cambia el punto de partida.
+    */
+    const DEFAULT_ACTIVO = !IS_MOBILE_TIER;
 
     /*
         Sin el botón (HTML desactualizado, o esta página
@@ -79,21 +103,24 @@ export function createAutorotarToggle(boton) {
         cada vez — mismo criterio que el resto de los
         guards de esta página (createPanelDerechoSheet,
         createSeccionesColapsables). "activo()" devuelve
-        true (encendido) por default, así que sin botón el
-        autorotado simplemente se comporta como si el
-        switch no existiera — nunca se apaga solo.
+        DEFAULT_ACTIVO (true en desktop, false en mobile)
+        por default, así que sin botón el autorotado
+        simplemente se comporta como si el switch no
+        existiera, con el default que le toque por tier —
+        nunca se apaga solo en desktop, nunca arranca
+        girando solo en mobile.
     */
     if (!boton) {
 
         return {
-            activo: () => true,
+            activo: () => DEFAULT_ACTIVO,
             reset() {}
         };
 
     }
 
 
-    let activo = true;
+    let activo = DEFAULT_ACTIVO;
 
 
     function aplicar(nuevoActivo) {
@@ -105,6 +132,17 @@ export function createAutorotarToggle(boton) {
         );
 
     }
+
+    /*
+        Sincroniza el DOM con el default real desde el
+        primer momento: el HTML trae aria-checked="true"
+        fijo (pensado para el único default que existía
+        antes de este cambio), así que en mobile hace
+        falta este llamado para que el switch se VEA
+        apagado — sin esto, mostraría "prendido" aunque el
+        comportamiento real ya sea "apagado".
+    */
+    aplicar(activo);
 
 
     boton.addEventListener("click", () => {
@@ -125,7 +163,7 @@ export function createAutorotarToggle(boton) {
         */
         reset() {
 
-            aplicar(true);
+            aplicar(DEFAULT_ACTIVO);
 
         }
 

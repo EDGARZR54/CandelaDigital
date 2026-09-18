@@ -21,6 +21,15 @@ export const PARAMETROS_DEFECTO = {
   anchoColumna: 0.8   // Media dimensión de la columna central (Domain -0.8 a 0.8)
 };
 
+/*
+    Ver la-muela.js para el porqué de este export — mismo
+    criterio. Nótese que resolucion.y acá se REPARTE entre
+    pétalos (ver resVPorPetalo en crearGeometriaCubierta),
+    así que escalarla por IS_MOBILE_TIER escala la densidad
+    de CADA pétalo por igual, no el total de sectores.
+*/
+export const RESOLUCION_DEFECTO = { x: 40, y: 120 };
+
 /**
  * Evalúa la superficie de UN ÚNICO pétalo del Hypar, en su orientación
  * local (sector 0, sin rotación). uNorm y vNorm van de 0 a 1.
