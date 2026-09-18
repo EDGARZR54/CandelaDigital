@@ -102,28 +102,34 @@ export function createHabitacion(scene, renderer, config) {
     }
 
     /*
-        Gateado por IS_MOBILE_TIER: este bucle es costo de
-        ARRANQUE (sincrónico, sobre el hilo principal, antes
-        del primer frame), no de render por frame — en un
-        celular de gama baja, generar ~43.000 arcos acá se
-        siente como jank/freeze justo al cargar la galería. Es
-        ruido estocástico, así que bajar la densidad no cambia
-        el "look" del moteado, solo lo hace un poco menos denso
-        — imperceptible a la distancia normal de cámara.
+        Gateado por IS_MOBILE_TIER — MÁS AGRESIVO que el
+        cambio anterior (que solo reducía la densidad): acá
+        directamente no se construyen. Ver más abajo, en
+        floorMat, el porqué: en mobile el piso pasa a un
+        material liso sin bump/roughness map, así que estas
+        texturas no tendrían ningún consumidor — generarlas
+        igual sería puro trabajo de arranque tirado a la
+        basura.
     */
-    const eggBump = makeSpeckleTexture({
-        bg: "#808080",
-        count: IS_MOBILE_TIER ? 10000 : 25000,
-        rMin: 0, rMax: 1.2,
-        gFn: r => 128 - Math.floor(r * 45)
-    });
+    const eggBump =
+        IS_MOBILE_TIER
+            ? null
+            : makeSpeckleTexture({
+                  bg: "#808080",
+                  count: 25000,
+                  rMin: 0, rMax: 1.2,
+                  gFn: r => 128 - Math.floor(r * 45)
+              });
 
-    const eggRoughness = makeSpeckleTexture({
-        bg: "#ffffff",
-        count: IS_MOBILE_TIER ? 7000 : 18000,
-        rMin: 0.3, rMax: 1.3,
-        gFn: r => 40 + Math.floor(r * 40)
-    });
+    const eggRoughness =
+        IS_MOBILE_TIER
+            ? null
+            : makeSpeckleTexture({
+                  bg: "#ffffff",
+                  count: 18000,
+                  rMin: 0.3, rMax: 1.3,
+                  gFn: r => 40 + Math.floor(r * 40)
+              });
 
 
     /*
@@ -259,13 +265,36 @@ export function createHabitacion(scene, renderer, config) {
 
     const FLOOR_NIGHT = new THREE.Color(0x2a231b);
 
-    const floorMat = new THREE.MeshPhysicalMaterial({
-        color: FLOOR_NIGHT.clone(),
-        roughness: 1.0, metalness: 0.0, reflectivity: 0.5,
-        bumpMap: eggBump, bumpScale: 0.008,
-        roughnessMap: eggRoughness,
-        side: THREE.FrontSide
-    });
+    /*
+        Gateado por IS_MOBILE_TIER: en mobile el piso queda
+        LISO — color plano + roughness fijo, sin bump ni
+        roughness map. No es solo ahorrar las 2 texturas: es
+        sacarse de encima, por cada píxel de la malla más
+        grande y más constantemente visible de toda la
+        escena, 2 muestras texture2D + el hash/rotación de
+        floorStochasticUv + el cálculo de derivadas
+        (dFdx/dFdy) que arma dHdxy_fwd — todo eso corre en
+        el fragment shader, cada frame, sin importar si algo
+        se está moviendo. Es el mayor costo por-frame que
+        quedaba sin tocar en toda la escena.
+    */
+    const floorMat = new THREE.MeshPhysicalMaterial(
+        IS_MOBILE_TIER
+            ? {
+                  color: FLOOR_NIGHT.clone(),
+                  roughness: 1.0, metalness: 0.0,
+                  reflectivity: 0.5,
+                  side: THREE.FrontSide
+              }
+            : {
+                  color: FLOOR_NIGHT.clone(),
+                  roughness: 1.0, metalness: 0.0,
+                  reflectivity: 0.5,
+                  bumpMap: eggBump, bumpScale: 0.008,
+                  roughnessMap: eggRoughness,
+                  side: THREE.FrontSide
+              }
+    );
 
     /*
         Parche manual al shader estándar de Three.js: hashea
@@ -275,81 +304,96 @@ export function createHabitacion(scene, renderer, config) {
         textura tal cual a esta escala. Se aplica a las DOS
         texturas (bump y roughness) porque ambas comparten
         el mismo espacio UV de la malla.
+
+        Solo tiene sentido si HAY bump/roughness map que
+        parchear — en mobile floorMat no tiene ninguno de
+        los dos (ver arriba), así que este bloque entero se
+        saltea: sin esto, el shader compilado sería el
+        MeshPhysicalMaterial de fábrica, un poco más liviano
+        todavía que si igual se aplicara el parche sobre un
+        material sin mapas (que de por sí ya sería un no-op,
+        pero no gratis: three seguiría generando las
+        variantes USE_BUMPMAP/USE_ROUGHNESSMAP sobre texto
+        que después ni se usa).
     */
-    floorMat.onBeforeCompile = (shader) => {
+    if (!IS_MOBILE_TIER) {
 
-        const stochasticFn = `
-        float floorStochasticHash(vec2 cell) {
-            return fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453123);
-        }
-        vec2 floorStochasticUv(vec2 uv) {
-            vec2 cell = floor(uv);
-            vec2 f = fract(uv) - 0.5;
-            float h = floorStochasticHash(cell) * 4.0;
-            if (h < 1.0)      { }
-            else if (h < 2.0) { f = vec2(-f.y, f.x); }
-            else if (h < 3.0) { f = vec2(-f.x, -f.y); }
-            else              { f = vec2(f.y, -f.x); }
-            return cell + f + 0.5;
-        }
-        `;
+        floorMat.onBeforeCompile = (shader) => {
 
-        shader.fragmentShader = shader.fragmentShader
-            .replace(
-                "#include <common>",
-                "#include <common>\n" + stochasticFn
-            )
-            .replace(
-                "#include <bumpmap_pars_fragment>",
-                `#ifdef USE_BUMPMAP
-                uniform sampler2D bumpMap;
-                uniform float bumpScale;
+            const stochasticFn = `
+            float floorStochasticHash(vec2 cell) {
+                return fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453123);
+            }
+            vec2 floorStochasticUv(vec2 uv) {
+                vec2 cell = floor(uv);
+                vec2 f = fract(uv) - 0.5;
+                float h = floorStochasticHash(cell) * 4.0;
+                if (h < 1.0)      { }
+                else if (h < 2.0) { f = vec2(-f.y, f.x); }
+                else if (h < 3.0) { f = vec2(-f.x, -f.y); }
+                else              { f = vec2(f.y, -f.x); }
+                return cell + f + 0.5;
+            }
+            `;
 
-                /*
-                    La varying real que corresponde a
-                    bumpMap es "vBumpMapUv", no "vUv": three
-                    separa la UV por mapa (ver
-                    uv_pars_fragment.glsl.js: vUv solo se
-                    declara con USE_UV/USE_ANISOTROPY,
-                    ninguno de los dos aplica acá porque este
-                    material no tiene "map" de color). Usar
-                    "vUv" a secas compila a una variable
-                    inexistente y tira "Fragment shader is
-                    not compiled".
-                */
-                vec2 dHdxy_fwd() {
-                    vec2 dSTdx = dFdx( vBumpMapUv );
-                    vec2 dSTdy = dFdy( vBumpMapUv );
-                    float Hll = bumpScale * texture2D( bumpMap, floorStochasticUv( vBumpMapUv ) ).x;
-                    float dBx = bumpScale * texture2D( bumpMap, floorStochasticUv( vBumpMapUv + dSTdx ) ).x - Hll;
-                    float dBy = bumpScale * texture2D( bumpMap, floorStochasticUv( vBumpMapUv + dSTdy ) ).x - Hll;
-                    return vec2( dBx, dBy );
-                }
-                vec3 perturbNormalArb( vec3 surf_pos, vec3 surf_norm, vec2 dHdxy, float faceDirection ) {
-                    vec3 vSigmaX = normalize( dFdx( surf_pos.xyz ) );
-                    vec3 vSigmaY = normalize( dFdy( surf_pos.xyz ) );
-                    vec3 vN = surf_norm;
-                    vec3 R1 = cross( vSigmaY, vN );
-                    vec3 R2 = cross( vN, vSigmaX );
-                    float fDet = dot( vSigmaX, R1 ) * faceDirection;
-                    vec3 vGrad = sign( fDet ) * ( dHdxy.x * R1 + dHdxy.y * R2 );
-                    return normalize( abs( fDet ) * surf_norm - vGrad );
-                }
-                #endif`
-            )
-            .replace(
-                "#include <roughnessmap_fragment>",
-                `float roughnessFactor = roughness;
-                #ifdef USE_ROUGHNESSMAP
-                    // Mismo motivo que en dHdxy_fwd más arriba:
-                    // "vRoughnessMapUv" es la varying real, no
-                    // "vUv".
-                    vec4 texelRoughness = texture2D( roughnessMap, floorStochasticUv( vRoughnessMapUv ) );
-                    roughnessFactor *= texelRoughness.g;
-                #endif`
-            );
+            shader.fragmentShader = shader.fragmentShader
+                .replace(
+                    "#include <common>",
+                    "#include <common>\n" + stochasticFn
+                )
+                .replace(
+                    "#include <bumpmap_pars_fragment>",
+                    `#ifdef USE_BUMPMAP
+                    uniform sampler2D bumpMap;
+                    uniform float bumpScale;
 
-    };
+                    /*
+                        La varying real que corresponde a
+                        bumpMap es "vBumpMapUv", no "vUv": three
+                        separa la UV por mapa (ver
+                        uv_pars_fragment.glsl.js: vUv solo se
+                        declara con USE_UV/USE_ANISOTROPY,
+                        ninguno de los dos aplica acá porque este
+                        material no tiene "map" de color). Usar
+                        "vUv" a secas compila a una variable
+                        inexistente y tira "Fragment shader is
+                        not compiled".
+                    */
+                    vec2 dHdxy_fwd() {
+                        vec2 dSTdx = dFdx( vBumpMapUv );
+                        vec2 dSTdy = dFdy( vBumpMapUv );
+                        float Hll = bumpScale * texture2D( bumpMap, floorStochasticUv( vBumpMapUv ) ).x;
+                        float dBx = bumpScale * texture2D( bumpMap, floorStochasticUv( vBumpMapUv + dSTdx ) ).x - Hll;
+                        float dBy = bumpScale * texture2D( bumpMap, floorStochasticUv( vBumpMapUv + dSTdy ) ).x - Hll;
+                        return vec2( dBx, dBy );
+                    }
+                    vec3 perturbNormalArb( vec3 surf_pos, vec3 surf_norm, vec2 dHdxy, float faceDirection ) {
+                        vec3 vSigmaX = normalize( dFdx( surf_pos.xyz ) );
+                        vec3 vSigmaY = normalize( dFdy( surf_pos.xyz ) );
+                        vec3 vN = surf_norm;
+                        vec3 R1 = cross( vSigmaY, vN );
+                        vec3 R2 = cross( vN, vSigmaX );
+                        float fDet = dot( vSigmaX, R1 ) * faceDirection;
+                        vec3 vGrad = sign( fDet ) * ( dHdxy.x * R1 + dHdxy.y * R2 );
+                        return normalize( abs( fDet ) * surf_norm - vGrad );
+                    }
+                    #endif`
+                )
+                .replace(
+                    "#include <roughnessmap_fragment>",
+                    `float roughnessFactor = roughness;
+                    #ifdef USE_ROUGHNESSMAP
+                        // Mismo motivo que en dHdxy_fwd más arriba:
+                        // "vRoughnessMapUv" es la varying real, no
+                        // "vUv".
+                        vec4 texelRoughness = texture2D( roughnessMap, floorStochasticUv( vRoughnessMapUv ) );
+                        roughnessFactor *= texelRoughness.g;
+                    #endif`
+                );
+
+        };
+
+    }
 
     const roomFloor =
         new THREE.Mesh(makeRoomGeometry(floorProfile(), 1.4), floorMat);

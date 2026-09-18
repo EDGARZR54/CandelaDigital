@@ -669,8 +669,28 @@ export async function createScene(
     );
 
 
+    /*
+        Gateado por IS_MOBILE_TIER: esto es, con diferencia,
+        el lever más grande que queda — el costo de CADA
+        shader (piso, cascarones, cono de luz, sombra de
+        contacto) escala con la cantidad de píxeles reales
+        que hay que sombrear, y esa cantidad escala con el
+        CUADRADO del pixelRatio. Bajar de 2 a 1 en mobile no
+        es "un 50% menos de píxeles", es un 75% menos.
+
+        Es el cambio más agresivo de toda esta ronda en
+        términos de nitidez visual — el canvas se renderiza
+        a resolución nativa (1x) y el navegador lo escala al
+        tamaño real de la pantalla, así que se va a notar
+        más "blando" que antes, sobre todo en bordes. Si se
+        ve demasiado blando, un punto medio razonable es 1.5
+        en vez de 1.
+    */
     const PIXEL_RATIO =
-        Math.min(window.devicePixelRatio, 2);
+        Math.min(
+            window.devicePixelRatio,
+            IS_MOBILE_TIER ? 1 : 2
+        );
 
     /*
         Mismo criterio que Maqueta.html: con devicePixelRatio
@@ -681,9 +701,19 @@ export async function createScene(
         real de la pantalla, no de IS_MOBILE_TIER (un monitor
         de escritorio con pixelRatio 1 sigue queriendo
         antialias aunque el hardware sea modesto).
+
+        EXCEPCIÓN explícita para mobile: con el cap de arriba,
+        un celular con devicePixelRatio alto ahora también
+        puede caer en PIXEL_RATIO=1 — sin este "!IS_MOBILE_TIER"
+        de más, esa condición (PIXEL_RATIO < 2) prendería MSAA
+        de vuelta justo en el tier que menos se lo puede
+        permitir (GPUs tile-based, donde el multisampling pesa
+        bastante más que en desktop). En mobile, antialias
+        siempre apagado, sin importar en qué caiga el
+        pixelRatio.
     */
     const USE_ANTIALIAS =
-        PIXEL_RATIO < 2;
+        !IS_MOBILE_TIER && PIXEL_RATIO < 2;
 
     const renderer =
         new THREE.WebGLRenderer({
@@ -854,15 +884,18 @@ export async function createScene(
 
     /*
         Gama media/baja: mapa de sombra más chico (mismo
-        precedente que Maqueta.html, 1024->512). Se usa
-        Math.min contra el valor de config en vez de un 512
-        fijo, para que si algún día config.lights.key.
-        shadowMapSize baja de 512 por otro motivo, el tier
-        móvil no lo suba de nuevo.
+        precedente que Maqueta.html, 1024->512, ahora bajado
+        un escalón más a 256 — un solo cono real en escena
+        en cualquier momento, así que la pérdida de detalle
+        en el borde de la sombra es mínima frente al ahorro
+        de bandwidth). Se usa Math.min contra el valor de
+        config en vez de un número fijo, para que si algún
+        día config.lights.key.shadowMapSize baja de 256 por
+        otro motivo, el tier móvil no lo suba de nuevo.
     */
     const shadowMapSize =
         IS_MOBILE_TIER
-            ? Math.min(512, keyCfg.shadowMapSize)
+            ? Math.min(256, keyCfg.shadowMapSize)
             : keyCfg.shadowMapSize;
 
     keyLight.shadow.mapSize.set(
